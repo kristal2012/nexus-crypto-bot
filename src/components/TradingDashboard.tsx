@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,16 +11,65 @@ import {
   BarChart3,
   Settings,
   Play,
-  Pause
+  Pause,
+  LogOut,
+  User
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { BotStatus } from "./BotStatus";
 import { TradingConfig } from "./TradingConfig";
 import { PositionCard } from "./PositionCard";
 import { MarketPrice } from "./MarketPrice";
 
 export const TradingDashboard = () => {
+  const { user, signOut, loading } = useAuth();
+  const navigate = useNavigate();
   const [botActive, setBotActive] = useState(false);
   const [selectedPair, setSelectedPair] = useState("BTCUSDT");
+  const [username, setUsername] = useState<string>("");
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth");
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+        
+        if (data) {
+          setUsername(data.username);
+        }
+      }
+    };
+    
+    fetchProfile();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow mx-auto mb-4 animate-pulse">
+            <Zap className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const mockPositions: Array<{
     symbol: string;
@@ -69,24 +118,41 @@ export const TradingDashboard = () => {
             </div>
           </div>
           
-          <Button
-            onClick={() => setBotActive(!botActive)}
-            variant={botActive ? "destructive" : "default"}
-            size="lg"
-            className="gap-2 shadow-glow"
-          >
-            {botActive ? (
-              <>
-                <Pause className="w-5 h-5" />
-                Pausar Bot
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5" />
-                Iniciar Bot
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">{username || user.email}</span>
+            </div>
+            
+            <Button
+              onClick={() => setBotActive(!botActive)}
+              variant={botActive ? "destructive" : "default"}
+              size="lg"
+              className="gap-2 shadow-glow"
+            >
+              {botActive ? (
+                <>
+                  <Pause className="w-5 h-5" />
+                  Pausar Bot
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5" />
+                  Iniciar Bot
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={signOut}
+              variant="ghost"
+              size="lg"
+              className="gap-2"
+            >
+              <LogOut className="w-5 h-5" />
+              Sair
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
