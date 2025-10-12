@@ -113,7 +113,7 @@ export const TradingDashboard = () => {
               <Zap className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">SnappBot Pro</h1>
+              <h1 className="text-3xl font-bold text-foreground">Cryptum 7.1</h1>
               <p className="text-muted-foreground text-sm">Trading Automatizado Inteligente</p>
             </div>
           </div>
