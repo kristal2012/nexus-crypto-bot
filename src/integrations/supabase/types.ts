@@ -41,6 +41,69 @@ export type Database = {
         }
         Relationships: []
       }
+      performance_stats: {
+        Row: {
+          average_loss: number | null
+          average_profit: number | null
+          created_at: string
+          id: string
+          largest_loss: number | null
+          largest_win: number | null
+          losing_trades: number
+          max_drawdown: number | null
+          period: Database["public"]["Enums"]["performance_period"]
+          period_date: string
+          sharpe_ratio: number | null
+          total_profit_loss: number
+          total_trades: number
+          total_volume: number
+          updated_at: string
+          user_id: string
+          win_rate: number | null
+          winning_trades: number
+        }
+        Insert: {
+          average_loss?: number | null
+          average_profit?: number | null
+          created_at?: string
+          id?: string
+          largest_loss?: number | null
+          largest_win?: number | null
+          losing_trades?: number
+          max_drawdown?: number | null
+          period: Database["public"]["Enums"]["performance_period"]
+          period_date: string
+          sharpe_ratio?: number | null
+          total_profit_loss?: number
+          total_trades?: number
+          total_volume?: number
+          updated_at?: string
+          user_id: string
+          win_rate?: number | null
+          winning_trades?: number
+        }
+        Update: {
+          average_loss?: number | null
+          average_profit?: number | null
+          created_at?: string
+          id?: string
+          largest_loss?: number | null
+          largest_win?: number | null
+          losing_trades?: number
+          max_drawdown?: number | null
+          period?: Database["public"]["Enums"]["performance_period"]
+          period_date?: string
+          sharpe_ratio?: number | null
+          total_profit_loss?: number
+          total_trades?: number
+          total_volume?: number
+          updated_at?: string
+          user_id?: string
+          win_rate?: number | null
+          winning_trades?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -62,6 +125,90 @@ export type Database = {
         }
         Relationships: []
       }
+      strategies: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          parameters: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          parameters?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          parameters?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          commission: number | null
+          created_at: string
+          executed_at: string | null
+          id: string
+          order_id: string | null
+          price: number
+          profit_loss: number | null
+          quantity: number
+          side: Database["public"]["Enums"]["trade_side"]
+          status: Database["public"]["Enums"]["trade_status"]
+          symbol: string
+          type: Database["public"]["Enums"]["trade_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          commission?: number | null
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          order_id?: string | null
+          price: number
+          profit_loss?: number | null
+          quantity: number
+          side: Database["public"]["Enums"]["trade_side"]
+          status?: Database["public"]["Enums"]["trade_status"]
+          symbol: string
+          type: Database["public"]["Enums"]["trade_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          commission?: number | null
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          order_id?: string | null
+          price?: number
+          profit_loss?: number | null
+          quantity?: number
+          side?: Database["public"]["Enums"]["trade_side"]
+          status?: Database["public"]["Enums"]["trade_status"]
+          symbol?: string
+          type?: Database["public"]["Enums"]["trade_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -70,7 +217,10 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      performance_period: "DAILY" | "WEEKLY" | "MONTHLY" | "ALL_TIME"
+      trade_side: "BUY" | "SELL"
+      trade_status: "PENDING" | "FILLED" | "PARTIAL" | "CANCELLED" | "FAILED"
+      trade_type: "MARKET" | "LIMIT" | "STOP_LOSS" | "TAKE_PROFIT"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -197,6 +347,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      performance_period: ["DAILY", "WEEKLY", "MONTHLY", "ALL_TIME"],
+      trade_side: ["BUY", "SELL"],
+      trade_status: ["PENDING", "FILLED", "PARTIAL", "CANCELLED", "FAILED"],
+      trade_type: ["MARKET", "LIMIT", "STOP_LOSS", "TAKE_PROFIT"],
+    },
   },
 } as const
