@@ -22,6 +22,7 @@ import { BotStatus } from "./BotStatus";
 import { TradingConfig } from "./TradingConfig";
 import { PositionCard } from "./PositionCard";
 import { MarketPrice } from "./MarketPrice";
+import { BinanceApiSettings } from "./BinanceApiSettings";
 
 export const TradingDashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -227,6 +228,7 @@ export const TradingDashboard = () => {
         {/* Right Column - Config & Status */}
         <div className="space-y-6">
           <BotStatus active={botActive} />
+          <BinanceApiSettings />
           <TradingConfig />
         </div>
       </div>
