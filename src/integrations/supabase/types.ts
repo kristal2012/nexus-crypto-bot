@@ -41,6 +41,51 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_daily_stats: {
+        Row: {
+          can_trade: boolean
+          created_at: string
+          current_balance: number
+          date: string
+          id: string
+          is_active: boolean
+          profit_loss_percent: number
+          starting_balance: number
+          stop_reason: string | null
+          trades_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_trade?: boolean
+          created_at?: string
+          current_balance?: number
+          date?: string
+          id?: string
+          is_active?: boolean
+          profit_loss_percent?: number
+          starting_balance?: number
+          stop_reason?: string | null
+          trades_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_trade?: boolean
+          created_at?: string
+          current_balance?: number
+          date?: string
+          id?: string
+          is_active?: boolean
+          profit_loss_percent?: number
+          starting_balance?: number
+          stop_reason?: string | null
+          trades_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       performance_stats: {
         Row: {
           average_loss: number | null
@@ -214,7 +259,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reset_daily_bot_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       performance_period: "DAILY" | "WEEKLY" | "MONTHLY" | "ALL_TIME"

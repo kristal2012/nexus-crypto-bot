@@ -1,1 +1,19 @@
 project_id = "nntrkbfuwdnzwiaieopc"
+
+[functions.binance-account]
+verify_jwt = true
+
+[functions.binance-create-order]
+verify_jwt = true
+
+[functions.binance-open-orders]
+verify_jwt = true
+
+[functions.binance-cancel-order]
+verify_jwt = true
+
+[functions.check-trading-status]
+verify_jwt = true
+
+[functions.auto-trade]
+verify_jwt = true
