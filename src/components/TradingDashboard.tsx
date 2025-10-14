@@ -6,7 +6,6 @@ import {
   Activity, 
   TrendingUp, 
   TrendingDown, 
-  Zap, 
   Target,
   BarChart3,
   Settings,
@@ -15,6 +14,7 @@ import {
   LogOut,
   User
 } from "lucide-react";
+import cryptumLogo from "@/assets/cryptum-logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,9 +62,11 @@ export const TradingDashboard = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow mx-auto mb-4 animate-pulse">
-            <Zap className="w-8 h-8 text-primary-foreground" />
-          </div>
+          <img 
+            src={cryptumLogo} 
+            alt="Cryptum Logo" 
+            className="w-16 h-16 object-contain mx-auto mb-4 animate-pulse"
+          />
           <p className="text-muted-foreground">Carregando...</p>
         </div>
       </div>
@@ -113,9 +115,11 @@ export const TradingDashboard = () => {
       <header className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
-              <Zap className="w-6 h-6 text-primary-foreground" />
-            </div>
+            <img 
+              src={cryptumLogo} 
+              alt="Cryptum Logo" 
+              className="w-12 h-12 object-contain"
+            />
             <div>
               <h1 className="text-3xl font-bold text-foreground">Cryptum 7.1</h1>
               <p className="text-muted-foreground text-sm">Trading Automatizado Inteligente</p>
