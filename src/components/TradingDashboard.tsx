@@ -23,6 +23,7 @@ import { TradingConfig } from "./TradingConfig";
 import { PositionCard } from "./PositionCard";
 import { MarketPrice } from "./MarketPrice";
 import { BinanceApiSettings } from "./BinanceApiSettings";
+import { AIPrediction } from "./AIPrediction";
 
 export const TradingDashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -30,6 +31,7 @@ export const TradingDashboard = () => {
   const [botActive, setBotActive] = useState(false);
   const [selectedPair, setSelectedPair] = useState("BTCUSDT");
   const [username, setUsername] = useState<string>("");
+  const [btcPrices, setBtcPrices] = useState<number[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -228,6 +230,11 @@ export const TradingDashboard = () => {
         {/* Right Column - Config & Status */}
         <div className="space-y-6">
           <BotStatus active={botActive} />
+          <AIPrediction 
+            symbol="BTCUSDT" 
+            currentPrice={43890.20} 
+            historicalPrices={btcPrices.length > 0 ? btcPrices : [43000, 43100, 43250, 43300, 43400, 43500, 43600, 43700, 43800, 43890, 43950, 43890]} 
+          />
           <BinanceApiSettings />
           <TradingConfig />
         </div>
