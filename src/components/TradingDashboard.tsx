@@ -186,7 +186,7 @@ export const TradingDashboard = () => {
 
           <Card className="p-4 bg-gradient-card border-border shadow-card">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Win Rate</span>
+              <span className="text-sm text-muted-foreground">Taxa de Vitória</span>
               <Target className="w-4 h-4 text-warning" />
             </div>
             <p className="text-2xl font-bold text-foreground">68.5%</p>
