@@ -1,5 +1,4 @@
 import { Card } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, TrendingUp } from "lucide-react";
 import { useTradingSettings } from "@/hooks/useTradingSettings";
@@ -20,28 +19,54 @@ export const TradingModeToggle = () => {
   return (
     <Card className="p-4 bg-gradient-card border-border shadow-card">
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {isRealMode ? (
-              <TrendingUp className="w-5 h-5 text-success" />
-            ) : (
-              <AlertCircle className="w-5 h-5 text-warning" />
-            )}
-            <div>
-              <Label className="text-sm font-semibold text-foreground">
-                Modo de Trading
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                {isRealMode ? "Operações reais" : "Operações simuladas"}
-              </p>
-            </div>
+        <div>
+          <Label className="text-sm font-semibold text-foreground mb-3 block">
+            Escolha o Modo de Trading
+          </Label>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => updateTradingMode("DEMO")}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                !isRealMode
+                  ? "border-warning bg-warning/10"
+                  : "border-border bg-secondary/50 hover:border-warning/50"
+              }`}
+            >
+              <div className="flex flex-col items-center gap-2">
+                <AlertCircle className={`w-6 h-6 ${!isRealMode ? "text-warning" : "text-muted-foreground"}`} />
+                <div className="text-center">
+                  <p className={`text-sm font-semibold ${!isRealMode ? "text-warning" : "text-foreground"}`}>
+                    Modo Demo
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Operações simuladas
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => updateTradingMode("REAL")}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                isRealMode
+                  ? "border-success bg-success/10"
+                  : "border-border bg-secondary/50 hover:border-success/50"
+              }`}
+            >
+              <div className="flex flex-col items-center gap-2">
+                <TrendingUp className={`w-6 h-6 ${isRealMode ? "text-success" : "text-muted-foreground"}`} />
+                <div className="text-center">
+                  <p className={`text-sm font-semibold ${isRealMode ? "text-success" : "text-foreground"}`}>
+                    Conta Real
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Saldo real
+                  </p>
+                </div>
+              </div>
+            </button>
           </div>
-          <Switch
-            checked={isRealMode}
-            onCheckedChange={(checked) => 
-              updateTradingMode(checked ? "REAL" : "DEMO")
-            }
-          />
         </div>
 
         {!isRealMode && (
