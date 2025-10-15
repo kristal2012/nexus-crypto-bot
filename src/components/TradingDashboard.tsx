@@ -65,7 +65,7 @@ export const TradingDashboard = () => {
           <img 
             src={cryptumLogo} 
             alt="Cryptum Logo" 
-            className="w-16 h-16 object-contain mx-auto mb-4 animate-pulse"
+            className="w-32 h-32 object-contain mx-auto mb-4 animate-pulse"
           />
           <p className="text-muted-foreground">Carregando...</p>
         </div>
@@ -118,7 +118,7 @@ export const TradingDashboard = () => {
             <img 
               src={cryptumLogo} 
               alt="Cryptum Logo" 
-              className="w-12 h-12 object-contain"
+              className="w-24 h-24 object-contain"
             />
             <div>
               <h1 className="text-3xl font-bold text-foreground">Cryptum 7.1</h1>
