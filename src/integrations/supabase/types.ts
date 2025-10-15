@@ -209,6 +209,7 @@ export type Database = {
           created_at: string
           executed_at: string | null
           id: string
+          is_demo: boolean
           order_id: string | null
           price: number
           profit_loss: number | null
@@ -225,6 +226,7 @@ export type Database = {
           created_at?: string
           executed_at?: string | null
           id?: string
+          is_demo?: boolean
           order_id?: string | null
           price: number
           profit_loss?: number | null
@@ -241,6 +243,7 @@ export type Database = {
           created_at?: string
           executed_at?: string | null
           id?: string
+          is_demo?: boolean
           order_id?: string | null
           price?: number
           profit_loss?: number | null
@@ -249,6 +252,33 @@ export type Database = {
           status?: Database["public"]["Enums"]["trade_status"]
           symbol?: string
           type?: Database["public"]["Enums"]["trade_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trading_settings: {
+        Row: {
+          created_at: string
+          demo_balance: number
+          id: string
+          trading_mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          demo_balance?: number
+          id?: string
+          trading_mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          demo_balance?: number
+          id?: string
+          trading_mode?: string
           updated_at?: string
           user_id?: string
         }

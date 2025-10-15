@@ -25,6 +25,7 @@ import { MarketPrice } from "./MarketPrice";
 import { BinanceApiSettings } from "./BinanceApiSettings";
 import { AIPrediction } from "./AIPrediction";
 import { AutoTradingControl } from "./AutoTradingControl";
+import { TradingModeToggle } from "./TradingModeToggle";
 
 export const TradingDashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -235,8 +236,9 @@ export const TradingDashboard = () => {
         {/* Right Column - Config & Status */}
         <div className="space-y-6">
           <BotStatus active={botActive} />
+          <TradingModeToggle />
           <AutoTradingControl />
-          <AIPrediction 
+          <AIPrediction
             symbol="BTCUSDT" 
             currentPrice={43890.20} 
             historicalPrices={btcPrices.length > 0 ? btcPrices : [43000, 43100, 43250, 43300, 43400, 43500, 43600, 43700, 43800, 43890, 43950, 43890]} 
