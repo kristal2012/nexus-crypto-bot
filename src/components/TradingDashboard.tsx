@@ -34,6 +34,12 @@ export const TradingDashboard = () => {
   const [selectedPair, setSelectedPair] = useState("BTCUSDT");
   const [username, setUsername] = useState<string>("");
   const [btcPrices, setBtcPrices] = useState<number[]>([]);
+  const [dailyStats, setDailyStats] = useState<{
+    starting_balance: number;
+    current_balance: number;
+    profit_loss_percent: number;
+  } | null>(null);
+  const [monthlyProfit, setMonthlyProfit] = useState<number>(0);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -57,6 +63,54 @@ export const TradingDashboard = () => {
     };
     
     fetchProfile();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchDailyStats = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from("bot_daily_stats")
+          .select("starting_balance, current_balance, profit_loss_percent")
+          .eq("user_id", user.id)
+          .eq("date", new Date().toISOString().split('T')[0])
+          .single();
+        
+        if (data) {
+          setDailyStats(data);
+        }
+      }
+    };
+
+    const fetchMonthlyProfit = async () => {
+      if (user) {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const { data } = await supabase
+          .from("bot_daily_stats")
+          .select("current_balance, starting_balance")
+          .eq("user_id", user.id)
+          .gte("date", startOfMonth.toISOString().split('T')[0]);
+        
+        if (data && data.length > 0) {
+          const firstDay = data[data.length - 1];
+          const lastDay = data[0];
+          const monthProfit = lastDay.current_balance - firstDay.starting_balance;
+          setMonthlyProfit(monthProfit);
+        }
+      }
+    };
+
+    fetchDailyStats();
+    fetchMonthlyProfit();
+
+    const interval = setInterval(() => {
+      fetchDailyStats();
+      fetchMonthlyProfit();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [user]);
 
   if (loading) {
@@ -165,14 +219,40 @@ export const TradingDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card className="p-4 bg-gradient-card border-border shadow-card">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Lucro Total</span>
+              <span className="text-sm text-muted-foreground">Saldo Inicial</span>
+              <BarChart3 className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-2xl font-bold text-foreground">
+              ${dailyStats?.starting_balance.toFixed(2) || "0.00"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Saldo do dia</p>
+          </Card>
+
+          <Card className="p-4 bg-gradient-card border-border shadow-card">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Lucro Total do Dia</span>
               <TrendingUp className="w-4 h-4 text-success" />
             </div>
-            <p className="text-2xl font-bold text-foreground">$435.53</p>
-            <p className="text-xs text-success mt-1">+12.4% hoje</p>
+            <p className="text-2xl font-bold text-foreground">
+              ${dailyStats ? (dailyStats.current_balance - dailyStats.starting_balance).toFixed(2) : "0.00"}
+            </p>
+            <p className="text-xs text-success mt-1">
+              {dailyStats?.profit_loss_percent.toFixed(2)}% hoje
+            </p>
+          </Card>
+
+          <Card className="p-4 bg-gradient-card border-border shadow-card">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Saldo Atual</span>
+              <Activity className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-2xl font-bold text-foreground">
+              ${dailyStats?.current_balance.toFixed(2) || "0.00"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Saldo atualizado</p>
           </Card>
 
           <Card className="p-4 bg-gradient-card border-border shadow-card">
@@ -195,11 +275,13 @@ export const TradingDashboard = () => {
 
           <Card className="p-4 bg-gradient-card border-border shadow-card">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Volume</span>
-              <BarChart3 className="w-4 h-4 text-accent" />
+              <span className="text-sm text-muted-foreground">Lucro Acumulado no Mês</span>
+              <TrendingUp className="w-4 h-4 text-success" />
             </div>
-            <p className="text-2xl font-bold text-foreground">$12.8K</p>
-            <p className="text-xs text-muted-foreground mt-1">Volume do dia</p>
+            <p className="text-2xl font-bold text-foreground">
+              ${monthlyProfit.toFixed(2)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Lucro mensal</p>
           </Card>
         </div>
       </header>
