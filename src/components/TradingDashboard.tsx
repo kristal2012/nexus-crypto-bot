@@ -40,6 +40,8 @@ export const TradingDashboard = () => {
     profit_loss_percent: number;
   } | null>(null);
   const [monthlyProfit, setMonthlyProfit] = useState<number>(0);
+  const [activePositions, setActivePositions] = useState<number>(0);
+  const [winRate, setWinRate] = useState<number>(0);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -102,12 +104,52 @@ export const TradingDashboard = () => {
       }
     };
 
+    const fetchActivePositions = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from("trades")
+          .select("id", { count: 'exact' })
+          .eq("user_id", user.id)
+          .in("status", ["PENDING", "PARTIAL"]);
+        
+        if (data) {
+          setActivePositions(data.length);
+        }
+      }
+    };
+
+    const fetchWinRate = async () => {
+      if (user) {
+        const twentyFourHoursAgo = new Date();
+        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+        const { data: allTrades } = await supabase
+          .from("trades")
+          .select("profit_loss")
+          .eq("user_id", user.id)
+          .eq("status", "FILLED")
+          .gte("executed_at", twentyFourHoursAgo.toISOString());
+        
+        if (allTrades && allTrades.length > 0) {
+          const winningTrades = allTrades.filter(trade => 
+            trade.profit_loss !== null && trade.profit_loss > 0
+          ).length;
+          const rate = (winningTrades / allTrades.length) * 100;
+          setWinRate(rate);
+        }
+      }
+    };
+
     fetchDailyStats();
     fetchMonthlyProfit();
+    fetchActivePositions();
+    fetchWinRate();
 
     const interval = setInterval(() => {
       fetchDailyStats();
       fetchMonthlyProfit();
+      fetchActivePositions();
+      fetchWinRate();
     }, 30000);
 
     return () => clearInterval(interval);
@@ -260,8 +302,8 @@ export const TradingDashboard = () => {
               <span className="text-sm text-muted-foreground">Posições Ativas</span>
               <Activity className="w-4 h-4 text-primary" />
             </div>
-            <p className="text-2xl font-bold text-foreground">2</p>
-            <p className="text-xs text-muted-foreground mt-1">3 pares ativos</p>
+            <p className="text-2xl font-bold text-foreground">{activePositions}</p>
+            <p className="text-xs text-muted-foreground mt-1">Trades abertos</p>
           </Card>
 
           <Card className="p-4 bg-gradient-card border-border shadow-card">
@@ -269,7 +311,7 @@ export const TradingDashboard = () => {
               <span className="text-sm text-muted-foreground">Taxa de Vitória</span>
               <Target className="w-4 h-4 text-warning" />
             </div>
-            <p className="text-2xl font-bold text-foreground">68.5%</p>
+            <p className="text-2xl font-bold text-foreground">{winRate.toFixed(1)}%</p>
             <p className="text-xs text-muted-foreground mt-1">Últimas 24h</p>
           </Card>
 
