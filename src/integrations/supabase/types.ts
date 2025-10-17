@@ -14,6 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_analysis_results: {
+        Row: {
+          analysis_data: Json | null
+          confidence: number
+          created_at: string | null
+          id: string
+          predicted_price: number
+          recommended_dca_layers: number
+          symbol: string
+          trend: string
+          user_id: string
+        }
+        Insert: {
+          analysis_data?: Json | null
+          confidence: number
+          created_at?: string | null
+          id?: string
+          predicted_price: number
+          recommended_dca_layers: number
+          symbol: string
+          trend: string
+          user_id: string
+        }
+        Update: {
+          analysis_data?: Json | null
+          confidence?: number
+          created_at?: string | null
+          id?: string
+          predicted_price?: number
+          recommended_dca_layers?: number
+          symbol?: string
+          trend?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      auto_trading_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          leverage: number
+          min_confidence: number
+          quantity_usdt: number
+          stop_loss: number
+          take_profit: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          leverage?: number
+          min_confidence?: number
+          quantity_usdt?: number
+          stop_loss?: number
+          take_profit?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          leverage?: number
+          min_confidence?: number
+          quantity_usdt?: number
+          stop_loss?: number
+          take_profit?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       binance_api_keys: {
         Row: {
           api_key: string

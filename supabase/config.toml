@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.auto-trade]
 verify_jwt = true
+
+[functions.ai-auto-trade]
+verify_jwt = true

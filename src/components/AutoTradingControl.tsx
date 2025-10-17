@@ -1,146 +1,256 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Activity, TrendingUp, TrendingDown, Clock, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Bot, TrendingUp, Sparkles, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface DailyStats {
-  id: string;
-  date: string;
-  starting_balance: number;
-  current_balance: number;
-  profit_loss_percent: number;
-  trades_count: number;
-  can_trade: boolean;
-  stop_reason: string | null;
-}
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export const AutoTradingControl = () => {
-  const [stats, setStats] = useState<DailyStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isActive, setIsActive] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [lastAnalysis, setLastAnalysis] = useState<any>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const fetchStatus = async () => {
+  useEffect(() => {
+    if (user) {
+      loadStatus();
+      loadLastAnalysis();
+      
+      // Update every 60 seconds
+      const interval = setInterval(() => {
+        loadLastAnalysis();
+      }, 60000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const loadStatus = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('check-trading-status');
-      
-      if (error) throw error;
-      
-      setStats(data.stats);
+      const { data } = await supabase
+        .from('auto_trading_config')
+        .select('is_active, min_confidence')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (data) {
+        setIsActive(data.is_active);
+      }
     } catch (error) {
-      console.error('Error fetching status:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao buscar status do bot",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+      console.error('Error loading status:', error);
     }
   };
 
-  useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 30000); // Update every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
+  const loadLastAnalysis = async () => {
+    try {
+      const { data } = await supabase
+        .from('ai_analysis_results')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-  if (loading || !stats) {
-    return (
-      <Card className="p-6 bg-gradient-card border-border shadow-card">
-        <div className="flex items-center gap-2 mb-4">
-          <Activity className="w-5 h-5 text-primary animate-pulse" />
-          <h3 className="text-lg font-bold text-foreground">Trading Automático</h3>
-        </div>
-        <p className="text-sm text-muted-foreground">Carregando status...</p>
-      </Card>
-    );
-  }
+      if (data && data.length > 0) {
+        const highConfidence = data.filter(a => a.confidence >= 95);
+        setLastAnalysis({
+          total: data.length,
+          highConfidence: highConfidence.length,
+          lastRun: data[0].created_at,
+          bestOpportunity: data.reduce((best, current) => 
+            current.confidence > best.confidence ? current : best
+          , data[0])
+        });
+      }
+    } catch (error) {
+      console.error('Error loading analysis:', error);
+    }
+  };
 
-  const profitLossColor = stats.profit_loss_percent >= 0 ? "text-success" : "text-destructive";
-  const profitLossIcon = stats.profit_loss_percent >= 0 ? TrendingUp : TrendingDown;
-  const ProfitLossIcon = profitLossIcon;
+  const handleToggle = async (checked: boolean) => {
+    if (!user) return;
 
-  // Calculate progress for take profit (0 to 10%)
-  const takeProfitProgress = Math.min((stats.profit_loss_percent / 10) * 100, 100);
-  // Calculate progress for stop loss (0 to -5%)
-  const stopLossProgress = Math.min((Math.abs(stats.profit_loss_percent) / 5) * 100, 100);
+    try {
+      const { data: existing } = await supabase
+        .from('auto_trading_config')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-  const progressValue = stats.profit_loss_percent >= 0 ? takeProfitProgress : stopLossProgress;
-  const progressColor = stats.profit_loss_percent >= 0 ? "bg-success" : "bg-destructive";
+      if (existing) {
+        await supabase
+          .from('auto_trading_config')
+          .update({ is_active: checked })
+          .eq('user_id', user.id);
+      } else {
+        await supabase
+          .from('auto_trading_config')
+          .insert({
+            user_id: user.id,
+            is_active: checked
+          });
+      }
+
+      setIsActive(checked);
+      
+      if (checked) {
+        runAnalysis();
+      }
+
+      toast({
+        title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
+        description: checked 
+          ? "A IA começará a analisar automaticamente todas as criptomoedas" 
+          : "A análise automática foi pausada",
+      });
+    } catch (error) {
+      console.error('Error toggling:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const runAnalysis = async () => {
+    if (!user || isAnalyzing) return;
+
+    setIsAnalyzing(true);
+    toast({
+      title: "Iniciando Análise IA",
+      description: "Analisando todas as criptomoedas da Binance...",
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-auto-trade');
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ Análise Concluída",
+        description: `${data.analyzed} pares analisados | ${data.opportunities} oportunidades (≥95%) | ${data.executed} trades executados`,
+      });
+
+      loadLastAnalysis();
+    } catch (error) {
+      console.error('Error running analysis:', error);
+      toast({
+        title: "Erro na Análise",
+        description: error.message || "Falha ao executar análise",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
     <Card className="p-6 bg-gradient-card border-border shadow-card">
       <div className="space-y-4">
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className={`w-5 h-5 ${stats.can_trade ? 'text-success animate-pulse' : 'text-muted-foreground'}`} />
-            <h3 className="text-lg font-bold text-foreground">Trading Automático 24/7</h3>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Bot className={`w-5 h-5 ${isActive ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">IA Trading Automático</h3>
+              <p className="text-xs text-muted-foreground">
+                Análise contínua de todas as criptos
+              </p>
+            </div>
           </div>
-          <Badge variant={stats.can_trade ? "default" : "secondary"}>
-            {stats.can_trade ? "ATIVO" : "PAUSADO"}
+          <Badge variant={isActive ? "default" : "secondary"}>
+            {isActive ? "ATIVO" : "PAUSADO"}
           </Badge>
         </div>
 
-        {/* Daily Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Balance Inicial</p>
-            <p className="text-lg font-bold text-foreground">
-              ${stats.starting_balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Balance Atual</p>
-            <p className="text-lg font-bold text-foreground">
-              ${stats.current_balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
-          </div>
+        {/* Toggle Switch */}
+        <div className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
+          <Label htmlFor="auto-trading" className="cursor-pointer text-sm font-medium">
+            Ativar IA Automática
+          </Label>
+          <Switch
+            id="auto-trading"
+            checked={isActive}
+            onCheckedChange={handleToggle}
+          />
         </div>
 
-        {/* Profit/Loss */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ProfitLossIcon className={`w-4 h-4 ${profitLossColor}`} />
-              <span className="text-sm text-muted-foreground">P&L Hoje</span>
+        {/* Last Analysis Stats */}
+        {lastAnalysis && (
+          <div className="space-y-3">
+            <div className="p-3 bg-background/50 rounded-lg space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Última análise:</span>
+                <span className="text-foreground">
+                  {new Date(lastAnalysis.lastRun).toLocaleTimeString('pt-BR')}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Pares analisados:</span>
+                <span className="text-foreground font-medium">{lastAnalysis.total}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Oportunidades (≥95%):</span>
+                <span className="text-success font-bold">{lastAnalysis.highConfidence}</span>
+              </div>
             </div>
-            <span className={`text-xl font-bold ${profitLossColor}`}>
-              {stats.profit_loss_percent >= 0 ? '+' : ''}{stats.profit_loss_percent.toFixed(2)}%
-            </span>
-          </div>
-          <Progress value={progressValue} className={`h-2 ${progressColor}`} />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Stop Loss: -5%</span>
-            <span>Take Profit: +10%</span>
-          </div>
-        </div>
 
-        {/* Trades Count */}
-        <div className="flex items-center justify-between py-2 border-t border-border">
-          <span className="text-sm text-muted-foreground">Trades Hoje</span>
-          <span className="text-sm font-bold text-foreground">{stats.trades_count}</span>
-        </div>
-
-        {/* Stop Reason */}
-        {!stats.can_trade && stats.stop_reason && (
-          <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
-            <AlertCircle className="w-4 h-4 text-warning mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Trading Pausado</p>
-              <p className="text-xs text-muted-foreground mt-1">{stats.stop_reason}</p>
-            </div>
+            {lastAnalysis.bestOpportunity && (
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-medium text-foreground">Melhor Oportunidade</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-bold text-foreground">
+                      {lastAnalysis.bestOpportunity.symbol}
+                    </span>
+                    <Badge variant="default" className="text-xs">
+                      {lastAnalysis.bestOpportunity.confidence.toFixed(1)}% confiança
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>DCA recomendado:</span>
+                    <span className="text-foreground font-medium">
+                      {lastAnalysis.bestOpportunity.recommended_dca_layers} camadas
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Next Reset */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Clock className="w-3 h-3" />
-          <span>Reinício automático à meia-noite (00:00 UTC)</span>
-        </div>
+        {/* Manual Run Button */}
+        <Button 
+          onClick={runAnalysis}
+          className="w-full bg-gradient-primary"
+          disabled={!isActive || isAnalyzing}
+        >
+          <TrendingUp className="w-4 h-4 mr-2" />
+          {isAnalyzing ? "Analisando..." : "Executar Análise Agora"}
+        </Button>
+
+        {/* Active Info */}
+        {isActive && (
+          <div className="text-xs text-muted-foreground p-3 bg-success/5 rounded-lg border border-success/20">
+            <div className="flex items-start gap-2">
+              <Clock className="w-3 h-3 mt-0.5 text-success" />
+              <div>
+                <p className="font-medium text-foreground mb-1">✓ IA Ativa 24/7</p>
+                <p>A IA analisa continuamente TODAS as criptomoedas da Binance e executa trades automaticamente quando encontra oportunidades com confiança ≥ 95%. As camadas DCA são calculadas automaticamente pela IA.</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );
