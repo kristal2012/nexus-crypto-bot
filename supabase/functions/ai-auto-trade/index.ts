@@ -66,11 +66,12 @@ serve(async (req) => {
         const remainingTime = Math.ceil(cooldownPeriod - timeSinceLastAnalysis);
         console.log(`Rate limit: ${remainingTime}s remaining until next analysis allowed`);
         return new Response(JSON.stringify({ 
-          error: 'Rate limit exceeded',
+          success: false,
+          rate_limited: true,
           message: `Please wait ${remainingTime} seconds before running another analysis`,
           remaining_seconds: remainingTime
         }), {
-          status: 429,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
