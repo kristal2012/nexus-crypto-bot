@@ -169,7 +169,7 @@ export const TradingConfig = () => {
           <Slider
             value={minConfidence}
             onValueChange={setMinConfidence}
-            min={90}
+            min={75}
             max={99}
             step={1}
             className="mt-2"

@@ -21,14 +21,29 @@ export const AutoTradingControl = () => {
       loadStatus();
       loadLastAnalysis();
       
-      // Update every 60 seconds
-      const interval = setInterval(() => {
+      // Update analysis display every 60 seconds
+      const displayInterval = setInterval(() => {
         loadLastAnalysis();
       }, 60000);
       
-      return () => clearInterval(interval);
+      return () => clearInterval(displayInterval);
     }
   }, [user]);
+
+  // Auto-execute analysis every 2 minutes when active
+  useEffect(() => {
+    if (isActive && user) {
+      // Run immediately when activated
+      runAnalysis();
+      
+      // Then run every 2 minutes (120000ms)
+      const autoInterval = setInterval(() => {
+        runAnalysis();
+      }, 120000);
+      
+      return () => clearInterval(autoInterval);
+    }
+  }, [isActive, user]);
 
   const loadStatus = async () => {
     try {
@@ -56,7 +71,7 @@ export const AutoTradingControl = () => {
         .limit(10);
 
       if (data && data.length > 0) {
-        const highConfidence = data.filter(a => a.confidence >= 95);
+        const highConfidence = data.filter(a => a.confidence >= 75);
         setLastAnalysis({
           total: data.length,
           highConfidence: highConfidence.length,
@@ -133,7 +148,7 @@ export const AutoTradingControl = () => {
 
       toast({
         title: "✅ Análise Concluída",
-        description: `${data.analyzed} pares analisados | ${data.opportunities} oportunidades (≥95%) | ${data.executed} trades executados`,
+        description: `${data.analyzed} pares analisados | ${data.opportunities} oportunidades | ${data.executed} trades executados`,
       });
 
       loadLastAnalysis();
@@ -197,7 +212,7 @@ export const AutoTradingControl = () => {
                 <span className="text-foreground font-medium">{lastAnalysis.total}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Oportunidades (≥95%):</span>
+                <span className="text-muted-foreground">Oportunidades (≥75%):</span>
                 <span className="text-success font-bold">{lastAnalysis.highConfidence}</span>
               </div>
             </div>
@@ -245,8 +260,8 @@ export const AutoTradingControl = () => {
             <div className="flex items-start gap-2">
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
-                <p className="font-medium text-foreground mb-1">✓ IA Ativa 24/7</p>
-                <p>A IA analisa continuamente TODAS as criptomoedas da Binance e executa trades automaticamente quando encontra oportunidades com confiança ≥ 95%. As camadas DCA são calculadas automaticamente pela IA.</p>
+                <p className="font-medium text-foreground mb-1">✓ IA Ativa - Análise a cada 2 minutos</p>
+                <p>A IA analisa TODAS as criptomoedas da Binance automaticamente a cada 2 minutos e executa trades quando encontra oportunidades com confiança ≥ mínima configurada. As negociações continuam até atingir o take profit ou stop loss definido nas configurações.</p>
               </div>
             </div>
           </div>

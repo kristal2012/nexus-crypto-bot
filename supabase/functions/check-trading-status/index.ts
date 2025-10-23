@@ -97,9 +97,15 @@ serve(async (req) => {
       stats = newStats;
     }
 
-    // Check if bot can trade based on limits
-    const takeProfit = 10; // 10%
-    const stopLoss = -5; // -5%
+    // Get user's trading limits from config
+    const { data: config } = await supabase
+      .from('auto_trading_config')
+      .select('take_profit, stop_loss')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const takeProfit = config?.take_profit || 10; // Default 10%
+    const stopLoss = config?.stop_loss || -5; // Default -5%
 
     let canTrade = stats.can_trade && stats.is_active;
     let stopReason = stats.stop_reason;
