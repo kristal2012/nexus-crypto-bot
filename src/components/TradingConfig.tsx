@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Settings, Save } from "lucide-react";
@@ -13,7 +12,6 @@ export const TradingConfig = () => {
   const [leverage, setLeverage] = useState(10);
   const [takeProfit, setTakeProfit] = useState([2]);
   const [stopLoss, setStopLoss] = useState([1]);
-  const [quantityUsdt, setQuantityUsdt] = useState("100");
   const [minConfidence, setMinConfidence] = useState([70]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -24,11 +22,8 @@ export const TradingConfig = () => {
     const calculateSafeLeverage = () => {
       const sl = stopLoss[0];
       const tp = takeProfit[0];
-      const qty = Number(quantityUsdt);
 
       // Fórmula de segurança: quanto menor o stop loss, maior pode ser a alavancagem
-      // Quanto maior a quantidade, mais conservador devemos ser
-      
       // Base: usar stop loss como referência principal
       // Stop loss de 0.5% = pode usar até 100x
       // Stop loss de 5% = máximo 10x
@@ -39,13 +34,6 @@ export const TradingConfig = () => {
         calculatedLeverage = Math.floor(calculatedLeverage * 0.7);
       }
       
-      // Ajuste baseado na quantidade (proteger capital maior)
-      if (qty > 500) {
-        calculatedLeverage = Math.floor(calculatedLeverage * 0.6);
-      } else if (qty > 200) {
-        calculatedLeverage = Math.floor(calculatedLeverage * 0.8);
-      }
-      
       // Limitar entre 1x e 125x
       calculatedLeverage = Math.max(1, Math.min(125, calculatedLeverage));
       
@@ -53,7 +41,7 @@ export const TradingConfig = () => {
     };
 
     calculateSafeLeverage();
-  }, [takeProfit, stopLoss, quantityUsdt]);
+  }, [takeProfit, stopLoss]);
 
   useEffect(() => {
     if (user) {
@@ -75,7 +63,6 @@ export const TradingConfig = () => {
         // Não carregamos leverage do banco, será calculado automaticamente
         setTakeProfit([Number(data.take_profit)]);
         setStopLoss([Number(data.stop_loss)]);
-        setQuantityUsdt(String(data.quantity_usdt));
         setMinConfidence([Number(data.min_confidence)]);
       }
     } catch (error) {
@@ -101,7 +88,6 @@ export const TradingConfig = () => {
             leverage: leverage,
             take_profit: takeProfit[0],
             stop_loss: stopLoss[0],
-            quantity_usdt: Number(quantityUsdt),
             min_confidence: minConfidence[0]
           })
           .eq('user_id', user.id);
@@ -115,7 +101,6 @@ export const TradingConfig = () => {
             leverage: leverage,
             take_profit: takeProfit[0],
             stop_loss: stopLoss[0],
-            quantity_usdt: Number(quantityUsdt),
             min_confidence: minConfidence[0]
           });
 
@@ -194,12 +179,12 @@ export const TradingConfig = () => {
         </div>
 
         <div className="bg-secondary/50 p-4 rounded-lg border border-border">
-          <Label className="text-foreground mb-2">Quantidade Calculada pela IA (USDT)</Label>
+          <Label className="text-foreground mb-2">Valor por Trade</Label>
           <div className="text-2xl font-bold text-primary mt-2">
-            {quantityUsdt} USDT
+            10% do Saldo Disponível
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            A IA calcula automaticamente a quantidade ideal para cada par de moedas baseada nos valores mínimos da Binance. Pares com valores menores têm prioridade. BTC e ETH só são executados com confiança ≥70% quando não há alternativas melhores.
+            Cada operação utiliza 10% do saldo disponível. Múltiplas operações são executadas automaticamente em todos os pares que atingirem ≥70% de confiança (exceto BTC e ETH que foram excluídos).
           </p>
         </div>
 

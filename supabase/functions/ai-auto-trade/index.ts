@@ -83,9 +83,9 @@ serve(async (req) => {
       .update({ last_analysis_at: now.toISOString() })
       .eq('user_id', user.id);
 
-    // Major crypto pairs to analyze
+    // Major crypto pairs to analyze (excluding BTC and ETH)
     const symbols = [
-      'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT',
+      'BNBUSDT', 'SOLUSDT', 'ADAUSDT',
       'DOGEUSDT', 'XRPUSDT', 'DOTUSDT', 'MATICUSDT', 'AVAXUSDT',
       'LINKUSDT', 'UNIUSDT', 'LTCUSDT', 'ATOMUSDT', 'NEARUSDT'
     ];
@@ -133,14 +133,8 @@ serve(async (req) => {
           }
         });
 
-        // Apply filters:
-        // 1. Confidence >= min_confidence and upward trend
-        // 2. For BTC/ETH: only if confidence >= 95% or if it's the only option
-        const isBtcOrEth = analysis.symbol === 'BTCUSDT' || analysis.symbol === 'ETHUSDT';
-        const meetsConfidenceRequirement = analysis.confidence >= config.min_confidence;
-        const meetsHighConfidenceForBtcEth = !isBtcOrEth || analysis.confidence >= 95;
-        
-        if (meetsConfidenceRequirement && analysis.trend === 'up' && meetsHighConfidenceForBtcEth) {
+        // Apply filters: Confidence >= min_confidence (70%) and upward trend
+        if (analysis.confidence >= config.min_confidence && analysis.trend === 'up') {
           analyses.push(analysis);
         }
       } catch (error) {
@@ -150,20 +144,15 @@ serve(async (req) => {
 
     console.log(`Found ${analyses.length} high-confidence trading opportunities`);
 
-    // Prioritize pairs by:
-    // 1. Lower minNotional (prefer cheaper pairs)
-    // 2. Higher confidence
-    // 3. Avoid BTC/ETH unless necessary (they're already filtered for 95% confidence)
-    const tradesToExecute = analyses
-      .sort((a, b) => {
-        // First priority: lower notional value
-        if (a.minNotional !== b.minNotional) {
-          return a.minNotional - b.minNotional;
-        }
-        // Second priority: higher confidence
-        return b.confidence - a.confidence;
-      })
-      .slice(0, 1); // Execute apenas 1 trade por análise (a cada 2 minutos)
+    // Sort by confidence (highest first) - execute all opportunities ≥70%
+    const tradesToExecute = analyses.sort((a, b) => b.confidence - a.confidence);
+
+    // Get current balance to calculate 10% per trade
+    const { data: accountInfo } = await supabase.functions.invoke('binance-account');
+    const availableBalance = accountInfo?.totalWalletBalance || config.quantity_usdt;
+    
+    // Each trade uses 10% of available balance
+    const tradeAmount = availableBalance * 0.10;
 
     // Buscar saldo inicial do dia para calcular TP/SL
     const { data: dailyStats } = await supabase
@@ -173,12 +162,14 @@ serve(async (req) => {
       .eq('date', new Date().toISOString().split('T')[0])
       .maybeSingle();
 
-    const startingBalance = dailyStats?.starting_balance || config.quantity_usdt;
+    const startingBalance = dailyStats?.starting_balance || availableBalance;
     
     // Calcular valores absolutos de TP e SL baseados no saldo inicial do dia
     const takeProfitAmount = (startingBalance * config.take_profit) / 100;
     const stopLossAmount = (startingBalance * config.stop_loss) / 100;
 
+    console.log(`Saldo disponível: ${availableBalance} USDT`);
+    console.log(`Valor por trade (10%): ${tradeAmount} USDT`);
     console.log(`Saldo inicial do dia: ${startingBalance} USDT`);
     console.log(`Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
     console.log(`Stop Loss: ${config.stop_loss}% = ${stopLossAmount} USDT`);
@@ -194,12 +185,15 @@ serve(async (req) => {
           break;
         }
 
-        // Execute the trade with AI-calculated quantity
+        // Calculate quantity: 10% of balance divided by DCA layers
+        const quantityPerLayer = tradeAmount / analysis.recommendedDcaLayers;
+        
+        // Execute the trade using 10% of available balance
         const { data: tradeResult } = await supabase.functions.invoke('auto-trade', {
           body: {
             symbol: analysis.symbol,
             side: 'BUY',
-            quantity: (analysis.calculatedQuantity / analysis.recommendedDcaLayers).toString(),
+            quantity: quantityPerLayer.toString(),
             takeProfitAmount,
             stopLossAmount
           }
