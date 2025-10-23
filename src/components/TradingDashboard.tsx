@@ -31,9 +31,9 @@ export const TradingDashboard = () => {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const [botActive, setBotActive] = useState(false);
-  const [selectedPair, setSelectedPair] = useState("BTCUSDT");
+  const [selectedPair, setSelectedPair] = useState("BNBUSDT");
   const [username, setUsername] = useState<string>("");
-  const [btcPrices, setBtcPrices] = useState<number[]>([]);
+  const [bnbPrices, setBnbPrices] = useState<number[]>([]);
   const [dailyStats, setDailyStats] = useState<{
     starting_balance: number;
     current_balance: number;
@@ -185,24 +185,24 @@ export const TradingDashboard = () => {
     pnlPercent: number;
   }> = [
     {
-      symbol: "BTCUSDT",
+      symbol: "BNBUSDT",
       side: "LONG",
-      entryPrice: 43250.50,
-      currentPrice: 43890.20,
-      quantity: 0.05,
+      entryPrice: 310.50,
+      currentPrice: 315.20,
+      quantity: 2.5,
       leverage: 10,
-      pnl: 319.85,
-      pnlPercent: 1.48,
+      pnl: 117.50,
+      pnlPercent: 1.51,
     },
     {
-      symbol: "ETHUSDT",
+      symbol: "SOLUSDT",
       side: "SHORT",
-      entryPrice: 2280.75,
-      currentPrice: 2265.30,
-      quantity: 0.5,
+      entryPrice: 98.75,
+      currentPrice: 97.30,
+      quantity: 8.0,
       leverage: 15,
-      pnl: 115.68,
-      pnlPercent: 0.68,
+      pnl: 174.00,
+      pnlPercent: 1.47,
     },
   ];
 
@@ -349,10 +349,10 @@ export const TradingDashboard = () => {
           <div>
             <h2 className="text-xl font-bold text-foreground mb-4">Preços em Tempo Real</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <MarketPrice symbol="BTCUSDT" />
-              <MarketPrice symbol="ETHUSDT" />
               <MarketPrice symbol="BNBUSDT" />
               <MarketPrice symbol="SOLUSDT" />
+              <MarketPrice symbol="ADAUSDT" />
+              <MarketPrice symbol="DOGEUSDT" />
             </div>
           </div>
         </div>
@@ -363,9 +363,9 @@ export const TradingDashboard = () => {
           <TradingModeToggle />
           <AutoTradingControl />
           <AIPrediction
-            symbol="BTCUSDT" 
-            currentPrice={43890.20} 
-            historicalPrices={btcPrices.length > 0 ? btcPrices : [43000, 43100, 43250, 43300, 43400, 43500, 43600, 43700, 43800, 43890, 43950, 43890]} 
+            symbol="BNBUSDT" 
+            currentPrice={315.20} 
+            historicalPrices={bnbPrices.length > 0 ? bnbPrices : [305, 307, 310, 312, 313, 314, 315, 316, 315, 315.2, 316, 315.2]} 
           />
           <BinanceApiSettings />
           <TradingConfig />
