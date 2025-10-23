@@ -96,6 +96,7 @@ export type Database = {
         Row: {
           api_key: string
           api_secret: string
+          api_secret_encrypted: string | null
           created_at: string
           id: string
           updated_at: string
@@ -104,6 +105,7 @@ export type Database = {
         Insert: {
           api_key: string
           api_secret: string
+          api_secret_encrypted?: string | null
           created_at?: string
           id?: string
           updated_at?: string
@@ -112,6 +114,7 @@ export type Database = {
         Update: {
           api_key?: string
           api_secret?: string
+          api_secret_encrypted?: string | null
           created_at?: string
           id?: string
           updated_at?: string
