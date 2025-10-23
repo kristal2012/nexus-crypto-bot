@@ -19,6 +19,8 @@ interface AIAnalysis {
   confidence: number;
   trend: 'up' | 'down' | 'neutral';
   recommendedDcaLayers: number;
+  minNotional: number;
+  calculatedQuantity: number;
 }
 
 serve(async (req) => {
@@ -62,6 +64,10 @@ serve(async (req) => {
 
     console.log(`Analyzing ${symbols.length} crypto pairs...`);
 
+    // Fetch exchange info to get minimum notional values
+    const exchangeInfo = await fetchExchangeInfo();
+    console.log(`Fetched exchange info for ${Object.keys(exchangeInfo).length} pairs`);
+
     // Fetch price data for all symbols
     const priceDataPromises = symbols.map(symbol => fetchPriceData(symbol));
     const priceDataResults = await Promise.allSettled(priceDataPromises);
@@ -79,7 +85,8 @@ serve(async (req) => {
     
     for (const priceData of validPriceData) {
       try {
-        const analysis = await analyzeWithAI(priceData, config);
+        const minNotional = exchangeInfo[priceData.symbol] || 5; // Default 5 USDT if not found
+        const analysis = await analyzeWithAI(priceData, config, minNotional);
         
         // Store analysis result
         await supabase.from('ai_analysis_results').insert({
@@ -92,12 +99,20 @@ serve(async (req) => {
           analysis_data: {
             current_price: priceData.currentPrice,
             volatility: priceData.volatility,
-            price_change_percent: ((analysis.predictedPrice - priceData.currentPrice) / priceData.currentPrice) * 100
+            price_change_percent: ((analysis.predictedPrice - priceData.currentPrice) / priceData.currentPrice) * 100,
+            min_notional: minNotional,
+            calculated_quantity: analysis.calculatedQuantity
           }
         });
 
-        // Only include pairs with confidence >= min_confidence and upward trend
-        if (analysis.confidence >= config.min_confidence && analysis.trend === 'up') {
+        // Apply filters:
+        // 1. Confidence >= min_confidence and upward trend
+        // 2. For BTC/ETH: only if confidence >= 95% or if it's the only option
+        const isBtcOrEth = analysis.symbol === 'BTCUSDT' || analysis.symbol === 'ETHUSDT';
+        const meetsConfidenceRequirement = analysis.confidence >= config.min_confidence;
+        const meetsHighConfidenceForBtcEth = !isBtcOrEth || analysis.confidence >= 95;
+        
+        if (meetsConfidenceRequirement && analysis.trend === 'up' && meetsHighConfidenceForBtcEth) {
           analyses.push(analysis);
         }
       } catch (error) {
@@ -107,9 +122,19 @@ serve(async (req) => {
 
     console.log(`Found ${analyses.length} high-confidence trading opportunities`);
 
-    // Execute trades for top opportunities
+    // Prioritize pairs by:
+    // 1. Lower minNotional (prefer cheaper pairs)
+    // 2. Higher confidence
+    // 3. Avoid BTC/ETH unless necessary (they're already filtered for 95% confidence)
     const tradesToExecute = analyses
-      .sort((a, b) => b.confidence - a.confidence)
+      .sort((a, b) => {
+        // First priority: lower notional value
+        if (a.minNotional !== b.minNotional) {
+          return a.minNotional - b.minNotional;
+        }
+        // Second priority: higher confidence
+        return b.confidence - a.confidence;
+      })
       .slice(0, 3); // Top 3 opportunities
 
     const executedTrades = [];
@@ -123,12 +148,12 @@ serve(async (req) => {
           break;
         }
 
-        // Execute the trade
+        // Execute the trade with AI-calculated quantity
         const { data: tradeResult } = await supabase.functions.invoke('auto-trade', {
           body: {
             symbol: analysis.symbol,
             side: 'BUY',
-            quantity: (config.quantity_usdt / analysis.recommendedDcaLayers).toString()
+            quantity: (analysis.calculatedQuantity / analysis.recommendedDcaLayers).toString()
           }
         });
 
@@ -157,14 +182,43 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in ai-auto-trade:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ 
-      error: error.message 
+      error: errorMessage 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
+
+async function fetchExchangeInfo(): Promise<Record<string, number>> {
+  try {
+    const response = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo');
+    if (!response.ok) {
+      throw new Error('Failed to fetch exchange info');
+    }
+
+    const data = await response.json();
+    const notionalValues: Record<string, number> = {};
+
+    // Extract MIN_NOTIONAL for each symbol
+    for (const symbol of data.symbols) {
+      const minNotionalFilter = symbol.filters?.find(
+        (f: any) => f.filterType === 'MIN_NOTIONAL'
+      );
+      
+      if (minNotionalFilter) {
+        notionalValues[symbol.symbol] = parseFloat(minNotionalFilter.notional);
+      }
+    }
+
+    return notionalValues;
+  } catch (error) {
+    console.error('Error fetching exchange info:', error);
+    return {}; // Return empty object on error
+  }
+}
 
 async function fetchPriceData(symbol: string): Promise<PriceData> {
   try {
@@ -182,8 +236,8 @@ async function fetchPriceData(symbol: string): Promise<PriceData> {
     const currentPrice = prices[prices.length - 1];
     
     // Calculate volatility (standard deviation)
-    const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
-    const variance = prices.reduce((sum, price) => sum + Math.pow(price - mean, 2), 0) / prices.length;
+    const mean = prices.reduce((a: number, b: number) => a + b, 0) / prices.length;
+    const variance = prices.reduce((sum: number, price: number) => sum + Math.pow(price - mean, 2), 0) / prices.length;
     const volatility = Math.sqrt(variance) / mean;
 
     return {
@@ -193,11 +247,12 @@ async function fetchPriceData(symbol: string): Promise<PriceData> {
       volatility
     };
   } catch (error) {
-    throw new Error(`Error fetching ${symbol}: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Error fetching ${symbol}: ${errorMessage}`);
   }
 }
 
-async function analyzeWithAI(priceData: PriceData, config: any): Promise<AIAnalysis> {
+async function analyzeWithAI(priceData: PriceData, config: any, minNotional: number): Promise<AIAnalysis> {
   const { symbol, prices, currentPrice, volatility } = priceData;
   
   // Normalize prices
@@ -262,12 +317,22 @@ async function analyzeWithAI(priceData: PriceData, config: any): Promise<AIAnaly
     recommendedDcaLayers = Math.min(recommendedDcaLayers + 1, 6);
   }
 
+  // Calculate optimal quantity based on minNotional
+  // Use 1.5x the minimum to ensure order is accepted
+  // But also respect a reasonable maximum (e.g., 200 USDT per pair)
+  const calculatedQuantity = Math.max(
+    minNotional * 1.5,
+    Math.min(minNotional * 3, 200)
+  );
+
   return {
     symbol,
     predictedPrice,
     confidence,
     trend: trendStrength > 1 ? 'up' : trendStrength < -1 ? 'down' : 'neutral',
-    recommendedDcaLayers
+    recommendedDcaLayers,
+    minNotional,
+    calculatedQuantity
   };
 }
 

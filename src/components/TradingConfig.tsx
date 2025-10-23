@@ -187,17 +187,13 @@ export const TradingConfig = () => {
           />
         </div>
 
-        <div>
-          <Label className="text-foreground mb-2">Quantidade por Trade (USDT)</Label>
-          <Input
-            type="number"
-            placeholder="100.00"
-            className="bg-secondary border-border text-foreground"
-            value={quantityUsdt}
-            onChange={(e) => setQuantityUsdt(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Valor dividido automaticamente entre camadas DCA
+        <div className="bg-secondary/50 p-4 rounded-lg border border-border">
+          <Label className="text-foreground mb-2">Quantidade Calculada pela IA (USDT)</Label>
+          <div className="text-2xl font-bold text-primary mt-2">
+            {quantityUsdt} USDT
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            A IA calcula automaticamente a quantidade ideal para cada par de moedas baseada nos valores mínimos da Binance. Pares com valores menores têm prioridade. BTC e ETH só são executados com confiança ≥95% quando não há alternativas melhores.
           </p>
         </div>
 
