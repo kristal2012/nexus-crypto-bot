@@ -1,17 +1,15 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Bot, TrendingUp, Sparkles, Clock } from "lucide-react";
+import { Bot, Sparkles, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export const AutoTradingControl = () => {
   const [isActive, setIsActive] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<any>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -30,20 +28,8 @@ export const AutoTradingControl = () => {
     }
   }, [user]);
 
-  // Auto-execute analysis every 15 minutes when active (ideal for technical analysis)
-  useEffect(() => {
-    if (isActive && user) {
-      // Run immediately when activated
-      runAnalysis();
-      
-      // Then run every 15 minutes (900000ms) - optimal for 1h timeframe indicators
-      const autoInterval = setInterval(() => {
-        runAnalysis();
-      }, 900000);
-      
-      return () => clearInterval(autoInterval);
-    }
-  }, [isActive, user]);
+  // Analysis runs automatically on the backend every 15 minutes when active
+  // This component just displays the results
 
   const loadStatus = async () => {
     try {
@@ -111,15 +97,11 @@ export const AutoTradingControl = () => {
       }
 
       setIsActive(checked);
-      
-      if (checked) {
-        runAnalysis();
-      }
 
       toast({
         title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
         description: checked 
-          ? "A IA começará a analisar automaticamente todas as criptomoedas" 
+          ? "A IA analisará automaticamente todas as criptomoedas a cada 15 minutos e executará trades com confiança ≥75%" 
           : "A análise automática foi pausada",
       });
     } catch (error) {
@@ -129,51 +111,6 @@ export const AutoTradingControl = () => {
         description: "Falha ao atualizar status",
         variant: "destructive"
       });
-    }
-  };
-
-  const runAnalysis = async () => {
-    if (!user || isAnalyzing) return;
-
-    setIsAnalyzing(true);
-    toast({
-      title: "Iniciando Análise IA",
-      description: "Analisando todas as criptomoedas da Binance...",
-    });
-
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-auto-trade');
-
-      if (error) throw error;
-
-      // Check if rate limited
-      if (data.rate_limited) {
-        const minutes = Math.floor(data.remaining_seconds / 60);
-        const seconds = data.remaining_seconds % 60;
-        toast({
-          title: "⏳ Aguarde o Próximo Ciclo",
-          description: `Próxima análise em ${minutes}min ${seconds}s. A IA analisa a cada 15 minutos para permitir que os indicadores técnicos se atualizem.`,
-          variant: "default"
-        });
-        loadLastAnalysis();
-        return;
-      }
-
-      toast({
-        title: "✅ Análise Concluída",
-        description: `${data.analyzed} pares analisados | ${data.opportunities} oportunidades | ${data.executed} trades executados`,
-      });
-
-      loadLastAnalysis();
-    } catch (error) {
-      console.error('Error running analysis:', error);
-      toast({
-        title: "Erro na Análise",
-        description: error.message || "Falha ao executar análise",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
@@ -257,24 +194,14 @@ export const AutoTradingControl = () => {
           </div>
         )}
 
-        {/* Manual Run Button */}
-        <Button 
-          onClick={runAnalysis}
-          className="w-full bg-gradient-primary"
-          disabled={!isActive || isAnalyzing}
-        >
-          <TrendingUp className="w-4 h-4 mr-2" />
-          {isAnalyzing ? "Analisando..." : "Executar Análise Agora"}
-        </Button>
-
         {/* Active Info */}
         {isActive && (
           <div className="text-xs text-muted-foreground p-3 bg-success/5 rounded-lg border border-success/20">
             <div className="flex items-start gap-2">
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
-                <p className="font-medium text-foreground mb-1">✓ IA Ativa - 1 operação a cada 15 minutos</p>
-                <p>A IA analisa TODAS as criptomoedas da Binance automaticamente a cada 15 minutos (tempo ideal para análise técnica de 1h) e executa apenas 1 trade por vez quando encontra oportunidades com confiança ≥ mínima configurada. Take Profit e Stop Loss são calculados baseados no saldo inicial do dia.</p>
+                <p className="font-medium text-foreground mb-1">✓ IA Ativa - Operações Automáticas</p>
+                <p>A IA analisa TODAS as criptomoedas da Binance automaticamente a cada 15 minutos e executa trades quando encontra oportunidades com confiança ≥75%. Take Profit e Stop Loss são calculados baseados no saldo inicial do dia. Máximo de 1 operação por ciclo de 15 minutos.</p>
               </div>
             </div>
           </div>
