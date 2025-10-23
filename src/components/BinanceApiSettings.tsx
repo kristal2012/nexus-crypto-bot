@@ -55,16 +55,13 @@ export const BinanceApiSettings = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.from("binance_api_keys").upsert(
-        {
-          user_id: user.id,
+      // Call edge function to encrypt and save
+      const { error } = await supabase.functions.invoke('encrypt-api-secret', {
+        body: {
           api_key: apiKey.trim(),
           api_secret: apiSecret.trim(),
-        },
-        {
-          onConflict: "user_id",
         }
-      );
+      });
 
       if (error) throw error;
 
@@ -131,8 +128,8 @@ export const BinanceApiSettings = () => {
         </Button>
 
         <p className="text-sm text-muted-foreground">
-          ⚠️ Suas chaves são criptografadas e armazenadas com segurança. Nunca
-          compartilhe suas chaves da API com terceiros.
+          ⚠️ Suas chaves são criptografadas com AES-256-GCM antes de serem armazenadas. 
+          Nunca compartilhe suas chaves da API com terceiros.
         </p>
       </CardContent>
     </Card>

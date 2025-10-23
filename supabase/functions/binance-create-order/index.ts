@@ -129,7 +129,7 @@ serve(async (req) => {
     // Get user's Binance API keys
     const { data: apiKeys, error: keysError } = await supabase
       .from('binance_api_keys')
-      .select('api_key, api_secret')
+      .select('api_key, api_secret_encrypted')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -140,6 +140,10 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Decrypt the API secret
+    const { decryptSecret } = await import('../_shared/encryption.ts');
+    const apiSecret = await decryptSecret(apiKeys.api_secret_encrypted);
 
     const timestamp = Date.now();
     let queryString = `symbol=${symbol}&side=${side}&type=${type}&quantity=${quantity}&timestamp=${timestamp}`;
@@ -152,7 +156,7 @@ serve(async (req) => {
       queryString += `&stopPrice=${stopPrice}`;
     }
 
-    const signature = await signRequest(queryString, apiKeys.api_secret);
+    const signature = await signRequest(queryString, apiSecret);
     const binanceUrl = `https://fapi.binance.com/fapi/v1/order?${queryString}&signature=${signature}`;
 
     console.log('Creating order:', { symbol, side, type, quantity, price, stopPrice });

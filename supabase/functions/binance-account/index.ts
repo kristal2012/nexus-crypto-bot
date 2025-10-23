@@ -53,7 +53,7 @@ serve(async (req) => {
     // Get user's Binance API keys
     const { data: apiKeys, error: keysError } = await supabase
       .from('binance_api_keys')
-      .select('api_key, api_secret')
+      .select('api_key, api_secret_encrypted')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -65,9 +65,13 @@ serve(async (req) => {
       );
     }
 
+    // Decrypt the API secret
+    const { decryptSecret } = await import('../_shared/encryption.ts');
+    const apiSecret = await decryptSecret(apiKeys.api_secret_encrypted);
+
     const timestamp = Date.now();
     const queryString = `timestamp=${timestamp}`;
-    const signature = await signRequest(queryString, apiKeys.api_secret);
+    const signature = await signRequest(queryString, apiSecret);
 
     // Get account information from Binance
     const binanceUrl = `https://fapi.binance.com/fapi/v2/account?${queryString}&signature=${signature}`;
