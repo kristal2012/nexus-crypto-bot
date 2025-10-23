@@ -30,16 +30,16 @@ export const AutoTradingControl = () => {
     }
   }, [user]);
 
-  // Auto-execute analysis every 2 minutes when active
+  // Auto-execute analysis every 15 minutes when active (ideal for technical analysis)
   useEffect(() => {
     if (isActive && user) {
       // Run immediately when activated
       runAnalysis();
       
-      // Then run every 2 minutes (120000ms)
+      // Then run every 15 minutes (900000ms) - optimal for 1h timeframe indicators
       const autoInterval = setInterval(() => {
         runAnalysis();
-      }, 120000);
+      }, 900000);
       
       return () => clearInterval(autoInterval);
     }
@@ -260,8 +260,8 @@ export const AutoTradingControl = () => {
             <div className="flex items-start gap-2">
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
-                <p className="font-medium text-foreground mb-1">✓ IA Ativa - 1 operação a cada 2 minutos</p>
-                <p>A IA analisa TODAS as criptomoedas da Binance automaticamente a cada 2 minutos e executa apenas 1 trade por vez quando encontra oportunidades com confiança ≥ mínima configurada. Take Profit e Stop Loss são calculados baseados no saldo inicial do dia.</p>
+                <p className="font-medium text-foreground mb-1">✓ IA Ativa - 1 operação a cada 15 minutos</p>
+                <p>A IA analisa TODAS as criptomoedas da Binance automaticamente a cada 15 minutos (tempo ideal para análise técnica de 1h) e executa apenas 1 trade por vez quando encontra oportunidades com confiança ≥ mínima configurada. Take Profit e Stop Loss são calculados baseados no saldo inicial do dia.</p>
               </div>
             </div>
           </div>

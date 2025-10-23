@@ -55,12 +55,12 @@ serve(async (req) => {
       });
     }
 
-    // Rate limiting: enforce 2-minute cooldown between analyses
+    // Rate limiting: enforce 15-minute cooldown between analyses for technical indicators to update
     const now = new Date();
     if (config.last_analysis_at) {
       const lastAnalysis = new Date(config.last_analysis_at);
       const timeSinceLastAnalysis = (now.getTime() - lastAnalysis.getTime()) / 1000; // seconds
-      const cooldownPeriod = 120; // 2 minutes in seconds
+      const cooldownPeriod = 900; // 15 minutes in seconds (ideal for 1h timeframe indicators)
       
       if (timeSinceLastAnalysis < cooldownPeriod) {
         const remainingTime = Math.ceil(cooldownPeriod - timeSinceLastAnalysis);
