@@ -14,7 +14,7 @@ export const TradingConfig = () => {
   const [takeProfit, setTakeProfit] = useState([2]);
   const [stopLoss, setStopLoss] = useState([1]);
   const [quantityUsdt, setQuantityUsdt] = useState("100");
-  const [minConfidence, setMinConfidence] = useState([95]);
+  const [minConfidence, setMinConfidence] = useState([70]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -199,7 +199,7 @@ export const TradingConfig = () => {
             {quantityUsdt} USDT
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            A IA calcula automaticamente a quantidade ideal para cada par de moedas baseada nos valores mínimos da Binance. Pares com valores menores têm prioridade. BTC e ETH só são executados com confiança ≥95% quando não há alternativas melhores.
+            A IA calcula automaticamente a quantidade ideal para cada par de moedas baseada nos valores mínimos da Binance. Pares com valores menores têm prioridade. BTC e ETH só são executados com confiança ≥70% quando não há alternativas melhores.
           </p>
         </div>
 
@@ -208,17 +208,17 @@ export const TradingConfig = () => {
           <Slider
             value={minConfidence}
             onValueChange={setMinConfidence}
-            min={75}
+            min={70}
             max={100}
             step={1}
             className="mt-2"
           />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
-            <span>75% (mínimo)</span>
+            <span>70% (mínimo)</span>
             <span>100%</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Apenas trades com confiança ≥ {minConfidence}% serão executados. O mínimo é 75% e não pode ser reduzido.
+            Apenas trades com confiança ≥ {minConfidence}% serão executados. O mínimo é 70% e não pode ser reduzido.
           </p>
         </div>
 
