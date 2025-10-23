@@ -144,7 +144,21 @@ export const AutoTradingControl = () => {
     try {
       const { data, error } = await supabase.functions.invoke('ai-auto-trade');
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a rate limit error
+        if (data?.remaining_seconds) {
+          const minutes = Math.floor(data.remaining_seconds / 60);
+          const seconds = data.remaining_seconds % 60;
+          toast({
+            title: "⏳ Aguarde o Próximo Ciclo",
+            description: `Próxima análise em ${minutes}min ${seconds}s. A IA analisa a cada 15 minutos para permitir que os indicadores técnicos se atualizem.`,
+            variant: "default"
+          });
+          loadLastAnalysis();
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "✅ Análise Concluída",
