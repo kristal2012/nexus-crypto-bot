@@ -57,7 +57,7 @@ export const AutoTradingControl = () => {
         .limit(10);
 
       if (data && data.length > 0) {
-        const highConfidence = data.filter(a => a.confidence >= 75);
+        const highConfidence = data.filter(a => a.confidence >= 70);
         setLastAnalysis({
           total: data.length,
           highConfidence: highConfidence.length,
@@ -101,7 +101,7 @@ export const AutoTradingControl = () => {
       toast({
         title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
         description: checked 
-          ? "A IA analisará automaticamente todas as criptomoedas a cada 15 minutos e executará trades com confiança ≥75%" 
+          ? "A IA analisará automaticamente todas as criptomoedas a cada 15 minutos e executará trades com confiança ≥70%" 
           : "A análise automática foi pausada",
       });
     } catch (error) {
@@ -162,7 +162,7 @@ export const AutoTradingControl = () => {
                 <span className="text-foreground font-medium">{lastAnalysis.total}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Oportunidades (≥75%):</span>
+                <span className="text-muted-foreground">Oportunidades (≥70%):</span>
                 <span className="text-success font-bold">{lastAnalysis.highConfidence}</span>
               </div>
             </div>
@@ -201,7 +201,7 @@ export const AutoTradingControl = () => {
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
                 <p className="font-medium text-foreground mb-1">✓ IA Ativa - Operações Automáticas</p>
-                <p>A IA analisa TODAS as criptomoedas da Binance automaticamente a cada 15 minutos e executa trades quando encontra oportunidades com confiança ≥75%. Take Profit e Stop Loss são calculados baseados no saldo inicial do dia. Máximo de 1 operação por ciclo de 15 minutos.</p>
+                <p>A IA analisa TODAS as criptomoedas da Binance automaticamente a cada 15 minutos e executa trades quando encontra oportunidades com confiança ≥70%. Take Profit e Stop Loss são calculados baseados no saldo inicial do dia. Máximo de 1 operação por ciclo de 15 minutos.</p>
               </div>
             </div>
           </div>
