@@ -10,24 +10,24 @@ import { useAuth } from "@/hooks/useAuth";
 
 export const TradingConfig = () => {
   const [leverage, setLeverage] = useState(10);
-  const [takeProfit, setTakeProfit] = useState([2]);
-  const [stopLoss, setStopLoss] = useState([1]);
+  const [takeProfit, setTakeProfit] = useState([2.5]);
+  const [atrMultiplier, setAtrMultiplier] = useState([1.5]);
   const [minConfidence, setMinConfidence] = useState([70]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Calcula alavancagem automaticamente baseada nos parâmetros de risco
+  // Calcula alavancagem automaticamente baseada nos parâmetros de risco e volatilidade
   useEffect(() => {
     const calculateSafeLeverage = () => {
-      const sl = stopLoss[0];
+      const atr = atrMultiplier[0];
       const tp = takeProfit[0];
 
-      // Fórmula de segurança: quanto menor o stop loss, maior pode ser a alavancagem
-      // Base: usar stop loss como referência principal
-      // Stop loss de 0.5% = pode usar até 100x
-      // Stop loss de 5% = máximo 10x
-      let calculatedLeverage = Math.floor(50 / sl);
+      // Fórmula de segurança baseada em volatilidade (ATR)
+      // Quanto menor o multiplicador ATR, mais conservador
+      // ATR 1.0x = até 50x leverage
+      // ATR 2.0x = até 25x leverage
+      let calculatedLeverage = Math.floor(50 / atr);
       
       // Ajuste baseado no take profit (ser mais conservador se TP for muito alto)
       if (tp > 5) {
@@ -41,7 +41,7 @@ export const TradingConfig = () => {
     };
 
     calculateSafeLeverage();
-  }, [takeProfit, stopLoss]);
+  }, [takeProfit, atrMultiplier]);
 
   useEffect(() => {
     if (user) {
@@ -62,7 +62,7 @@ export const TradingConfig = () => {
       if (data) {
         // Não carregamos leverage do banco, será calculado automaticamente
         setTakeProfit([Number(data.take_profit)]);
-        setStopLoss([Number(data.stop_loss)]);
+        setAtrMultiplier([Number(data.stop_loss || 1.5)]); // stop_loss agora armazena o multiplicador ATR
         setMinConfidence([Number(data.min_confidence)]);
       }
     } catch (error) {
@@ -87,7 +87,7 @@ export const TradingConfig = () => {
           .update({
             leverage: leverage,
             take_profit: takeProfit[0],
-            stop_loss: stopLoss[0],
+            stop_loss: atrMultiplier[0], // Armazena multiplicador ATR
             min_confidence: minConfidence[0]
           })
           .eq('user_id', user.id);
@@ -100,7 +100,7 @@ export const TradingConfig = () => {
             user_id: user.id,
             leverage: leverage,
             take_profit: takeProfit[0],
-            stop_loss: stopLoss[0],
+            stop_loss: atrMultiplier[0], // Armazena multiplicador ATR
             min_confidence: minConfidence[0]
           });
 
@@ -163,18 +163,25 @@ export const TradingConfig = () => {
           </p>
         </div>
 
-        <div>
-          <Label className="text-foreground mb-2">Stop Loss: {stopLoss}% do saldo inicial do dia</Label>
+        <div className="bg-secondary/50 p-4 rounded-lg border border-border">
+          <Label className="text-foreground mb-2">Stop Loss Adaptativo (ATR): {atrMultiplier}x</Label>
           <Slider
-            value={stopLoss}
-            onValueChange={setStopLoss}
-            min={0.5}
-            max={10}
-            step={0.5}
+            value={atrMultiplier}
+            onValueChange={setAtrMultiplier}
+            min={1.0}
+            max={3.0}
+            step={0.1}
             className="mt-2"
           />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>1.0x (Conservador)</span>
+            <span>3.0x (Agressivo)</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            🧠 <strong>Stop Loss baseado em volatilidade (ATR - Average True Range):</strong> O sistema calcula automaticamente o SL ideal para cada trade usando ATR de 14 períodos. Quanto maior a volatilidade, maior o SL para evitar saídas prematuras. Multiplicador padrão: 1.5x.
+          </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Baseado no saldo inicial do dia. Ex: Se saldo inicial for 1000 USDT, SL de {stopLoss}% = {(1000 * stopLoss[0] / 100).toFixed(2)} USDT
+            ⚙️ O SL é recalculado a cada candle de 15min e ajustado automaticamente em operações DCA (preço médio).
           </p>
         </div>
 

@@ -154,7 +154,7 @@ serve(async (req) => {
     // 10% of available balance to distribute across all opportunities in this analysis
     const totalAnalysisAmount = availableBalance * 0.10;
 
-    // Buscar saldo inicial do dia para calcular TP/SL
+    // Buscar saldo inicial do dia para calcular TP
     const { data: dailyStats } = await supabase
       .from('bot_daily_stats')
       .select('starting_balance')
@@ -164,15 +164,17 @@ serve(async (req) => {
 
     const startingBalance = dailyStats?.starting_balance || availableBalance;
     
-    // Calcular valores absolutos de TP e SL baseados no saldo inicial do dia
+    // Calcular valor absoluto de TP baseado no saldo inicial do dia
     const takeProfitAmount = (startingBalance * config.take_profit) / 100;
-    const stopLossAmount = (startingBalance * config.stop_loss) / 100;
+    
+    // Stop Loss adaptativo será calculado por trade usando ATR
+    const atrMultiplier = config.stop_loss || 1.5; // stop_loss agora armazena multiplicador ATR
 
     console.log(`Saldo disponível: ${availableBalance} USDT`);
     console.log(`Valor total desta análise (10%): ${totalAnalysisAmount} USDT`);
     console.log(`Saldo inicial do dia: ${startingBalance} USDT`);
     console.log(`Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
-    console.log(`Stop Loss: ${config.stop_loss}% = ${stopLossAmount} USDT`);
+    console.log(`Stop Loss: Adaptativo (ATR × ${atrMultiplier})`);
 
     const executedTrades = [];
     let remainingAmount = totalAnalysisAmount;
@@ -204,6 +206,15 @@ serve(async (req) => {
           break;
         }
         
+        // Calculate adaptive stop loss using ATR
+        const priceResult = priceDataResults.find(
+          (r): r is PromiseFulfilledResult<PriceData> => r.status === 'fulfilled' && r.value.symbol === analysis.symbol
+        );
+        const atr = calculateATR(priceResult?.value.prices || []);
+        const adaptiveStopLoss = atr * atrMultiplier;
+        
+        console.log(`${analysis.symbol} - ATR: ${atr.toFixed(4)}, Adaptive SL: ${adaptiveStopLoss.toFixed(4)} USDT`);
+        
         // Execute the trade
         const { data: tradeResult } = await supabase.functions.invoke('auto-trade', {
           body: {
@@ -211,12 +222,18 @@ serve(async (req) => {
             side: 'BUY',
             quantity: quantityPerLayer.toString(),
             takeProfitAmount,
-            stopLossAmount
+            stopLossAmount: adaptiveStopLoss
           }
         });
 
         if (tradeResult?.success) {
           remainingAmount -= amountForThisTrade;
+          const priceResult = priceDataResults.find(
+            (r): r is PromiseFulfilledResult<PriceData> => r.status === 'fulfilled' && r.value.symbol === analysis.symbol
+          );
+          const atr = calculateATR(priceResult?.value.prices || []);
+          const adaptiveStopLoss = atr * atrMultiplier;
+          
           executedTrades.push({
             symbol: analysis.symbol,
             confidence: analysis.confidence,
@@ -224,9 +241,10 @@ serve(async (req) => {
             predictedPrice: analysis.predictedPrice,
             amountUsed: amountForThisTrade,
             takeProfitAmount,
-            stopLossAmount
+            stopLossAmount: adaptiveStopLoss,
+            atr: atr
           });
-          console.log(`Executed trade for ${analysis.symbol}: ${amountForThisTrade} USDT`);
+          console.log(`Executed trade for ${analysis.symbol}: ${amountForThisTrade} USDT, Adaptive SL: ${adaptiveStopLoss.toFixed(4)} USDT`);
         }
       } catch (error) {
         console.error(`Error executing trade for ${analysis.symbol}:`, error);
@@ -447,4 +465,28 @@ function calculateEMA(prices: number[], period: number): number {
   }
   
   return ema;
+}
+
+function calculateATR(prices: number[], period: number = 14): number {
+  if (prices.length < period + 1) {
+    // Fallback: use standard deviation if not enough data
+    const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const variance = prices.reduce((sum, price) => sum + Math.pow(price - mean, 2), 0) / prices.length;
+    return Math.sqrt(variance);
+  }
+  
+  const trueRanges: number[] = [];
+  
+  for (let i = 1; i < prices.length; i++) {
+    const high = Math.max(prices[i], prices[i - 1]);
+    const low = Math.min(prices[i], prices[i - 1]);
+    const trueRange = high - low;
+    trueRanges.push(trueRange);
+  }
+  
+  // Calculate ATR as average of true ranges over the period
+  const recentTR = trueRanges.slice(-period);
+  const atr = recentTR.reduce((a, b) => a + b, 0) / period;
+  
+  return atr;
 }
