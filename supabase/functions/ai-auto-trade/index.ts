@@ -162,7 +162,25 @@ serve(async (req) => {
         // Second priority: higher confidence
         return b.confidence - a.confidence;
       })
-      .slice(0, 3); // Top 3 opportunities
+      .slice(0, 1); // Execute apenas 1 trade por análise (a cada 2 minutos)
+
+    // Buscar saldo inicial do dia para calcular TP/SL
+    const { data: dailyStats } = await supabase
+      .from('bot_daily_stats')
+      .select('starting_balance')
+      .eq('user_id', user.id)
+      .eq('date', new Date().toISOString().split('T')[0])
+      .maybeSingle();
+
+    const startingBalance = dailyStats?.starting_balance || config.quantity_usdt;
+    
+    // Calcular valores absolutos de TP e SL baseados no saldo inicial do dia
+    const takeProfitAmount = (startingBalance * config.take_profit) / 100;
+    const stopLossAmount = (startingBalance * config.stop_loss) / 100;
+
+    console.log(`Saldo inicial do dia: ${startingBalance} USDT`);
+    console.log(`Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
+    console.log(`Stop Loss: ${config.stop_loss}% = ${stopLossAmount} USDT`);
 
     const executedTrades = [];
 
@@ -180,7 +198,9 @@ serve(async (req) => {
           body: {
             symbol: analysis.symbol,
             side: 'BUY',
-            quantity: (analysis.calculatedQuantity / analysis.recommendedDcaLayers).toString()
+            quantity: (analysis.calculatedQuantity / analysis.recommendedDcaLayers).toString(),
+            takeProfitAmount,
+            stopLossAmount
           }
         });
 
@@ -189,7 +209,9 @@ serve(async (req) => {
             symbol: analysis.symbol,
             confidence: analysis.confidence,
             dcaLayers: analysis.recommendedDcaLayers,
-            predictedPrice: analysis.predictedPrice
+            predictedPrice: analysis.predictedPrice,
+            takeProfitAmount,
+            stopLossAmount
           });
         }
       } catch (error) {

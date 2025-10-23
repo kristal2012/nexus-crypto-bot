@@ -164,27 +164,33 @@ export const TradingConfig = () => {
         </div>
 
         <div>
-          <Label className="text-foreground mb-2">Take Profit: {takeProfit}%</Label>
+          <Label className="text-foreground mb-2">Take Profit: {takeProfit}% do saldo inicial do dia</Label>
           <Slider
             value={takeProfit}
             onValueChange={setTakeProfit}
             min={0.5}
-            max={10}
-            step={0.1}
+            max={15}
+            step={0.5}
             className="mt-2"
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            Baseado no saldo inicial do dia. Ex: Se saldo inicial for 1000 USDT, TP de {takeProfit}% = {(1000 * takeProfit[0] / 100).toFixed(2)} USDT
+          </p>
         </div>
 
         <div>
-          <Label className="text-foreground mb-2">Stop Loss: {stopLoss}%</Label>
+          <Label className="text-foreground mb-2">Stop Loss: {stopLoss}% do saldo inicial do dia</Label>
           <Slider
             value={stopLoss}
             onValueChange={setStopLoss}
             min={0.5}
-            max={5}
-            step={0.1}
+            max={10}
+            step={0.5}
             className="mt-2"
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            Baseado no saldo inicial do dia. Ex: Se saldo inicial for 1000 USDT, SL de {stopLoss}% = {(1000 * stopLoss[0] / 100).toFixed(2)} USDT
+          </p>
         </div>
 
         <div className="bg-secondary/50 p-4 rounded-lg border border-border">

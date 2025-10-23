@@ -260,8 +260,8 @@ export const AutoTradingControl = () => {
             <div className="flex items-start gap-2">
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
-                <p className="font-medium text-foreground mb-1">✓ IA Ativa - Análise a cada 2 minutos</p>
-                <p>A IA analisa TODAS as criptomoedas da Binance automaticamente a cada 2 minutos e executa trades quando encontra oportunidades com confiança ≥ mínima configurada. As negociações continuam até atingir o take profit ou stop loss definido nas configurações.</p>
+                <p className="font-medium text-foreground mb-1">✓ IA Ativa - 1 operação a cada 2 minutos</p>
+                <p>A IA analisa TODAS as criptomoedas da Binance automaticamente a cada 2 minutos e executa apenas 1 trade por vez quando encontra oportunidades com confiança ≥ mínima configurada. Take Profit e Stop Loss são calculados baseados no saldo inicial do dia.</p>
               </div>
             </div>
           </div>
