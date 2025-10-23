@@ -101,7 +101,7 @@ export const AutoTradingControl = () => {
       toast({
         title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
         description: checked 
-          ? "A IA distribuirá 10% do saldo por análise entre as oportunidades com ≥70% de confiança (exceto BTC/ETH)" 
+          ? "A IA distribuirá 10% do saldo por análise entre as oportunidades com ≥70% de confiança em 13 pares principais (BNB, SOL, ADA, DOGE, XRP, etc)" 
           : "A análise automática foi pausada",
       });
     } catch (error) {
@@ -201,7 +201,7 @@ export const AutoTradingControl = () => {
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
                 <p className="font-medium text-foreground mb-1">✓ IA Ativa - Operações Automáticas</p>
-                <p>A cada análise (15 min), 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança, podendo executar uma ou várias operações (exceto BTC e ETH).</p>
+                <p>A cada análise (15 min), 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança em 13 pares principais (BNB, SOL, ADA, DOGE, XRP, DOT, MATIC, AVAX, LINK, UNI, LTC, ATOM, NEAR).</p>
               </div>
             </div>
           </div>

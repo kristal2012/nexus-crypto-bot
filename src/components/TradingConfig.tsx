@@ -184,7 +184,7 @@ export const TradingConfig = () => {
             10% do Saldo Disponível
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            A cada análise, 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança, podendo executar uma ou várias operações (exceto BTC e ETH).
+            A cada análise, 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança nos 13 pares principais: BNB, SOL, ADA, DOGE, XRP, DOT, MATIC, AVAX, LINK, UNI, LTC, ATOM, NEAR.
           </p>
         </div>
 
