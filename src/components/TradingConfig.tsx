@@ -170,12 +170,16 @@ export const TradingConfig = () => {
             value={minConfidence}
             onValueChange={setMinConfidence}
             min={75}
-            max={99}
+            max={100}
             step={1}
             className="mt-2"
           />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>75% (mínimo)</span>
+            <span>100%</span>
+          </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Apenas trades com confiança ≥ {minConfidence}% serão executados
+            Apenas trades com confiança ≥ {minConfidence}% serão executados. O mínimo é 75% e não pode ser reduzido.
           </p>
         </div>
 
