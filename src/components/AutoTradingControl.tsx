@@ -101,7 +101,7 @@ export const AutoTradingControl = () => {
       toast({
         title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
         description: checked 
-          ? "A IA analisará múltiplos pares (exceto BTC/ETH) e executará trades automáticos com confiança ≥70% usando 10% do saldo por operação" 
+          ? "A IA distribuirá 10% do saldo por análise entre as oportunidades com ≥70% de confiança (exceto BTC/ETH)" 
           : "A análise automática foi pausada",
       });
     } catch (error) {
@@ -200,8 +200,8 @@ export const AutoTradingControl = () => {
             <div className="flex items-start gap-2">
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
-                <p className="font-medium text-foreground mb-1">✓ IA Ativa - Múltiplas Operações Automáticas</p>
-                <p>A IA executa automaticamente múltiplas operações em todos os pares (exceto BTC e ETH) que atingirem ≥70% de confiança. Cada trade utiliza 10% do saldo disponível. Análises são realizadas a cada 15 minutos.</p>
+                <p className="font-medium text-foreground mb-1">✓ IA Ativa - Operações Automáticas</p>
+                <p>A cada análise (15 min), 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança, podendo executar uma ou várias operações (exceto BTC e ETH).</p>
               </div>
             </div>
           </div>

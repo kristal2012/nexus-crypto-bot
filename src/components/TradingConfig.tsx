@@ -179,12 +179,12 @@ export const TradingConfig = () => {
         </div>
 
         <div className="bg-secondary/50 p-4 rounded-lg border border-border">
-          <Label className="text-foreground mb-2">Valor por Trade</Label>
+          <Label className="text-foreground mb-2">Valor por Análise</Label>
           <div className="text-2xl font-bold text-primary mt-2">
             10% do Saldo Disponível
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Cada operação utiliza 10% do saldo disponível. Múltiplas operações são executadas automaticamente em todos os pares que atingirem ≥70% de confiança (exceto BTC e ETH que foram excluídos).
+            A cada análise, 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança, podendo executar uma ou várias operações (exceto BTC e ETH).
           </p>
         </div>
 

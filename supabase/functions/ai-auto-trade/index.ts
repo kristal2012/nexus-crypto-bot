@@ -147,12 +147,12 @@ serve(async (req) => {
     // Sort by confidence (highest first) - execute all opportunities ≥70%
     const tradesToExecute = analyses.sort((a, b) => b.confidence - a.confidence);
 
-    // Get current balance to calculate 10% per trade
+    // Get current balance to calculate 10% per analysis
     const { data: accountInfo } = await supabase.functions.invoke('binance-account');
     const availableBalance = accountInfo?.totalWalletBalance || config.quantity_usdt;
     
-    // Each trade uses 10% of available balance
-    const tradeAmount = availableBalance * 0.10;
+    // 10% of available balance to distribute across all opportunities in this analysis
+    const totalAnalysisAmount = availableBalance * 0.10;
 
     // Buscar saldo inicial do dia para calcular TP/SL
     const { data: dailyStats } = await supabase
@@ -169,13 +169,15 @@ serve(async (req) => {
     const stopLossAmount = (startingBalance * config.stop_loss) / 100;
 
     console.log(`Saldo disponível: ${availableBalance} USDT`);
-    console.log(`Valor por trade (10%): ${tradeAmount} USDT`);
+    console.log(`Valor total desta análise (10%): ${totalAnalysisAmount} USDT`);
     console.log(`Saldo inicial do dia: ${startingBalance} USDT`);
     console.log(`Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
     console.log(`Stop Loss: ${config.stop_loss}% = ${stopLossAmount} USDT`);
 
     const executedTrades = [];
+    let remainingAmount = totalAnalysisAmount;
 
+    // Distribute 10% of balance across all opportunities that fit
     for (const analysis of tradesToExecute) {
       try {
         // Check trading status
@@ -185,10 +187,24 @@ serve(async (req) => {
           break;
         }
 
-        // Calculate quantity: 10% of balance divided by DCA layers
-        const quantityPerLayer = tradeAmount / analysis.recommendedDcaLayers;
+        // Calculate quantity per layer based on remaining amount divided by number of remaining opportunities
+        const remainingOpportunities: number = tradesToExecute.length - executedTrades.length;
+        const amountForThisTrade: number = remainingAmount / remainingOpportunities;
+        const quantityPerLayer: number = amountForThisTrade / analysis.recommendedDcaLayers;
         
-        // Execute the trade using 10% of available balance
+        // Check if the minimum notional is met
+        if (quantityPerLayer < analysis.minNotional) {
+          console.log(`Skipping ${analysis.symbol}: quantity ${quantityPerLayer} below min notional ${analysis.minNotional}`);
+          continue;
+        }
+
+        // Check if we have enough remaining amount
+        if (amountForThisTrade > remainingAmount) {
+          console.log(`Skipping ${analysis.symbol}: insufficient remaining amount`);
+          break;
+        }
+        
+        // Execute the trade
         const { data: tradeResult } = await supabase.functions.invoke('auto-trade', {
           body: {
             symbol: analysis.symbol,
@@ -200,19 +216,24 @@ serve(async (req) => {
         });
 
         if (tradeResult?.success) {
+          remainingAmount -= amountForThisTrade;
           executedTrades.push({
             symbol: analysis.symbol,
             confidence: analysis.confidence,
             dcaLayers: analysis.recommendedDcaLayers,
             predictedPrice: analysis.predictedPrice,
+            amountUsed: amountForThisTrade,
             takeProfitAmount,
             stopLossAmount
           });
+          console.log(`Executed trade for ${analysis.symbol}: ${amountForThisTrade} USDT`);
         }
       } catch (error) {
         console.error(`Error executing trade for ${analysis.symbol}:`, error);
       }
     }
+
+    console.log(`Used ${totalAnalysisAmount - remainingAmount} USDT of ${totalAnalysisAmount} USDT available`);
 
     return new Response(JSON.stringify({
       success: true,
