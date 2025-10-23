@@ -88,6 +88,51 @@ serve(async (req) => {
       );
     }
 
+    // Validate quantity
+    const quantityNum = parseFloat(quantity);
+    if (isNaN(quantityNum)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid quantity: must be a valid number' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (quantityNum <= 0) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid quantity: must be greater than 0' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (quantityNum > 1000000) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid quantity: exceeds maximum allowed (1,000,000)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    // Check decimal places (max 8 for crypto)
+    const decimalPlaces = (quantity.toString().split('.')[1] || '').length;
+    if (decimalPlaces > 8) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid quantity: maximum 8 decimal places allowed' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate symbol format (basic check)
+    if (!/^[A-Z0-9]+$/.test(symbol)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid symbol format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate side
+    if (side !== 'BUY' && side !== 'SELL') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid side: must be BUY or SELL' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('Executing trade:', { symbol, side, quantity, isDemo });
 
     let orderData;

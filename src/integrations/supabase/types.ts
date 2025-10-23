@@ -55,6 +55,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_active: boolean | null
+          last_analysis_at: string | null
           leverage: number
           min_confidence: number
           quantity_usdt: number
@@ -67,6 +68,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          last_analysis_at?: string | null
           leverage?: number
           min_confidence?: number
           quantity_usdt?: number
@@ -79,6 +81,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          last_analysis_at?: string | null
           leverage?: number
           min_confidence?: number
           quantity_usdt?: number
@@ -364,10 +367,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      reset_daily_bot_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      reset_daily_bot_stats: { Args: never; Returns: undefined }
     }
     Enums: {
       performance_period: "DAILY" | "WEEKLY" | "MONTHLY" | "ALL_TIME"

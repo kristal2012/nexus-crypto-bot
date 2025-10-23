@@ -55,6 +55,33 @@ serve(async (req) => {
       });
     }
 
+    // Rate limiting: enforce 2-minute cooldown between analyses
+    const now = new Date();
+    if (config.last_analysis_at) {
+      const lastAnalysis = new Date(config.last_analysis_at);
+      const timeSinceLastAnalysis = (now.getTime() - lastAnalysis.getTime()) / 1000; // seconds
+      const cooldownPeriod = 120; // 2 minutes in seconds
+      
+      if (timeSinceLastAnalysis < cooldownPeriod) {
+        const remainingTime = Math.ceil(cooldownPeriod - timeSinceLastAnalysis);
+        console.log(`Rate limit: ${remainingTime}s remaining until next analysis allowed`);
+        return new Response(JSON.stringify({ 
+          error: 'Rate limit exceeded',
+          message: `Please wait ${remainingTime} seconds before running another analysis`,
+          remaining_seconds: remainingTime
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Update last analysis timestamp
+    await supabase
+      .from('auto_trading_config')
+      .update({ last_analysis_at: now.toISOString() })
+      .eq('user_id', user.id);
+
     // Major crypto pairs to analyze
     const symbols = [
       'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT',
