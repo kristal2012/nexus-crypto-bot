@@ -1,20 +1,20 @@
 // Encryption utilities for Binance API secrets
 // Uses AES-256-GCM with PBKDF2 key derivation
 
-const ENCRYPTION_KEY = Deno.env.get('BINANCE_ENCRYPTION_KEY');
+const ENCRYPTION_KEY = Deno.env.get('CHAVE_DE_CRIPTOGRAFIA_BINANCE');
 const PBKDF2_ITERATIONS = 100000; // 100k iterations for security
 
 // Validate encryption key on module load
 if (!ENCRYPTION_KEY) {
-  throw new Error('BINANCE_ENCRYPTION_KEY not configured');
+  throw new Error('CHAVE_DE_CRIPTOGRAFIA_BINANCE not configured');
 }
 if (ENCRYPTION_KEY.length < 32) {
-  throw new Error('BINANCE_ENCRYPTION_KEY must be at least 32 characters');
+  throw new Error('CHAVE_DE_CRIPTOGRAFIA_BINANCE must be at least 32 characters');
 }
 // Verify character diversity to prevent weak keys
 const uniqueChars = new Set(ENCRYPTION_KEY).size;
 if (uniqueChars < 16) {
-  throw new Error('BINANCE_ENCRYPTION_KEY must contain at least 16 unique characters for sufficient entropy. Generate with: openssl rand -base64 48');
+  throw new Error('CHAVE_DE_CRIPTOGRAFIA_BINANCE must contain at least 16 unique characters for sufficient entropy. Generate with: openssl rand -base64 48');
 }
 
 async function deriveKey(salt: Uint8Array): Promise<CryptoKey> {
