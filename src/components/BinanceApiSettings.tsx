@@ -53,18 +53,26 @@ export const BinanceApiSettings = () => {
     }
 
     setLoading(true);
+    console.log("Salvando chaves da Binance...", { user_id: user.id });
 
     try {
       // Call edge function to encrypt and save
-      const { error } = await supabase.functions.invoke('encrypt-api-secret', {
+      console.log("Chamando edge function encrypt-api-secret...");
+      const { data, error } = await supabase.functions.invoke('encrypt-api-secret', {
         body: {
           api_key: apiKey.trim(),
           api_secret: apiSecret.trim(),
         }
       });
 
-      if (error) throw error;
+      console.log("Resposta da edge function:", { data, error });
 
+      if (error) {
+        console.error("Erro da edge function:", error);
+        throw error;
+      }
+
+      console.log("Chaves salvas com sucesso!");
       toast.success("Chaves da API salvas com sucesso!");
       setHasKeys(true);
       setApiSecret(""); // Clear secret from memory after saving
