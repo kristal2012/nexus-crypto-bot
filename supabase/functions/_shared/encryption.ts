@@ -11,6 +11,11 @@ if (!ENCRYPTION_KEY) {
 if (ENCRYPTION_KEY.length < 32) {
   throw new Error('BINANCE_ENCRYPTION_KEY must be at least 32 characters');
 }
+// Verify character diversity to prevent weak keys
+const uniqueChars = new Set(ENCRYPTION_KEY).size;
+if (uniqueChars < 16) {
+  throw new Error('BINANCE_ENCRYPTION_KEY must contain at least 16 unique characters for sufficient entropy. Generate with: openssl rand -base64 48');
+}
 
 async function deriveKey(salt: Uint8Array): Promise<CryptoKey> {
   const encoder = new TextEncoder();

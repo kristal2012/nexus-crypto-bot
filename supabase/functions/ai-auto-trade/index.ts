@@ -201,8 +201,10 @@ serve(async (req) => {
     const { data: accountInfo } = await supabase.functions.invoke('binance-account');
     const availableBalance = accountInfo?.totalWalletBalance || config.quantity_usdt;
     
+    // Hard limit to prevent catastrophic losses even if calculations are wrong
+    const MAX_POSITION_USD = 10000;
     // 10% of available balance to distribute across all opportunities in this analysis
-    const totalAnalysisAmount = availableBalance * 0.10;
+    const totalAnalysisAmount = Math.min(availableBalance * 0.10, MAX_POSITION_USD);
 
     // Buscar saldo inicial do dia para calcular TP
     const { data: dailyStats } = await supabase
