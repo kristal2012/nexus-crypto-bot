@@ -66,9 +66,15 @@ export const useTradingSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // If switching to REAL mode, set confirmation timestamp
+      const updateData: any = { trading_mode: mode };
+      if (mode === "REAL") {
+        updateData.real_mode_confirmed_at = new Date().toISOString();
+      }
+
       const { error } = await supabase
         .from("trading_settings")
-        .update({ trading_mode: mode })
+        .update(updateData)
         .eq("user_id", user.id);
 
       if (error) throw error;

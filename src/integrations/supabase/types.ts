@@ -335,11 +335,39 @@ export type Database = {
         }
         Relationships: []
       }
+      trading_mode_audit: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          id: string
+          new_mode: string | null
+          old_mode: string | null
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          new_mode?: string | null
+          old_mode?: string | null
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          new_mode?: string | null
+          old_mode?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       trading_settings: {
         Row: {
           created_at: string
           demo_balance: number
           id: string
+          real_mode_confirmed_at: string | null
           trading_mode: string
           updated_at: string
           user_id: string
@@ -348,6 +376,7 @@ export type Database = {
           created_at?: string
           demo_balance?: number
           id?: string
+          real_mode_confirmed_at?: string | null
           trading_mode?: string
           updated_at?: string
           user_id: string
@@ -356,6 +385,7 @@ export type Database = {
           created_at?: string
           demo_balance?: number
           id?: string
+          real_mode_confirmed_at?: string | null
           trading_mode?: string
           updated_at?: string
           user_id?: string

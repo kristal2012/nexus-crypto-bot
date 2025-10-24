@@ -153,6 +153,33 @@ serve(async (req) => {
     // Sort by confidence (highest first) - execute all opportunities ≥70%
     const tradesToExecute = analyses.sort((a, b) => b.confidence - a.confidence);
 
+    // Check trading mode and confirmation for real mode
+    const { data: settings } = await supabase
+      .from('trading_settings')
+      .select('trading_mode, demo_balance, real_mode_confirmed_at')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const isDemo = settings?.trading_mode === 'DEMO';
+
+    // For real mode, check if user has confirmed within last 5 minutes
+    if (!isDemo) {
+      const confirmedAt = settings?.real_mode_confirmed_at ? new Date(settings.real_mode_confirmed_at) : null;
+      const now = new Date();
+      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+      if (!confirmedAt || confirmedAt < fiveMinutesAgo) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'Real mode requires confirmation',
+          message: 'Please confirm real mode trading in settings before running AI analysis'
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Get current balance to calculate 10% per analysis
     const { data: accountInfo } = await supabase.functions.invoke('binance-account');
     const availableBalance = accountInfo?.totalWalletBalance || config.quantity_usdt;

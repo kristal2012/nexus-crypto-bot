@@ -2,9 +2,34 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, TrendingUp } from "lucide-react";
 import { useTradingSettings } from "@/hooks/useTradingSettings";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const TradingModeToggle = () => {
   const { settings, loading, updateTradingMode } = useTradingSettings();
+  const [showRealModeDialog, setShowRealModeDialog] = useState(false);
+
+  const handleModeChange = (mode: "REAL" | "DEMO") => {
+    if (mode === "REAL") {
+      setShowRealModeDialog(true);
+    } else {
+      updateTradingMode(mode);
+    }
+  };
+
+  const confirmRealMode = () => {
+    updateTradingMode("REAL");
+    setShowRealModeDialog(false);
+  };
 
   if (loading || !settings) {
     return (
@@ -26,7 +51,7 @@ export const TradingModeToggle = () => {
           
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => updateTradingMode("DEMO")}
+              onClick={() => handleModeChange("DEMO")}
               className={`p-4 rounded-lg border-2 transition-all ${
                 !isRealMode
                   ? "border-warning bg-warning/10"
@@ -47,7 +72,7 @@ export const TradingModeToggle = () => {
             </button>
 
             <button
-              onClick={() => updateTradingMode("REAL")}
+              onClick={() => handleModeChange("REAL")}
               className={`p-4 rounded-lg border-2 transition-all ${
                 isRealMode
                   ? "border-success bg-success/10"
@@ -98,6 +123,52 @@ export const TradingModeToggle = () => {
           </div>
         )}
       </div>
+
+      <AlertDialog open={showRealModeDialog} onOpenChange={setShowRealModeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Confirmar Modo Real
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p className="font-semibold">
+                Você está prestes a ativar o modo de trading com dinheiro real.
+              </p>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="text-destructive mt-0.5">•</span>
+                  <span>Todas as operações serão executadas na Binance com saldo real</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-destructive mt-0.5">•</span>
+                  <span>Você pode perder dinheiro real se as operações forem desfavoráveis</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-destructive mt-0.5">•</span>
+                  <span>Esta confirmação expira após 5 minutos por segurança</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-destructive mt-0.5">•</span>
+                  <span>Certifique-se de que suas chaves da API Binance estão configuradas corretamente</span>
+                </li>
+              </ul>
+              <p className="font-semibold text-destructive">
+                Tem certeza que deseja continuar?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRealMode}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim, Ativar Modo Real
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

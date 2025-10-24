@@ -65,6 +65,24 @@ serve(async (req) => {
 
     const isDemo = settings?.trading_mode === 'DEMO';
 
+    // For real mode, check if user has confirmed within last 5 minutes
+    if (!isDemo) {
+      const confirmedAt = settings?.real_mode_confirmed_at ? new Date(settings.real_mode_confirmed_at) : null;
+      const now = new Date();
+      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+      if (!confirmedAt || confirmedAt < fiveMinutesAgo) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Real mode requires confirmation',
+            message: 'Please confirm real mode trading in settings before executing trades'
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Check if bot can trade
     const statusResponse = await supabase.functions.invoke('check-trading-status');
     
