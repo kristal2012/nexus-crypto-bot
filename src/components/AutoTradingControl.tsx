@@ -3,7 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Sparkles, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Bot, Sparkles, Clock, Play, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 export const AutoTradingControl = () => {
   const [isActive, setIsActive] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -114,6 +116,65 @@ export const AutoTradingControl = () => {
     }
   };
 
+  const executeAnalysis = async () => {
+    if (!user || !isActive) {
+      toast({
+        title: "IA Trading Inativo",
+        description: "Ative o IA Trading primeiro para executar análises",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    
+    try {
+      toast({
+        title: "Iniciando Análise",
+        description: "Analisando 13 pares de criptomoedas...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('ai-auto-trade');
+
+      if (error) throw error;
+
+      if (data?.rate_limited) {
+        toast({
+          title: "Aguarde",
+          description: data.message || `Próxima análise disponível em ${data.remaining_seconds}s`,
+          variant: "destructive"
+        });
+      } else if (data?.executed_trades && data.executed_trades.length > 0) {
+        toast({
+          title: "Análise Concluída",
+          description: `${data.executed_trades.length} operações executadas com sucesso`,
+        });
+        loadLastAnalysis();
+      } else if (data?.high_confidence_count === 0) {
+        toast({
+          title: "Análise Concluída",
+          description: "Nenhuma oportunidade com ≥70% de confiança encontrada",
+        });
+        loadLastAnalysis();
+      } else {
+        toast({
+          title: "Análise Concluída",
+          description: data?.message || "Análise finalizada",
+        });
+        loadLastAnalysis();
+      }
+    } catch (error: any) {
+      console.error('Error executing analysis:', error);
+      toast({
+        title: "Erro na Análise",
+        description: error.message || "Falha ao executar análise automática",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   return (
     <Card className="p-6 bg-gradient-card border-border shadow-card">
       <div className="space-y-4">
@@ -146,6 +207,28 @@ export const AutoTradingControl = () => {
             onCheckedChange={handleToggle}
           />
         </div>
+
+        {/* Execute Analysis Button */}
+        {isActive && (
+          <Button
+            onClick={executeAnalysis}
+            disabled={isAnalyzing}
+            className="w-full"
+            size="lg"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 mr-2" />
+                Executar Análise Agora
+              </>
+            )}
+          </Button>
+        )}
 
         {/* Last Analysis Stats */}
         {lastAnalysis && (
