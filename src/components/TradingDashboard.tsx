@@ -362,11 +362,6 @@ export const TradingDashboard = () => {
           <BotStatus active={botActive} />
           <TradingModeToggle />
           <AutoTradingControl />
-          <AIPrediction
-            symbol="BNBUSDT" 
-            currentPrice={315.20} 
-            historicalPrices={bnbPrices.length > 0 ? bnbPrices : [305, 307, 310, 312, 313, 314, 315, 316, 315, 315.2, 316, 315.2]} 
-          />
           <BinanceApiSettings />
           <TradingConfig />
         </div>
