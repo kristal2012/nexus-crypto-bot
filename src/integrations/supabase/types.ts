@@ -316,6 +316,7 @@ export type Database = {
           created_at: string
           emergency_message: string | null
           id: string
+          is_singleton: boolean
           trading_enabled: boolean
           updated_at: string
           updated_by: string | null
@@ -324,6 +325,7 @@ export type Database = {
           created_at?: string
           emergency_message?: string | null
           id?: string
+          is_singleton?: boolean
           trading_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
@@ -332,6 +334,7 @@ export type Database = {
           created_at?: string
           emergency_message?: string | null
           id?: string
+          is_singleton?: boolean
           trading_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
