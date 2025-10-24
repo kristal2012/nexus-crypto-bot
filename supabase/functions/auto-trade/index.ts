@@ -239,7 +239,86 @@ serve(async (req) => {
       console.log('Real trade executed:', orderData);
     }
 
-    // Store trade in database
+    // Store trade in database and manage positions
+    let profitLoss = null;
+    
+    // Manage positions
+    if (side === 'BUY') {
+      // Opening or adding to a LONG position
+      const { data: existingPosition } = await supabase
+        .from('positions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('symbol', symbol)
+        .eq('is_demo', isDemo)
+        .maybeSingle();
+
+      if (existingPosition) {
+        // Update existing position (average entry price)
+        const totalQty = parseFloat(existingPosition.quantity) + executedQty;
+        const totalCost = (parseFloat(existingPosition.entry_price) * parseFloat(existingPosition.quantity)) + (executedPrice * executedQty);
+        const avgEntryPrice = totalCost / totalQty;
+
+        await supabase
+          .from('positions')
+          .update({
+            quantity: totalQty,
+            entry_price: avgEntryPrice,
+            current_price: executedPrice,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingPosition.id);
+      } else {
+        // Create new position
+        await supabase
+          .from('positions')
+          .insert({
+            user_id: user.id,
+            symbol,
+            side: 'LONG',
+            quantity: executedQty,
+            entry_price: executedPrice,
+            current_price: executedPrice,
+            is_demo: isDemo
+          });
+      }
+    } else if (side === 'SELL') {
+      // Closing or reducing a LONG position
+      const { data: existingPosition } = await supabase
+        .from('positions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('symbol', symbol)
+        .eq('is_demo', isDemo)
+        .maybeSingle();
+
+      if (existingPosition) {
+        const positionQty = parseFloat(existingPosition.quantity);
+        const entryPrice = parseFloat(existingPosition.entry_price);
+        
+        // Calculate P&L for the sold quantity
+        profitLoss = (executedPrice - entryPrice) * Math.min(executedQty, positionQty);
+        
+        if (executedQty >= positionQty) {
+          // Close entire position
+          await supabase
+            .from('positions')
+            .delete()
+            .eq('id', existingPosition.id);
+        } else {
+          // Reduce position
+          await supabase
+            .from('positions')
+            .update({
+              quantity: positionQty - executedQty,
+              current_price: executedPrice,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingPosition.id);
+        }
+      }
+    }
+
     const { error: tradeError } = await supabase
       .from('trades')
       .insert({
@@ -253,6 +332,7 @@ serve(async (req) => {
         status: 'FILLED',
         executed_at: new Date().toISOString(),
         commission: parseFloat(orderData.commission || '0'),
+        profit_loss: profitLoss,
         is_demo: isDemo
       });
 
@@ -265,6 +345,8 @@ serve(async (req) => {
     const today = new Date().toISOString().split('T')[0];
     
     let currentBalance;
+    let usdtBalance;
+    
     if (isDemo) {
       const { data: updatedSettings } = await supabase
         .from('trading_settings')
@@ -272,11 +354,46 @@ serve(async (req) => {
         .eq('user_id', user.id)
         .single();
       
-      currentBalance = updatedSettings 
+      usdtBalance = updatedSettings 
         ? (typeof updatedSettings.demo_balance === 'string' 
           ? parseFloat(updatedSettings.demo_balance) 
           : updatedSettings.demo_balance)
         : stats.current_balance;
+      
+      // Calculate total value including open positions
+      const { data: positions } = await supabase
+        .from('positions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_demo', isDemo);
+      
+      let positionsValue = 0;
+      if (positions && positions.length > 0) {
+        for (const pos of positions) {
+          // Get current market price for each position
+          try {
+            const priceResponse = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${pos.symbol}`);
+            const priceData = await priceResponse.json();
+            const currentPrice = parseFloat(priceData.price);
+            const positionValue = currentPrice * parseFloat(pos.quantity);
+            positionsValue += positionValue;
+            
+            // Update position current price and unrealized P&L
+            const unrealizedPnl = (currentPrice - parseFloat(pos.entry_price)) * parseFloat(pos.quantity);
+            await supabase
+              .from('positions')
+              .update({
+                current_price: currentPrice,
+                unrealized_pnl: unrealizedPnl
+              })
+              .eq('id', pos.id);
+          } catch (error) {
+            console.error(`Error fetching price for ${pos.symbol}:`, error);
+          }
+        }
+      }
+      
+      currentBalance = usdtBalance + positionsValue;
     } else {
       // Get current account balance for real trades
       const accountResponse = await supabase.functions.invoke('binance-account');

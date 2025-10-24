@@ -257,6 +257,48 @@ export type Database = {
         }
         Relationships: []
       }
+      positions: {
+        Row: {
+          created_at: string | null
+          current_price: number | null
+          entry_price: number
+          id: string
+          is_demo: boolean | null
+          quantity: number
+          side: string
+          symbol: string
+          unrealized_pnl: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_price?: number | null
+          entry_price: number
+          id?: string
+          is_demo?: boolean | null
+          quantity: number
+          side: string
+          symbol: string
+          unrealized_pnl?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_price?: number | null
+          entry_price?: number
+          id?: string
+          is_demo?: boolean | null
+          quantity?: number
+          side?: string
+          symbol?: string
+          unrealized_pnl?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
