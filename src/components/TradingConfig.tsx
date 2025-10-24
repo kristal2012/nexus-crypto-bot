@@ -51,48 +51,86 @@ export const TradingConfig = () => {
 
   const loadConfig = async () => {
     try {
+      console.log('Carregando configuração do usuário:', user?.id);
       const { data, error } = await supabase
         .from('auto_trading_config')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user?.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar configuração:', error);
+        throw error;
+      }
 
       if (data) {
-        // Carregamos apenas confiança mínima do banco
+        console.log('Configuração carregada:', data);
         setMinConfidence([Number(data.min_confidence)]);
+        setLeverage(data.leverage);
+      } else {
+        console.log('Nenhuma configuração encontrada, usando valores padrão');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading config:', error);
+      toast({
+        title: "Erro ao carregar",
+        description: error.message || "Não foi possível carregar as configurações.",
+        variant: "destructive"
+      });
     }
   };
 
   const handleSaveConfig = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para salvar configurações.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setLoading(true);
     try {
-      const { data: existing } = await supabase
+      console.log('Salvando configuração:', {
+        user_id: user.id,
+        leverage,
+        take_profit: takeProfit,
+        stop_loss: atrMultiplier,
+        min_confidence: minConfidence[0]
+      });
+
+      const { data: existing, error: selectError } = await supabase
         .from('auto_trading_config')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
 
+      if (selectError) {
+        console.error('Erro ao verificar configuração existente:', selectError);
+        throw selectError;
+      }
+
       if (existing) {
-        const { error } = await supabase
+        console.log('Atualizando configuração existente...');
+        const { error: updateError } = await supabase
           .from('auto_trading_config')
           .update({
             leverage: leverage,
             take_profit: takeProfit,
             stop_loss: atrMultiplier,
-            min_confidence: minConfidence[0]
+            min_confidence: minConfidence[0],
+            updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id);
 
-        if (error) throw error;
+        if (updateError) {
+          console.error('Erro no update:', updateError);
+          throw updateError;
+        }
       } else {
-        const { error } = await supabase
+        console.log('Inserindo nova configuração...');
+        const { error: insertError } = await supabase
           .from('auto_trading_config')
           .insert({
             user_id: user.id,
@@ -102,18 +140,25 @@ export const TradingConfig = () => {
             min_confidence: minConfidence[0]
           });
 
-        if (error) throw error;
+        if (insertError) {
+          console.error('Erro no insert:', insertError);
+          throw insertError;
+        }
       }
 
+      console.log('Configuração salva com sucesso!');
       toast({
         title: "Configuração salva",
         description: "Suas configurações de trading foram salvas com sucesso.",
       });
-    } catch (error) {
+      
+      // Recarregar configuração para confirmar
+      await loadConfig();
+    } catch (error: any) {
       console.error('Error saving config:', error);
       toast({
-        title: "Erro",
-        description: "Falha ao salvar configurações.",
+        title: "Erro ao salvar",
+        description: error.message || "Falha ao salvar configurações. Verifique o console para mais detalhes.",
         variant: "destructive"
       });
     } finally {
