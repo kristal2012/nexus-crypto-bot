@@ -3,8 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Bot, Sparkles, Clock, Play, Loader2 } from "lucide-react";
+import { Bot, Sparkles, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +11,6 @@ import { useAuth } from "@/hooks/useAuth";
 export const AutoTradingControl = () => {
   const [isActive, setIsActive] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<any>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -29,6 +27,47 @@ export const AutoTradingControl = () => {
       return () => clearInterval(displayInterval);
     }
   }, [user]);
+
+  // Automatic analysis execution every 15 minutes when active
+  useEffect(() => {
+    if (!user || !isActive) return;
+
+    const executeAutoAnalysis = async () => {
+      try {
+        console.log('Executing automatic analysis...');
+        const { data, error } = await supabase.functions.invoke('ai-auto-trade');
+
+        if (error) {
+          console.error('Auto analysis error:', error);
+          return;
+        }
+
+        if (data?.rate_limited) {
+          console.log('Rate limited:', data.message);
+        } else if (data?.executed_trades && data.executed_trades.length > 0) {
+          console.log(`Auto analysis completed: ${data.executed_trades.length} trades executed`);
+          loadLastAnalysis();
+          toast({
+            title: "Análise Automática Concluída",
+            description: `${data.executed_trades.length} operações executadas`,
+          });
+        } else {
+          console.log('Auto analysis completed: no trades');
+          loadLastAnalysis();
+        }
+      } catch (error) {
+        console.error('Error in auto analysis:', error);
+      }
+    };
+
+    // Execute immediately on activation
+    executeAutoAnalysis();
+
+    // Then execute every 15 minutes (900000 ms)
+    const analysisInterval = setInterval(executeAutoAnalysis, 900000);
+
+    return () => clearInterval(analysisInterval);
+  }, [user, isActive]);
 
   // Analysis runs automatically on the backend every 15 minutes when active
   // This component just displays the results
@@ -103,7 +142,7 @@ export const AutoTradingControl = () => {
       toast({
         title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
         description: checked 
-          ? "A IA distribuirá 10% do saldo por análise entre as oportunidades com ≥70% de confiança em 13 pares principais (BNB, SOL, ADA, DOGE, XRP, etc)" 
+          ? "A IA executará análises automaticamente a cada 15 minutos e distribuirá 10% do saldo entre oportunidades com ≥70% de confiança" 
           : "A análise automática foi pausada",
       });
     } catch (error) {
@@ -113,65 +152,6 @@ export const AutoTradingControl = () => {
         description: "Falha ao atualizar status",
         variant: "destructive"
       });
-    }
-  };
-
-  const executeAnalysis = async () => {
-    if (!user || !isActive) {
-      toast({
-        title: "IA Trading Inativo",
-        description: "Ative o IA Trading primeiro para executar análises",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsAnalyzing(true);
-    
-    try {
-      toast({
-        title: "Iniciando Análise",
-        description: "Analisando 13 pares de criptomoedas...",
-      });
-
-      const { data, error } = await supabase.functions.invoke('ai-auto-trade');
-
-      if (error) throw error;
-
-      if (data?.rate_limited) {
-        toast({
-          title: "Aguarde",
-          description: data.message || `Próxima análise disponível em ${data.remaining_seconds}s`,
-          variant: "destructive"
-        });
-      } else if (data?.executed_trades && data.executed_trades.length > 0) {
-        toast({
-          title: "Análise Concluída",
-          description: `${data.executed_trades.length} operações executadas com sucesso`,
-        });
-        loadLastAnalysis();
-      } else if (data?.high_confidence_count === 0) {
-        toast({
-          title: "Análise Concluída",
-          description: "Nenhuma oportunidade com ≥70% de confiança encontrada",
-        });
-        loadLastAnalysis();
-      } else {
-        toast({
-          title: "Análise Concluída",
-          description: data?.message || "Análise finalizada",
-        });
-        loadLastAnalysis();
-      }
-    } catch (error: any) {
-      console.error('Error executing analysis:', error);
-      toast({
-        title: "Erro na Análise",
-        description: error.message || "Falha ao executar análise automática",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
@@ -207,28 +187,6 @@ export const AutoTradingControl = () => {
             onCheckedChange={handleToggle}
           />
         </div>
-
-        {/* Execute Analysis Button */}
-        {isActive && (
-          <Button
-            onClick={executeAnalysis}
-            disabled={isAnalyzing}
-            className="w-full"
-            size="lg"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Analisando...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 mr-2" />
-                Executar Análise Agora
-              </>
-            )}
-          </Button>
-        )}
 
         {/* Last Analysis Stats */}
         {lastAnalysis && (
@@ -283,8 +241,8 @@ export const AutoTradingControl = () => {
             <div className="flex items-start gap-2">
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
-                <p className="font-medium text-foreground mb-1">✓ IA Ativa - Operações Automáticas</p>
-                <p>A cada análise (15 min), 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança em 13 pares principais (BNB, SOL, ADA, DOGE, XRP, DOT, MATIC, AVAX, LINK, UNI, LTC, ATOM, NEAR).</p>
+                <p className="font-medium text-foreground mb-1">✓ IA Ativa - Análises Automáticas</p>
+                <p>A IA executa análises automaticamente a cada 15 minutos. Em cada análise, 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança em 13 pares principais (BNB, SOL, ADA, DOGE, XRP, DOT, MATIC, AVAX, LINK, UNI, LTC, ATOM, NEAR).</p>
               </div>
             </div>
           </div>
