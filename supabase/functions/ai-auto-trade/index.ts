@@ -243,13 +243,26 @@ serve(async (req) => {
 
         // Calculate quantity per layer based on remaining amount divided by number of remaining opportunities
         const remainingOpportunities: number = tradesToExecute.length - executedTrades.length;
-        const amountForThisTrade: number = remainingAmount / remainingOpportunities;
-        const quantityPerLayer: number = amountForThisTrade / analysis.recommendedDcaLayers;
+        let amountForThisTrade: number = remainingAmount / remainingOpportunities;
+        let dcaLayers = analysis.recommendedDcaLayers;
+        let quantityPerLayer: number = amountForThisTrade / dcaLayers;
         
-        // Check if the minimum notional is met
-        if (quantityPerLayer < analysis.minNotional) {
-          console.log(`Skipping ${analysis.symbol}: quantity ${quantityPerLayer} below min notional ${analysis.minNotional}`);
-          continue;
+        // Ensure each layer meets minimum notional
+        const minRequiredAmount = analysis.minNotional * dcaLayers;
+        
+        if (amountForThisTrade < minRequiredAmount) {
+          // Not enough for recommended layers, reduce layers to fit budget
+          dcaLayers = Math.floor(amountForThisTrade / analysis.minNotional);
+          
+          if (dcaLayers < 1) {
+            console.log(`Skipping ${analysis.symbol}: insufficient amount (${amountForThisTrade.toFixed(2)} USDT) for min notional ${analysis.minNotional} USDT`);
+            continue;
+          }
+          
+          // Recalculate with adjusted layers
+          quantityPerLayer = analysis.minNotional;
+          amountForThisTrade = quantityPerLayer * dcaLayers;
+          console.log(`Adjusted ${analysis.symbol}: ${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT = ${amountForThisTrade.toFixed(2)} USDT`);
         }
 
         // Check if we have enough remaining amount
@@ -289,14 +302,14 @@ serve(async (req) => {
           executedTrades.push({
             symbol: analysis.symbol,
             confidence: analysis.confidence,
-            dcaLayers: analysis.recommendedDcaLayers,
+            dcaLayers: dcaLayers,
             predictedPrice: analysis.predictedPrice,
             amountUsed: amountForThisTrade,
             takeProfitAmount,
             stopLossAmount: adaptiveStopLoss,
             atr: atr
           });
-          console.log(`Executed trade for ${analysis.symbol}: ${amountForThisTrade} USDT, Adaptive SL: ${adaptiveStopLoss.toFixed(4)} USDT`);
+          console.log(`Executed trade for ${analysis.symbol}: ${amountForThisTrade.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), Adaptive SL: ${adaptiveStopLoss.toFixed(4)} USDT`);
         }
       } catch (error) {
         console.error(`Error executing trade for ${analysis.symbol}:`, error);
