@@ -100,12 +100,12 @@ serve(async (req) => {
     // Get user's trading limits from config
     const { data: config } = await supabase
       .from('auto_trading_config')
-      .select('take_profit, stop_loss')
+      .select('take_profit')
       .eq('user_id', user.id)
       .maybeSingle();
 
     const takeProfit = config?.take_profit || 10; // Default 10%
-    const stopLoss = config?.stop_loss || -5; // Default -5%
+    const dailyStopLoss = -10; // Fixed daily stop loss at -10%
 
     let canTrade = stats.can_trade && stats.is_active;
     let stopReason = stats.stop_reason;
@@ -122,9 +122,9 @@ serve(async (req) => {
           stop_reason: stopReason 
         })
         .eq('id', stats.id);
-    } else if (stats.profit_loss_percent <= stopLoss) {
+    } else if (stats.profit_loss_percent <= dailyStopLoss) {
       canTrade = false;
-      stopReason = `Stop loss atingido: ${stats.profit_loss_percent.toFixed(2)}%`;
+      stopReason = `Stop loss diário atingido: ${stats.profit_loss_percent.toFixed(2)}%`;
       
       // Update database
       await supabase
@@ -146,7 +146,7 @@ serve(async (req) => {
         },
         limits: {
           take_profit: takeProfit,
-          stop_loss: stopLoss,
+          stop_loss: dailyStopLoss,
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
