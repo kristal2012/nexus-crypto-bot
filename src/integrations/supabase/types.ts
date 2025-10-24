@@ -367,6 +367,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acquire_analysis_lock: {
+        Args: { p_cooldown_minutes?: number; p_user_id: string }
+        Returns: {
+          is_active: boolean
+          last_analysis_at: string
+          leverage: number
+          max_daily_trades: number
+          min_confidence: number
+          stop_loss: number
+          take_profit: number
+        }[]
+      }
       reset_daily_bot_stats: { Args: never; Returns: undefined }
     }
     Enums: {

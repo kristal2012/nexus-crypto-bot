@@ -59,7 +59,7 @@ serve(async (req) => {
     if (upsertError) {
       console.error('Error saving encrypted keys:', upsertError);
       return new Response(
-        JSON.stringify({ error: 'Failed to save API keys' }),
+        JSON.stringify({ error: 'Unable to save API keys' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -71,7 +71,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in encrypt-api-secret function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Service error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

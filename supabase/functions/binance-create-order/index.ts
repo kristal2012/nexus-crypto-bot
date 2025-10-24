@@ -172,9 +172,20 @@ serve(async (req) => {
 
     if (!response.ok) {
       console.error('Binance API error:', data);
+      
+      // Sanitize error response - don't expose internal API details
+      let userMessage = 'Failed to create order';
+      if (data?.code === -2010) {
+        userMessage = 'Insufficient balance';
+      } else if (data?.code === -1121) {
+        userMessage = 'Invalid symbol';
+      } else if (data?.code === -1111) {
+        userMessage = 'Invalid quantity';
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Binance API error', details: data }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: userMessage }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -204,7 +215,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in binance-create-order function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Service error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

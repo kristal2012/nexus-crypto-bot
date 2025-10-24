@@ -37,51 +37,57 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      throw new Error('Unauthorized');
-    }
-
-    // Get user's auto trading configuration
-    const { data: config } = await supabase
-      .from('auto_trading_config')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!config || !config.is_active) {
       return new Response(JSON.stringify({ 
-        message: 'Auto trading is not active' 
+        error: 'Authentication required' 
       }), {
+        status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Rate limiting: enforce 15-minute cooldown between analyses for technical indicators to update
-    const now = new Date();
-    if (config.last_analysis_at) {
-      const lastAnalysis = new Date(config.last_analysis_at);
-      const timeSinceLastAnalysis = (now.getTime() - lastAnalysis.getTime()) / 1000; // seconds
-      const cooldownPeriod = 900; // 15 minutes in seconds (ideal for 1h timeframe indicators)
+    // Use atomic row-level locking to prevent race conditions
+    // This ensures only one analysis runs at a time per user
+    const { data: configData, error: lockError } = await supabase.rpc('acquire_analysis_lock', {
+      p_user_id: user.id,
+      p_cooldown_minutes: 15
+    });
+
+    if (lockError) {
+      console.error('Lock acquisition error:', lockError);
       
-      if (timeSinceLastAnalysis < cooldownPeriod) {
-        const remainingTime = Math.ceil(cooldownPeriod - timeSinceLastAnalysis);
-        console.log(`Rate limit: ${remainingTime}s remaining until next analysis allowed`);
+      // Check if it's a rate limit error
+      if (lockError.message?.includes('Rate limit')) {
+        const match = lockError.message.match(/(\d+) seconds remaining/);
+        const remainingSeconds = match ? parseInt(match[1]) : 900;
+        
         return new Response(JSON.stringify({ 
           success: false,
           rate_limited: true,
-          message: `Please wait ${remainingTime} seconds before running another analysis`,
-          remaining_seconds: remainingTime
+          message: `Please wait before running another analysis`,
+          remaining_seconds: remainingSeconds
         }), {
-          status: 200,
+          status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+      
+      // Generic error for other issues
+      return new Response(JSON.stringify({ 
+        error: 'Service temporarily unavailable'
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    // Update last analysis timestamp
-    await supabase
-      .from('auto_trading_config')
-      .update({ last_analysis_at: now.toISOString() })
-      .eq('user_id', user.id);
+    const config = configData?.[0];
+    if (!config) {
+      return new Response(JSON.stringify({ 
+        error: 'Configuration not found' 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // Major crypto pairs to analyze (excluding BTC and ETH)
     const symbols = [
@@ -265,9 +271,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in ai-auto-trade:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ 
-      error: errorMessage 
+      error: 'Analysis failed'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
