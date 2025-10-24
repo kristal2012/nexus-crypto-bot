@@ -41,17 +41,17 @@ serve(async (req) => {
       );
     }
 
-    // Encrypt the API secret
-    const encryptedSecret = await encryptSecret(api_secret);
+    // Encrypt the API secret with new PBKDF2 method
+    const { encrypted, salt } = await encryptSecret(api_secret);
 
-    // Store encrypted secret in database
+    // Store encrypted secret in database with salt
     const { error: upsertError } = await supabase
       .from('binance_api_keys')
       .upsert({
         user_id: user.id,
         api_key: api_key.trim(),
-        api_secret_encrypted: encryptedSecret,
-        api_secret: '', // Clear plaintext (will be removed in future migration)
+        api_secret_encrypted: encrypted,
+        encryption_salt: salt,
       }, {
         onConflict: 'user_id'
       });

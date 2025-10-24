@@ -45,6 +45,23 @@ serve(async (req) => {
       });
     }
 
+    // Check if trading is enabled system-wide
+    const { data: systemSettings } = await supabase
+      .from('system_settings')
+      .select('trading_enabled, emergency_message')
+      .single();
+    
+    if (!systemSettings?.trading_enabled) {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Trading is currently paused', 
+        message: systemSettings?.emergency_message 
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Use atomic row-level locking to prevent race conditions
     // This ensures only one analysis runs at a time per user
     const { data: configData, error: lockError } = await supabase.rpc('acquire_analysis_lock', {

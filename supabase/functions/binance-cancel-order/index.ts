@@ -1,10 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const cancelOrderSchema = z.object({
+  symbol: z.string().regex(/^[A-Z0-9]{1,20}$/, 'Invalid symbol format').max(20),
+  orderId: z.string().regex(/^[0-9]{1,20}$/, 'Invalid order ID format').max(20)
+});
 
 async function signRequest(queryString: string, apiSecret: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -50,19 +57,39 @@ serve(async (req) => {
       );
     }
 
-    const { symbol, orderId } = await req.json();
-
-    if (!symbol || !orderId) {
+    // Validate input with zod
+    const body = await req.json();
+    const validation = cancelOrderSchema.safeParse(body);
+    
+    if (!validation.success) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters: symbol, orderId' }),
+        JSON.stringify({ error: 'Invalid input', details: validation.error.issues }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { symbol, orderId } = validation.data;
+
+    // Check if trading is enabled system-wide
+    const { data: systemSettings } = await supabase
+      .from('system_settings')
+      .select('trading_enabled, emergency_message')
+      .single();
+    
+    if (!systemSettings?.trading_enabled) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Trading is currently paused', 
+          message: systemSettings?.emergency_message 
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Get user's Binance API keys
     const { data: apiKeys, error: keysError } = await supabase
       .from('binance_api_keys')
-      .select('api_key, api_secret_encrypted')
+      .select('api_key, api_secret_encrypted, encryption_salt')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -75,8 +102,10 @@ serve(async (req) => {
     }
 
     // Decrypt the API secret
-    const { decryptSecret } = await import('../_shared/encryption.ts');
-    const apiSecret = await decryptSecret(apiKeys.api_secret_encrypted);
+    const { decryptSecret, decryptSecretLegacy } = await import('../_shared/encryption.ts');
+    const apiSecret = apiKeys.encryption_salt 
+      ? await decryptSecret(apiKeys.api_secret_encrypted, apiKeys.encryption_salt)
+      : await decryptSecretLegacy(apiKeys.api_secret_encrypted);
 
     const timestamp = Date.now();
     const queryString = `symbol=${symbol}&orderId=${orderId}&timestamp=${timestamp}`;

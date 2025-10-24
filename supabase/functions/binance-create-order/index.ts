@@ -1,10 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const createOrderSchema = z.object({
+  symbol: z.string().regex(/^[A-Z0-9]{1,20}$/, 'Invalid symbol format').max(20),
+  side: z.enum(['BUY', 'SELL']),
+  type: z.string().min(1).max(50),
+  quantity: z.number().positive().max(1000000).or(z.string().regex(/^\d+(\.\d{1,8})?$/)),
+  price: z.number().positive().optional().or(z.string().regex(/^\d+(\.\d+)?$/).optional()),
+  stopPrice: z.number().positive().optional().or(z.string().regex(/^\d+(\.\d+)?$/).optional())
+});
 
 async function signRequest(queryString: string, apiSecret: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -50,86 +61,44 @@ serve(async (req) => {
       );
     }
 
-    const { symbol, side, type, quantity, price, stopPrice } = await req.json();
+    // Validate input with zod
+    const body = await req.json();
+    const validation = createOrderSchema.safeParse(body);
+    
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid input', details: validation.error.issues }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { symbol, side, type, quantity, price, stopPrice } = validation.data;
+    
+    // Convert to string for consistency
+    const quantityStr = typeof quantity === 'number' ? quantity.toString() : quantity;
+    const priceStr = price ? (typeof price === 'number' ? price.toString() : price) : undefined;
+    const stopPriceStr = stopPrice ? (typeof stopPrice === 'number' ? stopPrice.toString() : stopPrice) : undefined;
 
-    if (!symbol || !side || !type || !quantity) {
+    // Check if trading is enabled system-wide
+    const { data: systemSettings } = await supabase
+      .from('system_settings')
+      .select('trading_enabled, emergency_message')
+      .single();
+    
+    if (!systemSettings?.trading_enabled) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters: symbol, side, type, quantity' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'Trading is currently paused', 
+          message: systemSettings?.emergency_message 
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    }
-
-    // Validate quantity
-    const quantityNum = parseFloat(quantity);
-    if (isNaN(quantityNum)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid quantity: must be a valid number' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    if (quantityNum <= 0) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid quantity: must be greater than 0' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    if (quantityNum > 1000000) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid quantity: exceeds maximum allowed (1,000,000)' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    // Check decimal places (max 8 for crypto)
-    const decimalPlaces = (quantity.toString().split('.')[1] || '').length;
-    if (decimalPlaces > 8) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid quantity: maximum 8 decimal places allowed' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate symbol format
-    if (!/^[A-Z0-9]+$/.test(symbol)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid symbol format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate side
-    if (side !== 'BUY' && side !== 'SELL') {
-      return new Response(
-        JSON.stringify({ error: 'Invalid side: must be BUY or SELL' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate price if provided
-    if (price !== undefined && price !== null) {
-      const priceNum = parseFloat(price);
-      if (isNaN(priceNum) || priceNum <= 0) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid price: must be a positive number' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Validate stopPrice if provided
-    if (stopPrice !== undefined && stopPrice !== null) {
-      const stopPriceNum = parseFloat(stopPrice);
-      if (isNaN(stopPriceNum) || stopPriceNum <= 0) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid stopPrice: must be a positive number' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
     }
 
     // Get user's Binance API keys
     const { data: apiKeys, error: keysError } = await supabase
       .from('binance_api_keys')
-      .select('api_key, api_secret_encrypted')
+      .select('api_key, api_secret_encrypted, encryption_salt')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -142,24 +111,26 @@ serve(async (req) => {
     }
 
     // Decrypt the API secret
-    const { decryptSecret } = await import('../_shared/encryption.ts');
-    const apiSecret = await decryptSecret(apiKeys.api_secret_encrypted);
+    const { decryptSecret, decryptSecretLegacy } = await import('../_shared/encryption.ts');
+    const apiSecret = apiKeys.encryption_salt 
+      ? await decryptSecret(apiKeys.api_secret_encrypted, apiKeys.encryption_salt)
+      : await decryptSecretLegacy(apiKeys.api_secret_encrypted);
 
     const timestamp = Date.now();
-    let queryString = `symbol=${symbol}&side=${side}&type=${type}&quantity=${quantity}&timestamp=${timestamp}`;
+    let queryString = `symbol=${symbol}&side=${side}&type=${type}&quantity=${quantityStr}&timestamp=${timestamp}`;
     
-    if (type === 'LIMIT' && price) {
-      queryString += `&price=${price}&timeInForce=GTC`;
+    if (type === 'LIMIT' && priceStr) {
+      queryString += `&price=${priceStr}&timeInForce=GTC`;
     }
     
-    if ((type === 'STOP_MARKET' || type === 'TAKE_PROFIT_MARKET') && stopPrice) {
-      queryString += `&stopPrice=${stopPrice}`;
+    if ((type === 'STOP_MARKET' || type === 'TAKE_PROFIT_MARKET') && stopPriceStr) {
+      queryString += `&stopPrice=${stopPriceStr}`;
     }
 
     const signature = await signRequest(queryString, apiSecret);
     const binanceUrl = `https://fapi.binance.com/fapi/v1/order?${queryString}&signature=${signature}`;
 
-    console.log('Creating order:', { symbol, side, type, quantity, price, stopPrice });
+    console.log('Creating order:', { symbol, side, type, quantity: quantityStr, price: priceStr, stopPrice: stopPriceStr });
 
     const response = await fetch(binanceUrl, {
       method: 'POST',
@@ -197,8 +168,8 @@ serve(async (req) => {
         symbol,
         side: side as 'BUY' | 'SELL',
         type: type as any,
-        quantity: parseFloat(quantity),
-        price: price ? parseFloat(price) : parseFloat(data.avgPrice || '0'),
+        quantity: parseFloat(quantityStr),
+        price: priceStr ? parseFloat(priceStr) : parseFloat(data.avgPrice || '0'),
         status: data.status === 'FILLED' ? 'FILLED' : 'PENDING',
         order_id: data.orderId?.toString(),
         executed_at: data.status === 'FILLED' ? new Date().toISOString() : null,

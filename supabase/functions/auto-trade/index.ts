@@ -32,6 +32,23 @@ serve(async (req) => {
       );
     }
 
+    // Check if trading is enabled system-wide
+    const { data: systemSettings } = await supabase
+      .from('system_settings')
+      .select('trading_enabled, emergency_message')
+      .single();
+    
+    if (!systemSettings?.trading_enabled) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Trading is currently paused', 
+          message: systemSettings?.emergency_message 
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get trading settings to check if in demo mode
     const { data: settingsData, error: settingsError } = await supabase
       .from('trading_settings')

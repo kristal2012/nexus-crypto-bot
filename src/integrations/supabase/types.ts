@@ -97,6 +97,7 @@ export type Database = {
           api_key: string
           api_secret_encrypted: string
           created_at: string
+          encryption_salt: string | null
           id: string
           updated_at: string
           user_id: string
@@ -105,6 +106,7 @@ export type Database = {
           api_key: string
           api_secret_encrypted: string
           created_at?: string
+          encryption_salt?: string | null
           id?: string
           updated_at?: string
           user_id: string
@@ -113,6 +115,7 @@ export type Database = {
           api_key?: string
           api_secret_encrypted?: string
           created_at?: string
+          encryption_salt?: string | null
           id?: string
           updated_at?: string
           user_id?: string
@@ -161,6 +164,33 @@ export type Database = {
           trades_count?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      emergency_stop_audit: {
+        Row: {
+          action: string
+          created_at: string
+          emergency_message: string | null
+          id: string
+          trading_enabled: boolean
+          triggered_by: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          emergency_message?: string | null
+          id?: string
+          trading_enabled: boolean
+          triggered_by: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          emergency_message?: string | null
+          id?: string
+          trading_enabled?: boolean
+          triggered_by?: string
         }
         Relationships: []
       }
@@ -281,6 +311,33 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          created_at: string
+          emergency_message: string | null
+          id: string
+          trading_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          emergency_message?: string | null
+          id?: string
+          trading_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          emergency_message?: string | null
+          id?: string
+          trading_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           commission: number | null
@@ -392,6 +449,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -409,9 +487,17 @@ export type Database = {
           take_profit: number
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       reset_daily_bot_stats: { Args: never; Returns: undefined }
     }
     Enums: {
+      app_role: "admin" | "user"
       performance_period: "DAILY" | "WEEKLY" | "MONTHLY" | "ALL_TIME"
       trade_side: "BUY" | "SELL"
       trade_status: "PENDING" | "FILLED" | "PARTIAL" | "CANCELLED" | "FAILED"
@@ -543,6 +629,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "user"],
       performance_period: ["DAILY", "WEEKLY", "MONTHLY", "ALL_TIME"],
       trade_side: ["BUY", "SELL"],
       trade_status: ["PENDING", "FILLED", "PARTIAL", "CANCELLED", "FAILED"],
