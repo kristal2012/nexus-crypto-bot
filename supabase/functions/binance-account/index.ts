@@ -87,10 +87,21 @@ serve(async (req) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Binance API error:', data);
+      console.error('Binance API error:', data); // Keep server-side logging
+      
+      // Sanitize error for client - don't expose internal API details
+      let userMessage = 'Unable to fetch account information';
+      if (data?.code === -2015) {
+        userMessage = 'Invalid API key configuration';
+      } else if (data?.code === -1021) {
+        userMessage = 'Request timeout - please try again';
+      } else if (data?.code === -2014) {
+        userMessage = 'API key authentication failed';
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Binance API error', details: data }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: userMessage }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

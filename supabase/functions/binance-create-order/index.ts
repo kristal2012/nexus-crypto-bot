@@ -9,7 +9,7 @@ const corsHeaders = {
 
 // Input validation schema
 const createOrderSchema = z.object({
-  symbol: z.string().regex(/^[A-Z0-9]{1,20}$/, 'Invalid symbol format').max(20),
+  symbol: z.string().regex(/^[A-Z]{2,10}USDT$/, 'Symbol must be uppercase letters ending in USDT').min(5).max(15),
   side: z.enum(['BUY', 'SELL']),
   type: z.string().min(1).max(50),
   quantity: z.number().positive().max(1000000).or(z.string().regex(/^\d+(\.\d{1,8})?$/)),

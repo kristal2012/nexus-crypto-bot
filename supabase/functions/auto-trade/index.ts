@@ -152,10 +152,10 @@ serve(async (req) => {
       );
     }
 
-    // Validate symbol format (basic check)
-    if (!/^[A-Z0-9]+$/.test(symbol)) {
+    // Validate symbol format - must be uppercase letters ending in USDT
+    if (!/^[A-Z]{2,10}USDT$/.test(symbol) || symbol.length < 5 || symbol.length > 15) {
       return new Response(
-        JSON.stringify({ error: 'Invalid symbol format' }),
+        JSON.stringify({ error: 'Invalid symbol format. Symbol must be uppercase letters ending in USDT (e.g., BTCUSDT)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
