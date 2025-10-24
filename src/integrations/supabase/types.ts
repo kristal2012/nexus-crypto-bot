@@ -484,8 +484,8 @@ export type Database = {
           is_active: boolean
           last_analysis_at: string
           leverage: number
-          max_daily_trades: number
           min_confidence: number
+          quantity_usdt: number
           stop_loss: number
           take_profit: number
         }[]
