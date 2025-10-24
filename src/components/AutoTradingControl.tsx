@@ -32,6 +32,9 @@ export const AutoTradingControl = () => {
   useEffect(() => {
     if (!user || !isActive) return;
 
+    let timeoutId: NodeJS.Timeout;
+    let intervalId: NodeJS.Timeout;
+
     const executeAutoAnalysis = async () => {
       try {
         console.log('Executing automatic analysis...');
@@ -44,6 +47,12 @@ export const AutoTradingControl = () => {
 
         if (data?.rate_limited) {
           console.log('Rate limited:', data.message);
+          // Schedule next execution after the remaining cooldown time
+          if (data.remaining_seconds) {
+            const waitTime = (data.remaining_seconds + 5) * 1000; // Add 5 seconds buffer
+            console.log(`Scheduling next analysis in ${data.remaining_seconds + 5} seconds`);
+            timeoutId = setTimeout(executeAutoAnalysis, waitTime);
+          }
         } else if (data?.executed_trades && data.executed_trades.length > 0) {
           console.log(`Auto analysis completed: ${data.executed_trades.length} trades executed`);
           loadLastAnalysis();
@@ -64,9 +73,12 @@ export const AutoTradingControl = () => {
     executeAutoAnalysis();
 
     // Then execute every 15 minutes (900000 ms)
-    const analysisInterval = setInterval(executeAutoAnalysis, 900000);
+    intervalId = setInterval(executeAutoAnalysis, 900000);
 
-    return () => clearInterval(analysisInterval);
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
   }, [user, isActive]);
 
   // Analysis runs automatically on the backend every 15 minutes when active
