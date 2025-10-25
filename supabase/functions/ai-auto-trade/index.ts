@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decryptSecret, decryptSecretLegacy } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,14 +120,15 @@ serve(async (req) => {
     // Public API is blocked by geographic restrictions (error 451)
     const { data: apiSettings } = await supabase
       .from('binance_api_keys')
-      .select('api_key, api_secret_encrypted')
+      .select('api_key, api_secret_encrypted, encryption_salt')
       .eq('user_id', user.id)
       .maybeSingle();
     
     console.log('API Settings query result:', { 
       hasData: !!apiSettings, 
       hasApiKey: !!apiSettings?.api_key,
-      hasSecret: !!apiSettings?.api_secret_encrypted 
+      hasSecret: !!apiSettings?.api_secret_encrypted,
+      hasSalt: !!apiSettings?.encryption_salt
     });
 
     const hasApiCredentials = apiSettings?.api_key && apiSettings?.api_secret_encrypted;
@@ -143,15 +145,38 @@ serve(async (req) => {
       });
     }
 
+    // Decrypt API secret
+    let decryptedSecret: string;
+    try {
+      if (apiSettings.encryption_salt) {
+        decryptedSecret = await decryptSecret(apiSettings.api_secret_encrypted, apiSettings.encryption_salt);
+        console.log('API secret decrypted successfully with salt');
+      } else {
+        // Fallback to legacy decryption for old keys
+        decryptedSecret = await decryptSecretLegacy(apiSettings.api_secret_encrypted);
+        console.log('API secret decrypted successfully with legacy method');
+      }
+    } catch (error) {
+      console.error('Failed to decrypt API secret:', error);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Erro ao descriptografar credenciais',
+        message: 'Não foi possível descriptografar suas credenciais da Binance. Por favor, reconfigure suas chaves.'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     console.log('Using authenticated Binance API');
 
     // Fetch exchange info to get minimum notional values
-    const exchangeInfo = await fetchExchangeInfo(apiSettings.api_key, apiSettings.api_secret_encrypted);
+    const exchangeInfo = await fetchExchangeInfo(apiSettings.api_key, decryptedSecret);
     console.log(`Fetched exchange info for ${Object.keys(exchangeInfo).length} pairs`);
 
     // Fetch price data for all symbols
     const priceDataPromises = symbols.map(symbol => 
-      fetchPriceData(symbol, apiSettings.api_key, apiSettings.api_secret_encrypted)
+      fetchPriceData(symbol, apiSettings.api_key, decryptedSecret)
     );
     const priceDataResults = await Promise.allSettled(priceDataPromises);
     
