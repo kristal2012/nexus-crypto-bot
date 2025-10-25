@@ -224,9 +224,6 @@ serve(async (req) => {
 
     console.log(`Found ${analyses.length} high-confidence trading opportunities`);
 
-    // Sort by confidence (highest first) - execute all opportunities ≥70%
-    const tradesToExecute = analyses.sort((a, b) => b.confidence - a.confidence);
-
     // Check trading mode and confirmation for real mode
     const { data: settings } = await supabase
       .from('trading_settings')
@@ -254,14 +251,30 @@ serve(async (req) => {
       }
     }
 
-    // Get current balance to calculate 10% per analysis
+    // Get current balance to calculate per analysis
     const { data: accountInfo } = await supabase.functions.invoke('binance-account');
     const availableBalance = accountInfo?.totalWalletBalance || config.quantity_usdt;
     
     // Hard limit to prevent catastrophic losses even if calculations are wrong
     const MAX_POSITION_USD = 10000;
-    // 10% of available balance to distribute across all opportunities in this analysis
-    const totalAnalysisAmount = Math.min(availableBalance * 0.10, MAX_POSITION_USD);
+    // Use 30% of available balance to distribute across opportunities (increased from 10% to ensure min notional is met)
+    const totalAnalysisAmount = Math.min(availableBalance * 0.30, MAX_POSITION_USD);
+    
+    // Calculate minimum amount needed per opportunity (assume min notional of 5 USDT)
+    const MIN_NOTIONAL = 5;
+    const maxOpportunitiesWithBudget = Math.floor(totalAnalysisAmount / MIN_NOTIONAL);
+    
+    console.log(`Total analysis budget: ${totalAnalysisAmount} USDT, can execute up to ${maxOpportunitiesWithBudget} opportunities`);
+
+    // Sort by confidence (highest first) - execute only opportunities that fit within budget
+    const sortedAnalyses = analyses.sort((a, b) => b.confidence - a.confidence);
+    
+    // Limit to max opportunities we can afford with current budget
+    const tradesToExecute = sortedAnalyses.slice(0, maxOpportunitiesWithBudget);
+    
+    if (sortedAnalyses.length > maxOpportunitiesWithBudget) {
+      console.log(`Limiting to ${maxOpportunitiesWithBudget} opportunities (budget constraint). ${sortedAnalyses.length - maxOpportunitiesWithBudget} opportunities skipped.`);
+    }
 
     // Buscar saldo inicial do dia para calcular TP
     const { data: dailyStats } = await supabase
@@ -280,10 +293,11 @@ serve(async (req) => {
     const atrMultiplier = config.stop_loss || 1.5; // stop_loss agora armazena multiplicador ATR
 
     console.log(`Saldo disponível: ${availableBalance} USDT`);
-    console.log(`Valor total desta análise (10%): ${totalAnalysisAmount} USDT`);
+    console.log(`Valor total desta análise (30%): ${totalAnalysisAmount} USDT`);
     console.log(`Saldo inicial do dia: ${startingBalance} USDT`);
     console.log(`Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
     console.log(`Stop Loss: Adaptativo (ATR × ${atrMultiplier})`);
+    console.log(`Executando até ${tradesToExecute.length} oportunidades`);
 
     const executedTrades = [];
     let remainingAmount = totalAnalysisAmount;
