@@ -402,51 +402,95 @@ async function fetchPriceData(symbol: string): Promise<PriceData> {
 async function analyzeWithAI(priceData: PriceData, config: any, minNotional: number): Promise<AIAnalysis> {
   const { symbol, prices, currentPrice, volatility } = priceData;
   
-  // Normalize prices
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
-  const normalized = prices.map(p => (p - min) / (max - min));
-
-  // Simple trend analysis
-  const recentPrices = prices.slice(-10);
-  const olderPrices = prices.slice(-20, -10);
-  const recentAvg = recentPrices.reduce((a, b) => a + b, 0) / recentPrices.length;
-  const olderAvg = olderPrices.reduce((a, b) => a + b, 0) / olderPrices.length;
-  
-  const trendStrength = ((recentAvg - olderAvg) / olderAvg) * 100;
-  
   // Calculate momentum indicators
   const rsi = calculateRSI(prices);
   const macd = calculateMACD(prices);
   
-  // Predict next price movement
-  const lastSequence = normalized.slice(-5);
-  const trend = lastSequence[lastSequence.length - 1] > lastSequence[0];
-  const momentum = (lastSequence[lastSequence.length - 1] - lastSequence[0]) / lastSequence[0];
+  // Enhanced trend analysis with multiple timeframes
+  const recentPrices = prices.slice(-6);  // Last 6 hours
+  const midPrices = prices.slice(-12, -6);  // Middle 6 hours
+  const olderPrices = prices.slice(-18, -12);  // Older 6 hours
   
-  // Denormalize prediction
-  const predictedNormalized = lastSequence[lastSequence.length - 1] + (momentum * 0.5);
-  const predictedPrice = predictedNormalized * (max - min) + min;
+  const recentAvg = recentPrices.reduce((a, b) => a + b, 0) / recentPrices.length;
+  const midAvg = midPrices.reduce((a, b) => a + b, 0) / midPrices.length;
+  const olderAvg = olderPrices.reduce((a, b) => a + b, 0) / olderPrices.length;
   
-  // Calculate confidence based on multiple factors
-  let confidence = 50;
+  // Calculate trend strength
+  const shortTermTrend = ((recentAvg - midAvg) / midAvg) * 100;
+  const mediumTermTrend = ((midAvg - olderAvg) / olderAvg) * 100;
+  const overallTrend = ((recentAvg - olderAvg) / olderAvg) * 100;
   
-  // Strong trend increases confidence
-  if (Math.abs(trendStrength) > 2) confidence += 15;
-  if (Math.abs(trendStrength) > 5) confidence += 10;
+  // Determine trend direction with stricter criteria
+  let trendDirection: 'up' | 'down' | 'neutral' = 'neutral';
   
-  // RSI in optimal range increases confidence
-  if (trend && rsi < 70 && rsi > 50) confidence += 10;
-  if (!trend && rsi > 30 && rsi < 50) confidence += 10;
+  // For uptrend: both short and medium term must be positive, or overall trend strong positive
+  if ((shortTermTrend > 0.3 && mediumTermTrend > 0.2) || overallTrend > 1.0) {
+    trendDirection = 'up';
+  } 
+  // For downtrend: both short and medium term must be negative, or overall trend strong negative
+  else if ((shortTermTrend < -0.3 && mediumTermTrend < -0.2) || overallTrend < -1.0) {
+    trendDirection = 'down';
+  }
   
-  // MACD confirmation increases confidence
-  if (macd.signal === 'buy' && trend) confidence += 15;
+  // Price prediction using linear regression on recent data
+  const recentData = prices.slice(-10);
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (let i = 0; i < recentData.length; i++) {
+    sumX += i;
+    sumY += recentData[i];
+    sumXY += i * recentData[i];
+    sumX2 += i * i;
+  }
+  const n = recentData.length;
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  const predictedPrice = slope * n + intercept;
   
-  // Low volatility increases confidence
-  if (volatility < 0.02) confidence += 10;
+  // Calculate confidence based on multiple technical factors
+  let confidence = 40;  // Start lower for more realistic scoring
   
-  // Cap confidence at 99
-  confidence = Math.min(99, confidence);
+  // Trend alignment increases confidence significantly
+  if (trendDirection === 'up') {
+    if (shortTermTrend > 0.5 && mediumTermTrend > 0.3) confidence += 20;  // Strong uptrend
+    else if (shortTermTrend > 0.2 && mediumTermTrend > 0.1) confidence += 15;  // Moderate uptrend
+    else confidence += 10;  // Weak uptrend
+  }
+  
+  // RSI analysis
+  if (trendDirection === 'up' && rsi > 40 && rsi < 65) {
+    confidence += 15;  // RSI in bullish zone but not overbought
+  } else if (trendDirection === 'up' && rsi >= 65 && rsi < 75) {
+    confidence += 8;  // RSI high but not extreme
+  } else if (rsi > 75) {
+    confidence -= 5;  // Overbought - reduce confidence
+  }
+  
+  // MACD confirmation
+  if (macd.signal === 'buy' && trendDirection === 'up') {
+    confidence += 15;  // Strong bullish signal
+  } else if (macd.signal === 'buy') {
+    confidence += 8;  // Bullish signal but no trend confirmation
+  }
+  
+  // Volatility analysis
+  if (volatility < 0.015) {
+    confidence += 10;  // Low volatility = more predictable
+  } else if (volatility < 0.025) {
+    confidence += 5;  // Moderate volatility
+  } else {
+    confidence -= 5;  // High volatility = less predictable
+  }
+  
+  // Price momentum confirmation
+  const priceChange24h = ((currentPrice - prices[0]) / prices[0]) * 100;
+  if (trendDirection === 'up' && priceChange24h > 1) {
+    confidence += 10;  // Strong positive momentum
+  } else if (trendDirection === 'up' && priceChange24h > 0.5) {
+    confidence += 5;  // Moderate positive momentum
+  }
+  
+  // Cap confidence at 95 (never 100% certain in trading)
+  confidence = Math.min(95, Math.max(30, confidence));
   
   // Calculate recommended DCA layers based on volatility and position size
   let recommendedDcaLayers = 3; // Default
@@ -476,7 +520,7 @@ async function analyzeWithAI(priceData: PriceData, config: any, minNotional: num
     symbol,
     predictedPrice,
     confidence,
-    trend: trendStrength > 1 ? 'up' : trendStrength < -1 ? 'down' : 'neutral',
+    trend: trendDirection,
     recommendedDcaLayers,
     minNotional,
     calculatedQuantity
