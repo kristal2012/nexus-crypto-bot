@@ -115,8 +115,8 @@ serve(async (req) => {
 
     console.log(`Analyzing ${symbols.length} crypto pairs...`);
 
-    // Try to get user's Binance API credentials for authenticated requests
-    // but continue with public API if not available
+    // Get user's Binance API credentials - REQUIRED for analysis
+    // Public API is blocked by geographic restrictions (error 451)
     const { data: apiSettings } = await supabase
       .from('binance_api_settings')
       .select('api_key, api_secret_encrypted')
@@ -124,26 +124,28 @@ serve(async (req) => {
       .maybeSingle();
 
     const hasApiCredentials = apiSettings?.api_key && apiSettings?.api_secret_encrypted;
-    if (hasApiCredentials) {
-      console.log('Using authenticated Binance API');
-    } else {
-      console.log('Using public Binance API (no credentials configured)');
+    
+    if (!hasApiCredentials) {
+      console.log('Binance API credentials not configured');
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Credenciais da Binance não configuradas',
+        message: 'Configure sua API Key e Secret da Binance nas configurações para habilitar análises automáticas. A API pública está bloqueada na sua região.'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
+    console.log('Using authenticated Binance API');
+
     // Fetch exchange info to get minimum notional values
-    const exchangeInfo = await fetchExchangeInfo(
-      hasApiCredentials ? apiSettings.api_key : undefined, 
-      hasApiCredentials ? apiSettings.api_secret_encrypted : undefined
-    );
+    const exchangeInfo = await fetchExchangeInfo(apiSettings.api_key, apiSettings.api_secret_encrypted);
     console.log(`Fetched exchange info for ${Object.keys(exchangeInfo).length} pairs`);
 
     // Fetch price data for all symbols
     const priceDataPromises = symbols.map(symbol => 
-      fetchPriceData(
-        symbol, 
-        hasApiCredentials ? apiSettings.api_key : undefined, 
-        hasApiCredentials ? apiSettings.api_secret_encrypted : undefined
-      )
+      fetchPriceData(symbol, apiSettings.api_key, apiSettings.api_secret_encrypted)
     );
     const priceDataResults = await Promise.allSettled(priceDataPromises);
     

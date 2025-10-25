@@ -44,7 +44,18 @@ export const AutoTradingControl = () => {
           console.error('Auto analysis error:', error);
           toast({
             title: "Erro na Análise",
-            description: "Não foi possível executar a análise automática",
+            description: "Verifique se suas credenciais da Binance estão configuradas.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Check if credentials are missing
+        if (data?.error === 'Credenciais da Binance não configuradas') {
+          console.log('Binance credentials not configured');
+          toast({
+            title: "Configuração Necessária",
+            description: data.message,
             variant: "destructive",
           });
           return;
