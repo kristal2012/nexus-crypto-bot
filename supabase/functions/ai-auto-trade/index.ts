@@ -356,7 +356,7 @@ serve(async (req) => {
           body: {
             symbol: analysis.symbol,
             side: 'BUY',
-            quantity: quantityPerLayer.toString(),
+            quoteOrderQty: quantityPerLayer.toString(), // Use quoteOrderQty to specify value in USDT
             takeProfitAmount,
             stopLossAmount: adaptiveStopLoss
           }

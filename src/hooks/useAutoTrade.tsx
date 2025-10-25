@@ -5,7 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 interface TradeParams {
   symbol: string;
   side: "BUY" | "SELL";
-  quantity: string;
+  quantity?: string;
+  quoteOrderQty?: string;
 }
 
 export const useAutoTrade = () => {
@@ -32,7 +33,7 @@ export const useAutoTrade = () => {
 
       toast({
         title: "Trade executado com sucesso",
-        description: `${params.side} ${params.quantity} ${params.symbol}`,
+        description: `${params.side} ${params.quoteOrderQty || params.quantity} USDT de ${params.symbol}`,
       });
 
       return { success: true, data };

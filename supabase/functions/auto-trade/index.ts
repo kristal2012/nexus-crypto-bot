@@ -114,40 +114,42 @@ serve(async (req) => {
       );
     }
 
-    const { symbol, side, quantity, takeProfitAmount, stopLossAmount } = await req.json();
+    const { symbol, side, quantity, quoteOrderQty, takeProfitAmount, stopLossAmount } = await req.json();
 
-    if (!symbol || !side || !quantity) {
+    // Check if either quantity or quoteOrderQty is provided
+    if (!symbol || !side || (!quantity && !quoteOrderQty)) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters: symbol, side, quantity' }),
+        JSON.stringify({ error: 'Missing required parameters: symbol, side, and either quantity or quoteOrderQty' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate quantity
-    const quantityNum = parseFloat(quantity);
-    if (isNaN(quantityNum)) {
+    // Validate quantity or quoteOrderQty
+    const valueToValidate = quoteOrderQty || quantity;
+    const valueNum = parseFloat(valueToValidate);
+    if (isNaN(valueNum)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quantity: must be a valid number' }),
+        JSON.stringify({ error: 'Invalid value: must be a valid number' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    if (quantityNum <= 0) {
+    if (valueNum <= 0) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quantity: must be greater than 0' }),
+        JSON.stringify({ error: 'Invalid value: must be greater than 0' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    if (quantityNum > 1000000) {
+    if (valueNum > 1000000) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quantity: exceeds maximum allowed (1,000,000)' }),
+        JSON.stringify({ error: 'Invalid value: exceeds maximum allowed (1,000,000)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     // Check decimal places (max 8 for crypto)
-    const decimalPlaces = (quantity.toString().split('.')[1] || '').length;
+    const decimalPlaces = (valueToValidate.toString().split('.')[1] || '').length;
     if (decimalPlaces > 8) {
       return new Response(
-        JSON.stringify({ error: 'Invalid quantity: maximum 8 decimal places allowed' }),
+        JSON.stringify({ error: 'Invalid value: maximum 8 decimal places allowed' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -168,7 +170,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Executing trade:', { symbol, side, quantity, isDemo });
+    console.log('Executing trade:', { symbol, side, quantity, quoteOrderQty, isDemo });
 
     let orderData;
     let executedPrice;
@@ -179,7 +181,14 @@ serve(async (req) => {
       const marketPriceResponse = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`);
       const marketPriceData = await marketPriceResponse.json();
       executedPrice = parseFloat(marketPriceData.price);
-      executedQty = parseFloat(quantity);
+      
+      // If quoteOrderQty is provided, calculate quantity from USDT value
+      if (quoteOrderQty) {
+        const usdtValue = parseFloat(quoteOrderQty);
+        executedQty = usdtValue / executedPrice;
+      } else {
+        executedQty = parseFloat(quantity);
+      }
 
       // Calculate new demo balance
       const currentDemoBalance = typeof settings!.demo_balance === 'string' 
@@ -207,7 +216,7 @@ serve(async (req) => {
         symbol,
         side,
         type: 'MARKET',
-        executedQty: quantity,
+        executedQty: executedQty.toString(),
         avgPrice: executedPrice.toString(),
         commission: commission.toString(),
         status: 'FILLED'
@@ -216,13 +225,21 @@ serve(async (req) => {
       console.log('Demo trade executed:', orderData);
     } else {
       // Execute real trade
+      const orderBody: any = {
+        symbol,
+        side,
+        type: 'MARKET',
+      };
+      
+      // Use quoteOrderQty if provided, otherwise use quantity
+      if (quoteOrderQty) {
+        orderBody.quoteOrderQty = quoteOrderQty;
+      } else {
+        orderBody.quantity = quantity;
+      }
+      
       const tradeResponse = await supabase.functions.invoke('binance-create-order', {
-        body: {
-          symbol,
-          side,
-          type: 'MARKET',
-          quantity,
-        }
+        body: orderBody
       });
 
       if (tradeResponse.error) {
@@ -437,7 +454,9 @@ serve(async (req) => {
     console.log('Trade executed successfully:', {
       symbol,
       side,
-      quantity,
+      quantity: executedQty,
+      quoteOrderQty,
+      value_usdt: (executedPrice * executedQty).toFixed(2),
       isDemo,
       new_balance: currentBalance,
       profit_loss: profitLossPercent.toFixed(2) + '%',
