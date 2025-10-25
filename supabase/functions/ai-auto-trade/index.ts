@@ -115,12 +115,31 @@ serve(async (req) => {
 
     console.log(`Analyzing ${symbols.length} crypto pairs...`);
 
+    // Get user's Binance API credentials for authenticated requests
+    const { data: apiSettings } = await supabase
+      .from('binance_api_settings')
+      .select('api_key, api_secret_encrypted')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!apiSettings?.api_key || !apiSettings?.api_secret_encrypted) {
+      return new Response(JSON.stringify({ 
+        error: 'Binance API credentials not configured',
+        message: 'Please configure your Binance API keys in settings'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Fetch exchange info to get minimum notional values
-    const exchangeInfo = await fetchExchangeInfo();
+    const exchangeInfo = await fetchExchangeInfo(apiSettings.api_key, apiSettings.api_secret_encrypted);
     console.log(`Fetched exchange info for ${Object.keys(exchangeInfo).length} pairs`);
 
-    // Fetch price data for all symbols
-    const priceDataPromises = symbols.map(symbol => fetchPriceData(symbol));
+    // Fetch price data for all symbols using authenticated API
+    const priceDataPromises = symbols.map(symbol => 
+      fetchPriceData(symbol, apiSettings.api_key, apiSettings.api_secret_encrypted)
+    );
     const priceDataResults = await Promise.allSettled(priceDataPromises);
     
     const validPriceData: PriceData[] = priceDataResults
@@ -339,7 +358,7 @@ serve(async (req) => {
   }
 });
 
-async function fetchExchangeInfo(): Promise<Record<string, number>> {
+async function fetchExchangeInfo(apiKey: string, apiSecret: string): Promise<Record<string, number>> {
   const maxRetries = 3;
   const retryDelay = 1000; // 1 second
   
@@ -347,11 +366,34 @@ async function fetchExchangeInfo(): Promise<Record<string, number>> {
     try {
       console.log(`Fetching exchange info (attempt ${attempt}/${maxRetries})...`);
       
-      const response = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo', {
-        headers: {
-          'User-Agent': 'Mozilla/5.0'
+      const timestamp = Date.now();
+      const queryString = `timestamp=${timestamp}`;
+      
+      // Create HMAC signature
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(apiSecret);
+      const msgData = encoder.encode(queryString);
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+      const signatureHex = Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      const response = await fetch(
+        `https://fapi.binance.com/fapi/v1/exchangeInfo?${queryString}&signature=${signatureHex}`,
+        {
+          headers: {
+            'X-MBX-APIKEY': apiKey,
+            'User-Agent': 'Mozilla/5.0'
+          }
         }
-      });
+      );
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -413,17 +455,37 @@ async function fetchExchangeInfo(): Promise<Record<string, number>> {
   return {};
 }
 
-async function fetchPriceData(symbol: string): Promise<PriceData> {
+async function fetchPriceData(symbol: string, apiKey: string, apiSecret: string): Promise<PriceData> {
   const maxRetries = 3;
   const retryDelay = 1000;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Fetch 24h kline data (1h intervals)
+      const timestamp = Date.now();
+      const queryString = `symbol=${symbol}&interval=1h&limit=24&timestamp=${timestamp}`;
+      
+      // Create HMAC signature
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(apiSecret);
+      const msgData = encoder.encode(queryString);
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+      const signatureHex = Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      // Fetch 24h kline data (1h intervals) with authentication
       const response = await fetch(
-        `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=24`,
+        `https://fapi.binance.com/fapi/v1/klines?${queryString}&signature=${signatureHex}`,
         {
           headers: {
+            'X-MBX-APIKEY': apiKey,
             'User-Agent': 'Mozilla/5.0'
           }
         }
