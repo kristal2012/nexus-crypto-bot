@@ -114,7 +114,7 @@ serve(async (req) => {
       );
     }
 
-    const { symbol, side, quantity } = await req.json();
+    const { symbol, side, quantity, takeProfitAmount, stopLossAmount } = await req.json();
 
     if (!symbol || !side || !quantity) {
       return new Response(
@@ -253,10 +253,13 @@ serve(async (req) => {
         .eq('is_demo', isDemo)
         .maybeSingle();
 
+      const commission = parseFloat(orderData.commission || '0');
+
       if (existingPosition) {
-        // Update existing position (average entry price)
+        // Update existing position (average entry price INCLUDING commissions)
         const totalQty = parseFloat(existingPosition.quantity) + executedQty;
-        const totalCost = (parseFloat(existingPosition.entry_price) * parseFloat(existingPosition.quantity)) + (executedPrice * executedQty);
+        // Include commission in the cost basis
+        const totalCost = (parseFloat(existingPosition.entry_price) * parseFloat(existingPosition.quantity)) + (executedPrice * executedQty) + commission;
         const avgEntryPrice = totalCost / totalQty;
 
         await supabase
@@ -269,7 +272,9 @@ serve(async (req) => {
           })
           .eq('id', existingPosition.id);
       } else {
-        // Create new position
+        // Create new position with commission included in entry price
+        const entryPriceWithCommission = (executedPrice * executedQty + commission) / executedQty;
+        
         await supabase
           .from('positions')
           .insert({
@@ -277,10 +282,20 @@ serve(async (req) => {
             symbol,
             side: 'LONG',
             quantity: executedQty,
-            entry_price: executedPrice,
+            entry_price: entryPriceWithCommission,
             current_price: executedPrice,
             is_demo: isDemo
           });
+      }
+
+      // Check if position should be closed due to stop loss
+      if (stopLossAmount && existingPosition) {
+        const currentPnL = (executedPrice - parseFloat(existingPosition.entry_price)) * parseFloat(existingPosition.quantity);
+        if (currentPnL < 0 && Math.abs(currentPnL) >= stopLossAmount) {
+          console.log(`Stop loss triggered for ${symbol}: P&L ${currentPnL.toFixed(2)} USDT <= -${stopLossAmount} USDT`);
+          // Trigger sell to close position
+          // This will be handled by the monitoring system
+        }
       }
     } else if (side === 'SELL') {
       // Closing or reducing a LONG position
@@ -295,9 +310,14 @@ serve(async (req) => {
       if (existingPosition) {
         const positionQty = parseFloat(existingPosition.quantity);
         const entryPrice = parseFloat(existingPosition.entry_price);
+        const commission = parseFloat(orderData.commission || '0');
         
-        // Calculate P&L for the sold quantity
-        profitLoss = (executedPrice - entryPrice) * Math.min(executedQty, positionQty);
+        // Calculate P&L for the sold quantity INCLUDING exit commission
+        // Entry price already includes entry commission from when position was opened
+        const soldQty = Math.min(executedQty, positionQty);
+        profitLoss = (executedPrice - entryPrice) * soldQty - commission;
+        
+        console.log(`Position closed/reduced: Entry ${entryPrice.toFixed(4)}, Exit ${executedPrice.toFixed(4)}, Qty ${soldQty}, P&L ${profitLoss.toFixed(2)} USDT (including commissions)`);
         
         if (executedQty >= positionQty) {
           // Close entire position

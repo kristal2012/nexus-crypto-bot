@@ -145,11 +145,24 @@ export const TradingDashboard = () => {
     fetchActivePositions();
     fetchWinRate();
 
+    // Monitor positions for stop loss and take profit
+    const monitorPositions = async () => {
+      if (user) {
+        try {
+          await supabase.functions.invoke('monitor-positions');
+        } catch (error) {
+          console.error('Error monitoring positions:', error);
+        }
+      }
+    };
+    monitorPositions();
+
     const interval = setInterval(() => {
       fetchDailyStats();
       fetchMonthlyProfit();
       fetchActivePositions();
       fetchWinRate();
+      monitorPositions(); // Monitor positions every 30 seconds
     }, 30000);
 
     return () => clearInterval(interval);
