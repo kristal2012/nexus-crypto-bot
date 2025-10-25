@@ -118,10 +118,16 @@ serve(async (req) => {
     // Get user's Binance API credentials - REQUIRED for analysis
     // Public API is blocked by geographic restrictions (error 451)
     const { data: apiSettings } = await supabase
-      .from('binance_api_settings')
+      .from('binance_api_keys')
       .select('api_key, api_secret_encrypted')
       .eq('user_id', user.id)
       .maybeSingle();
+    
+    console.log('API Settings query result:', { 
+      hasData: !!apiSettings, 
+      hasApiKey: !!apiSettings?.api_key,
+      hasSecret: !!apiSettings?.api_secret_encrypted 
+    });
 
     const hasApiCredentials = apiSettings?.api_key && apiSettings?.api_secret_encrypted;
     
