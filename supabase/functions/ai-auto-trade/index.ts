@@ -66,7 +66,7 @@ serve(async (req) => {
     // This ensures only one analysis runs at a time per user
     const { data: configData, error: lockError } = await supabase.rpc('acquire_analysis_lock', {
       p_user_id: user.id,
-      p_cooldown_minutes: 15
+      p_cooldown_minutes: 2  // Reduced to 2 minutes for more frequent analysis attempts
     });
 
     if (lockError) {
@@ -340,63 +340,130 @@ serve(async (req) => {
 });
 
 async function fetchExchangeInfo(): Promise<Record<string, number>> {
-  try {
-    const response = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo');
-    if (!response.ok) {
-      throw new Error('Failed to fetch exchange info');
-    }
-
-    const data = await response.json();
-    const notionalValues: Record<string, number> = {};
-
-    // Extract MIN_NOTIONAL for each symbol
-    for (const symbol of data.symbols) {
-      const minNotionalFilter = symbol.filters?.find(
-        (f: any) => f.filterType === 'MIN_NOTIONAL'
-      );
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Fetching exchange info (attempt ${attempt}/${maxRetries})...`);
       
-      if (minNotionalFilter) {
-        notionalValues[symbol.symbol] = parseFloat(minNotionalFilter.notional);
+      const response = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Binance API error (status ${response.status}):`, errorText);
+        
+        if (attempt < maxRetries) {
+          console.log(`Retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        
+        throw new Error(`Failed to fetch exchange info: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const notionalValues: Record<string, number> = {};
+
+      // Extract MIN_NOTIONAL for each symbol
+      for (const symbol of data.symbols) {
+        const minNotionalFilter = symbol.filters?.find(
+          (f: any) => f.filterType === 'MIN_NOTIONAL'
+        );
+        
+        if (minNotionalFilter) {
+          notionalValues[symbol.symbol] = parseFloat(minNotionalFilter.notional);
+        }
+      }
+
+      console.log(`Successfully fetched exchange info for ${Object.keys(notionalValues).length} pairs`);
+      return notionalValues;
+    } catch (error) {
+      console.error(`Error fetching exchange info (attempt ${attempt}/${maxRetries}):`, error);
+      
+      if (attempt < maxRetries) {
+        console.log(`Retrying in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      } else {
+        console.error('All retry attempts failed for exchange info');
+        // Return default notional values for common pairs
+        return {
+          'BNBUSDT': 5,
+          'SOLUSDT': 5,
+          'ADAUSDT': 5,
+          'DOGEUSDT': 5,
+          'XRPUSDT': 5,
+          'DOTUSDT': 5,
+          'MATICUSDT': 5,
+          'AVAXUSDT': 5,
+          'LINKUSDT': 5,
+          'UNIUSDT': 5,
+          'LTCUSDT': 5,
+          'ATOMUSDT': 5,
+          'NEARUSDT': 5
+        };
       }
     }
-
-    return notionalValues;
-  } catch (error) {
-    console.error('Error fetching exchange info:', error);
-    return {}; // Return empty object on error
   }
+  
+  return {};
 }
 
 async function fetchPriceData(symbol: string): Promise<PriceData> {
-  try {
-    // Fetch 24h kline data (1h intervals)
-    const response = await fetch(
-      `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=24`
-    );
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch data for ${symbol}`);
+  const maxRetries = 3;
+  const retryDelay = 1000;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Fetch 24h kline data (1h intervals)
+      const response = await fetch(
+        `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=24`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        throw new Error(`Failed to fetch data for ${symbol}: ${response.status}`);
+      }
+
+      const klines = await response.json();
+      const prices = klines.map((k: any) => parseFloat(k[4])); // Close prices
+      const currentPrice = prices[prices.length - 1];
+      
+      // Calculate volatility (standard deviation)
+      const mean = prices.reduce((a: number, b: number) => a + b, 0) / prices.length;
+      const variance = prices.reduce((sum: number, price: number) => sum + Math.pow(price - mean, 2), 0) / prices.length;
+      const volatility = Math.sqrt(variance) / mean;
+
+      return {
+        symbol,
+        prices,
+        currentPrice,
+        volatility
+      };
+    } catch (error) {
+      if (attempt < maxRetries) {
+        console.error(`Error fetching ${symbol} (attempt ${attempt}/${maxRetries}):`, error);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Error fetching ${symbol}: ${errorMessage}`);
+      }
     }
-
-    const klines = await response.json();
-    const prices = klines.map((k: any) => parseFloat(k[4])); // Close prices
-    const currentPrice = prices[prices.length - 1];
-    
-    // Calculate volatility (standard deviation)
-    const mean = prices.reduce((a: number, b: number) => a + b, 0) / prices.length;
-    const variance = prices.reduce((sum: number, price: number) => sum + Math.pow(price - mean, 2), 0) / prices.length;
-    const volatility = Math.sqrt(variance) / mean;
-
-    return {
-      symbol,
-      prices,
-      currentPrice,
-      volatility
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Error fetching ${symbol}: ${errorMessage}`);
   }
+  
+  throw new Error(`Failed to fetch ${symbol} after all retries`);
 }
 
 async function analyzeWithAI(priceData: PriceData, config: any, minNotional: number): Promise<AIAnalysis> {
