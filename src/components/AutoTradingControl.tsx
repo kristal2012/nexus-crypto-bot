@@ -42,18 +42,27 @@ export const AutoTradingControl = () => {
 
         if (error) {
           console.error('Auto analysis error:', error);
+          toast({
+            title: "Erro na Análise",
+            description: "Não foi possível executar a análise automática",
+            variant: "destructive",
+          });
           return;
         }
 
         if (data?.rate_limited) {
           console.log('Rate limited:', data.message);
+          // Don't show toast for rate limit - it's expected behavior
           // Schedule next execution after the remaining cooldown time
           if (data.remaining_seconds) {
-            const waitTime = (data.remaining_seconds + 5) * 1000; // Add 5 seconds buffer
-            console.log(`Scheduling next analysis in ${data.remaining_seconds + 5} seconds`);
+            const waitTime = (data.remaining_seconds + 10) * 1000; // Add 10 seconds buffer
+            console.log(`Scheduling next analysis in ${data.remaining_seconds + 10} seconds`);
             timeoutId = setTimeout(executeAutoAnalysis, waitTime);
           }
-        } else if (data?.executed_trades && data.executed_trades.length > 0) {
+          return;
+        }
+        
+        if (data?.executed_trades && data.executed_trades.length > 0) {
           console.log(`Auto analysis completed: ${data.executed_trades.length} trades executed`);
           loadLastAnalysis();
           toast({
@@ -66,6 +75,11 @@ export const AutoTradingControl = () => {
         }
       } catch (error) {
         console.error('Error in auto analysis:', error);
+        toast({
+          title: "Erro na Análise",
+          description: error instanceof Error ? error.message : "Erro desconhecido",
+          variant: "destructive",
+        });
       }
     };
 
