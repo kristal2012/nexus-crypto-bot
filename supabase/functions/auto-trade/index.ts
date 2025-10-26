@@ -100,17 +100,46 @@ serve(async (req) => {
       }
     }
 
-    // Check if bot can trade
-    const statusResponse = await supabase.functions.invoke('check-trading-status');
+    // Check if bot can trade (with error handling)
+    let statusResponse;
+    let stats;
     
-    if (!statusResponse.data?.can_trade) {
+    try {
+      statusResponse = await supabase.functions.invoke('check-trading-status');
+      
+      if (statusResponse.error) {
+        console.error('Status check error:', statusResponse.error);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Failed to check trading status',
+            message: 'Could not verify if trading is allowed at this moment'
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (!statusResponse.data?.can_trade) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: 'Trading paused', 
+            reason: statusResponse.data?.stats?.stop_reason || 'Limits reached'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      stats = statusResponse.data.stats;
+    } catch (error) {
+      console.error('Exception checking trading status:', error);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Trading paused', 
-          reason: statusResponse.data?.stats?.stop_reason || 'Limits reached'
+          error: 'Trading status check failed',
+          message: error instanceof Error ? error.message : 'Unknown error'
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -370,7 +399,6 @@ serve(async (req) => {
     }
 
     // Update daily stats
-    const stats = statusResponse.data.stats;
     const today = new Date().toISOString().split('T')[0];
     
     let currentBalance;
