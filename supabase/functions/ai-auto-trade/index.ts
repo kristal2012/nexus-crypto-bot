@@ -118,7 +118,7 @@ serve(async (req) => {
 
     // Get user's Binance API credentials - REQUIRED for analysis
     // Public API is blocked by geographic restrictions (error 451)
-    const { data: apiSettings } = await supabase
+    const { data: apiSettings, error: apiError } = await supabase
       .from('binance_api_keys')
       .select('api_key, api_secret_encrypted, encryption_salt')
       .eq('user_id', user.id)
@@ -128,17 +128,31 @@ serve(async (req) => {
       hasData: !!apiSettings, 
       hasApiKey: !!apiSettings?.api_key,
       hasSecret: !!apiSettings?.api_secret_encrypted,
-      hasSalt: !!apiSettings?.encryption_salt
+      hasSalt: !!apiSettings?.encryption_salt,
+      userId: user.id,
+      queryError: apiError
     });
+
+    if (apiError) {
+      console.error('Error querying API keys:', apiError);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Erro ao buscar credenciais',
+        message: `Erro ao buscar suas credenciais da Binance: ${apiError.message}`
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const hasApiCredentials = apiSettings?.api_key && apiSettings?.api_secret_encrypted;
     
     if (!hasApiCredentials) {
-      console.log('Binance API credentials not configured');
+      console.log('Binance API credentials not configured - missing keys');
       return new Response(JSON.stringify({ 
         success: false,
         error: 'Credenciais da Binance não configuradas',
-        message: 'Configure sua API Key e Secret da Binance nas configurações para habilitar análises automáticas. A API pública está bloqueada na sua região.'
+        message: 'Configure sua API Key e Secret da Binance nas configurações para habilitar análises automáticas. Acesse as configurações e adicione suas chaves.'
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -148,20 +162,31 @@ serve(async (req) => {
     // Decrypt API secret
     let decryptedSecret: string;
     try {
+      console.log('Starting decryption process...');
       if (apiSettings.encryption_salt) {
+        console.log('Using PBKDF2 decryption with salt');
         decryptedSecret = await decryptSecret(apiSettings.api_secret_encrypted, apiSettings.encryption_salt);
         console.log('API secret decrypted successfully with salt');
       } else {
+        console.log('Using legacy decryption (no salt)');
         // Fallback to legacy decryption for old keys
         decryptedSecret = await decryptSecretLegacy(apiSettings.api_secret_encrypted);
         console.log('API secret decrypted successfully with legacy method');
       }
     } catch (error) {
       console.error('Failed to decrypt API secret:', error);
+      console.error('Decryption error details:', {
+        errorMessage: error instanceof Error ? error.message : String(error),
+        hasEncryptedSecret: !!apiSettings?.api_secret_encrypted,
+        hasSalt: !!apiSettings?.encryption_salt,
+        encryptedLength: apiSettings?.api_secret_encrypted?.length,
+        saltLength: apiSettings?.encryption_salt?.length
+      });
+      
       return new Response(JSON.stringify({ 
         success: false,
         error: 'Erro ao descriptografar credenciais',
-        message: 'Não foi possível descriptografar suas credenciais da Binance. Por favor, reconfigure suas chaves.'
+        message: 'Não foi possível descriptografar suas credenciais da Binance. Isso pode acontecer se as chaves foram corrompidas. Por favor, reconfigure suas chaves nas configurações.'
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

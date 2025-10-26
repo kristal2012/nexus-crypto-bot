@@ -73,9 +73,14 @@ export const BinanceApiSettings = () => {
       }
 
       console.log("Chaves salvas com sucesso!");
-      toast.success("Chaves da API salvas com sucesso!");
+      toast.success("✓ Chaves da API salvas e criptografadas com sucesso! Você já pode usar o IA Trading.");
       setHasKeys(true);
       setApiSecret(""); // Clear secret from memory after saving
+      
+      // Reload the page after 2 seconds to refresh all components
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error: any) {
       console.error("Error saving API keys:", error);
       toast.error(error.message || "Erro ao salvar chaves da API");

@@ -18,6 +18,7 @@ export const AutoTradingControl = () => {
     if (user) {
       loadStatus();
       loadLastAnalysis();
+      checkCredentials();
       
       // Update analysis display every 60 seconds
       const displayInterval = setInterval(() => {
@@ -27,6 +28,26 @@ export const AutoTradingControl = () => {
       return () => clearInterval(displayInterval);
     }
   }, [user]);
+
+  const checkCredentials = async () => {
+    try {
+      const { data } = await supabase
+        .from('binance_api_keys')
+        .select('api_key, api_secret_encrypted')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!data?.api_key || !data?.api_secret_encrypted) {
+        toast({
+          title: "Configuração Necessária",
+          description: "Configure suas credenciais da Binance nas configurações antes de ativar o IA Trading.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error checking credentials:', error);
+    }
+  };
 
   // Automatic analysis execution every 15 minutes when active
   useEffect(() => {
@@ -42,20 +63,24 @@ export const AutoTradingControl = () => {
 
         if (error) {
           console.error('Auto analysis error:', error);
+          
+          // Show the specific error message
+          const errorMessage = error.message || 'Erro desconhecido ao executar análise';
+          
           toast({
             title: "Erro na Análise",
-            description: "Verifique se suas credenciais da Binance estão configuradas.",
+            description: errorMessage,
             variant: "destructive",
           });
           return;
         }
 
-        // Check if credentials are missing
-        if (data?.error === 'Credenciais da Binance não configuradas') {
-          console.log('Binance credentials not configured');
+        // Check for specific error responses from the function
+        if (data && !data.success && data.error) {
+          console.log('Function returned error:', data.error);
           toast({
-            title: "Configuração Necessária",
-            description: data.message,
+            title: "Erro na Análise",
+            description: data.message || data.error,
             variant: "destructive",
           });
           return;
