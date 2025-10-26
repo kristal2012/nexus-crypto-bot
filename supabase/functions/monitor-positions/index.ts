@@ -84,10 +84,34 @@ serve(async (req) => {
       
       for (const position of positions) {
         try {
-          // Get current market price
-          const priceResponse = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${position.symbol}`);
-          const priceData = await priceResponse.json();
-          const currentPrice = parseFloat(priceData.price);
+      // Get current market price using spot API with fallback
+      const priceEndpoints = [
+        `https://api.binance.com/api/v3/ticker/price?symbol=${position.symbol}`,
+        `https://api1.binance.com/api/v3/ticker/price?symbol=${position.symbol}`,
+        `https://api2.binance.com/api/v3/ticker/price?symbol=${position.symbol}`
+      ];
+      
+      let priceData = null;
+      for (const priceUrl of priceEndpoints) {
+        try {
+          const priceResponse = await fetch(priceUrl, {
+            signal: AbortSignal.timeout(5000)
+          });
+          if (priceResponse.ok) {
+            priceData = await priceResponse.json();
+            break;
+          }
+        } catch (err) {
+          console.error(`Failed to fetch from ${priceUrl}:`, err);
+        }
+      }
+      
+      if (!priceData) {
+        console.error(`Failed to get price for ${position.symbol} from all endpoints`);
+        continue;
+      }
+      
+      const currentPrice = parseFloat(priceData.price);
           
           // Close the position by selling
           const { data: tradeResult, error: tradeError } = await supabase.functions.invoke('auto-trade', {
@@ -116,9 +140,33 @@ serve(async (req) => {
       // Check individual position stop losses
       for (const position of positions) {
         try {
-          // Get current market price
-          const priceResponse = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${position.symbol}`);
-          const priceData = await priceResponse.json();
+          // Get current market price using spot API with fallback
+          const priceEndpoints = [
+            `https://api.binance.com/api/v3/ticker/price?symbol=${position.symbol}`,
+            `https://api1.binance.com/api/v3/ticker/price?symbol=${position.symbol}`,
+            `https://api2.binance.com/api/v3/ticker/price?symbol=${position.symbol}`
+          ];
+          
+          let priceData = null;
+          for (const priceUrl of priceEndpoints) {
+            try {
+              const priceResponse = await fetch(priceUrl, {
+                signal: AbortSignal.timeout(5000)
+              });
+              if (priceResponse.ok) {
+                priceData = await priceResponse.json();
+                break;
+              }
+            } catch (err) {
+              console.error(`Failed to fetch from ${priceUrl}:`, err);
+            }
+          }
+          
+          if (!priceData) {
+            console.error(`Failed to get price for ${position.symbol}`);
+            continue;
+          }
+          
           const currentPrice = parseFloat(priceData.price);
           
           const entryPrice = parseFloat(position.entry_price);
