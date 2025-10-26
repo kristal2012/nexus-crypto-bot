@@ -193,68 +193,29 @@ serve(async (req) => {
       });
     }
 
-    console.log('Using authenticated Binance API');
+    console.log('Using Binance Futures API ONLY');
 
-    // Try Binance Spot API first (less geographic restrictions), fallback to public CoinGecko
+    // Fetch exchange info from Binance FUTURES API
     let exchangeInfo: Record<string, number> = {};
     let validPriceData: PriceData[] = [];
     
-    try {
-      console.log('Attempting to fetch from Binance Spot API...');
-      exchangeInfo = await fetchExchangeInfoSpot();
-      console.log(`Fetched exchange info for ${Object.keys(exchangeInfo).length} pairs from Spot API`);
-      
-      const priceDataPromises = symbols.map(symbol => 
-        fetchPriceDataSpot(symbol)
-      );
-      const priceDataResults = await Promise.allSettled(priceDataPromises);
-      
-      validPriceData = priceDataResults
-        .filter((result): result is PromiseFulfilledResult<PriceData> => 
-          result.status === 'fulfilled' && result.value.prices.length >= 20
-        )
-        .map(result => result.value);
-      
-      console.log(`Valid price data from Spot API: ${validPriceData.length} pairs`);
-    } catch (spotError) {
-      console.error('Spot API failed, falling back to CoinGecko:', spotError);
-      
-      // Fallback to CoinGecko (no geographic restrictions)
-      const coinGeckoIds: Record<string, string> = {
-        'BNBUSDT': 'binancecoin',
-        'SOLUSDT': 'solana',
-        'ADAUSDT': 'cardano',
-        'DOGEUSDT': 'dogecoin',
-        'XRPUSDT': 'ripple',
-        'DOTUSDT': 'polkadot',
-        'MATICUSDT': 'matic-network',
-        'AVAXUSDT': 'avalanche-2',
-        'LINKUSDT': 'chainlink',
-        'UNIUSDT': 'uniswap',
-        'LTCUSDT': 'litecoin',
-        'ATOMUSDT': 'cosmos',
-        'NEARUSDT': 'near'
-      };
-      
-      const coinGeckoPromises = symbols.map(symbol => 
-        fetchPriceDataCoinGecko(symbol, coinGeckoIds[symbol])
-      );
-      const coinGeckoResults = await Promise.allSettled(coinGeckoPromises);
-      
-      validPriceData = coinGeckoResults
-        .filter((result): result is PromiseFulfilledResult<PriceData> => 
-          result.status === 'fulfilled' && result.value.prices.length >= 20
-        )
-        .map(result => result.value);
-      
-      console.log(`Valid price data from CoinGecko: ${validPriceData.length} pairs`);
-      
-      // Set default minimum notional for all pairs
-      symbols.forEach(symbol => {
-        exchangeInfo[symbol] = 5; // Default 5 USDT
-      });
-    }
-
+    console.log('Fetching from Binance Futures API...');
+    exchangeInfo = await fetchExchangeInfo(apiSettings.api_key, decryptedSecret);
+    console.log(`Fetched exchange info for ${Object.keys(exchangeInfo).length} pairs from Futures API`);
+    
+    // Fetch price data from Binance FUTURES API
+    const priceDataPromises = symbols.map(symbol => 
+      fetchPriceData(symbol, apiSettings.api_key, decryptedSecret)
+    );
+    const priceDataResults = await Promise.allSettled(priceDataPromises);
+    
+    validPriceData = priceDataResults
+      .filter((result): result is PromiseFulfilledResult<PriceData> => 
+        result.status === 'fulfilled' && result.value.prices.length >= 20
+      )
+      .map(result => result.value);
+    
+    console.log(`Valid price data from Futures API: ${validPriceData.length} pairs`);
     console.log(`Total valid price data: ${validPriceData.length} pairs`);
 
     // Analyze each pair with AI
@@ -571,53 +532,6 @@ async function fetchExchangeInfo(apiKey?: string, apiSecret?: string): Promise<R
   }
 }
 
-// Fetch from Binance Spot API (less geographic restrictions than Futures)
-async function fetchExchangeInfoSpot(): Promise<Record<string, number>> {
-  try {
-    const endpoint = 'https://api.binance.com/api/v3/exchangeInfo';
-    console.log(`Fetching exchange info from Spot API: ${endpoint}`);
-    
-    const response = await fetch(endpoint, {
-      signal: AbortSignal.timeout(10000)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (!data.symbols || !Array.isArray(data.symbols)) {
-      throw new Error('Invalid response structure');
-    }
-    
-    const minNotionals: Record<string, number> = {};
-    
-    const usdtSymbols = data.symbols.filter((s: any) => 
-      s.symbol.endsWith('USDT') && 
-      s.status === 'TRADING'
-    );
-    
-    for (const symbol of usdtSymbols) {
-      const minNotionalFilter = symbol.filters?.find((f: any) => 
-        f.filterType === 'NOTIONAL'
-      );
-      
-      if (minNotionalFilter) {
-        const minNotional = parseFloat(minNotionalFilter.minNotional || '10');
-        minNotionals[symbol.symbol] = minNotional;
-      } else {
-        minNotionals[symbol.symbol] = 10; // Default for spot
-      }
-    }
-    
-    return minNotionals;
-  } catch (error) {
-    console.error('Error fetching from Spot API:', error);
-    throw error;
-  }
-}
-
 async function fetchPriceData(symbol: string, apiKey?: string, apiSecret?: string): Promise<PriceData> {
   try {
     const baseUrl = 'https://fapi.binance.com/fapi/v1';
@@ -662,92 +576,7 @@ async function fetchPriceData(symbol: string, apiKey?: string, apiSecret?: strin
   }
 }
 
-// Fetch from Binance Spot API (less geographic restrictions)
-async function fetchPriceDataSpot(symbol: string): Promise<PriceData> {
-  try {
-    const baseUrl = 'https://api.binance.com/api/v3';
-    const url = `${baseUrl}/klines?symbol=${symbol}&interval=1h&limit=24`;
-    
-    console.log(`Fetching price data for ${symbol} from Spot API`);
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(10000)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const klines = await response.json();
-    
-    if (!Array.isArray(klines) || klines.length === 0) {
-      throw new Error('Invalid klines data');
-    }
-    
-    const prices = klines.map((k: any) => parseFloat(k[4]));
-    const currentPrice = prices[prices.length - 1];
-    
-    const mean = prices.reduce((a: number, b: number) => a + b, 0) / prices.length;
-    const variance = prices.reduce((sum: number, price: number) => sum + Math.pow(price - mean, 2), 0) / prices.length;
-    const volatility = Math.sqrt(variance) / mean;
-    
-    return {
-      symbol,
-      prices,
-      currentPrice,
-      volatility
-    };
-  } catch (error) {
-    console.error(`Error fetching ${symbol} from Spot API:`, error);
-    throw error;
-  }
-}
-
-// Fetch from CoinGecko (no geographic restrictions, public API)
-async function fetchPriceDataCoinGecko(symbol: string, coinGeckoId: string): Promise<PriceData> {
-  try {
-    if (!coinGeckoId) {
-      throw new Error(`No CoinGecko ID for ${symbol}`);
-    }
-    
-    const url = `https://api.coingecko.com/api/v3/coins/${coinGeckoId}/market_chart?vs_currency=usd&days=1&interval=hourly`;
-    
-    console.log(`Fetching price data for ${symbol} from CoinGecko`);
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(10000)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.prices || !Array.isArray(data.prices) || data.prices.length === 0) {
-      throw new Error('Invalid price data from CoinGecko');
-    }
-    
-    // CoinGecko returns [timestamp, price] pairs
-    const prices = data.prices.map((p: any) => p[1]);
-    const currentPrice = prices[prices.length - 1];
-    
-    const mean = prices.reduce((a: number, b: number) => a + b, 0) / prices.length;
-    const variance = prices.reduce((sum: number, price: number) => sum + Math.pow(price - mean, 2), 0) / prices.length;
-    const volatility = Math.sqrt(variance) / mean;
-    
-    console.log(`Successfully fetched ${symbol} from CoinGecko: $${currentPrice.toFixed(4)}`);
-    
-    return {
-      symbol,
-      prices,
-      currentPrice,
-      volatility
-    };
-  } catch (error) {
-    console.error(`Error fetching ${symbol} from CoinGecko:`, error);
-    throw error;
-  }
-}
-
+// Melhorar a estratégia de análise para maior lucratividade
 async function analyzeWithAI(priceData: PriceData, config: any, minNotional: number): Promise<AIAnalysis> {
   const { symbol, prices, currentPrice, volatility } = priceData;
   
@@ -795,51 +624,80 @@ async function analyzeWithAI(priceData: PriceData, config: any, minNotional: num
   const intercept = (sumY - slope * sumX) / n;
   const predictedPrice = slope * n + intercept;
   
-  // Calculate confidence based on multiple technical factors
-  let confidence = 40;  // Start lower for more realistic scoring
+  // ESTRATÉGIA MELHORADA: Análise mais rigorosa para maior lucratividade
+  let confidence = 50;  // Base mais alta para filtrar melhor
   
-  // Trend alignment increases confidence significantly
+  // 1. Trend alignment - Critérios mais estritos
   if (trendDirection === 'up') {
-    if (shortTermTrend > 0.5 && mediumTermTrend > 0.3) confidence += 20;  // Strong uptrend
-    else if (shortTermTrend > 0.2 && mediumTermTrend > 0.1) confidence += 15;  // Moderate uptrend
-    else confidence += 10;  // Weak uptrend
-  }
-  
-  // RSI analysis
-  if (trendDirection === 'up' && rsi > 40 && rsi < 65) {
-    confidence += 15;  // RSI in bullish zone but not overbought
-  } else if (trendDirection === 'up' && rsi >= 65 && rsi < 75) {
-    confidence += 8;  // RSI high but not extreme
-  } else if (rsi > 75) {
-    confidence -= 5;  // Overbought - reduce confidence
-  }
-  
-  // MACD confirmation
-  if (macd.signal === 'buy' && trendDirection === 'up') {
-    confidence += 15;  // Strong bullish signal
-  } else if (macd.signal === 'buy') {
-    confidence += 8;  // Bullish signal but no trend confirmation
-  }
-  
-  // Volatility analysis
-  if (volatility < 0.015) {
-    confidence += 10;  // Low volatility = more predictable
-  } else if (volatility < 0.025) {
-    confidence += 5;  // Moderate volatility
+    // Exigir tendência forte e consistente para alta confiança
+    if (shortTermTrend > 1.0 && mediumTermTrend > 0.8 && overallTrend > 1.5) {
+      confidence += 25;  // Tendência muito forte e alinhada
+    } else if (shortTermTrend > 0.5 && mediumTermTrend > 0.4) {
+      confidence += 15;  // Tendência moderada
+    } else if (shortTermTrend > 0.2) {
+      confidence += 8;  // Tendência fraca - menos confiável
+    }
   } else {
-    confidence -= 5;  // High volatility = less predictable
+    confidence -= 20;  // Penalizar fortemente falta de tendência de alta
   }
   
-  // Price momentum confirmation
+  // 2. RSI - Zonas mais específicas para entradas lucrativas
+  if (trendDirection === 'up') {
+    if (rsi > 45 && rsi < 60) {
+      confidence += 20;  // RSI ideal - impulso sem sobrecompra
+    } else if (rsi >= 60 && rsi < 70) {
+      confidence += 10;  // RSI alto mas aceitável
+    } else if (rsi >= 70) {
+      confidence -= 15;  // Sobrecomprado - risco alto
+    } else if (rsi < 40) {
+      confidence -= 10;  // RSI baixo demais em tendência de alta
+    }
+  }
+  
+  // 3. MACD - Confirmação essencial
+  if (macd.signal === 'buy' && trendDirection === 'up') {
+    confidence += 20;  // MACD + tendência = sinal forte
+  } else if (macd.signal === 'sell') {
+    confidence -= 15;  // MACD divergente reduz confiança
+  }
+  
+  // 4. Volatility - Preferir mercados mais estáveis para melhor previsibilidade
+  if (volatility < 0.012) {
+    confidence += 15;  // Baixa volatilidade = mais previsível
+  } else if (volatility < 0.02) {
+    confidence += 8;  // Volatilidade moderada
+  } else if (volatility > 0.04) {
+    confidence -= 10;  // Alta volatilidade = risco maior
+  }
+  
+  // 5. Momentum - Confirmar força do movimento
   const priceChange24h = ((currentPrice - prices[0]) / prices[0]) * 100;
-  if (trendDirection === 'up' && priceChange24h > 1) {
-    confidence += 10;  // Strong positive momentum
-  } else if (trendDirection === 'up' && priceChange24h > 0.5) {
-    confidence += 5;  // Moderate positive momentum
+  if (trendDirection === 'up') {
+    if (priceChange24h > 2.0) {
+      confidence += 15;  // Momentum muito forte
+    } else if (priceChange24h > 1.0) {
+      confidence += 10;  // Momentum forte
+    } else if (priceChange24h > 0.3) {
+      confidence += 5;  // Momentum positivo
+    } else if (priceChange24h < 0) {
+      confidence -= 10;  // Movimento negativo reduz confiança
+    }
   }
   
-  // Cap confidence at 95 (never 100% certain in trading)
-  confidence = Math.min(95, Math.max(30, confidence));
+  // 6. Volume analysis via volatility patterns
+  const recentVol = Math.sqrt(
+    recentPrices.reduce((sum, p) => {
+      const diff = p - recentAvg;
+      return sum + diff * diff;
+    }, 0) / recentPrices.length
+  ) / recentAvg;
+  
+  if (recentVol < volatility * 0.8 && trendDirection === 'up') {
+    confidence += 10;  // Volatilidade decrescente em tendência de alta = consolidação
+  }
+  
+  // Cap confidence: mínimo 40, máximo 92 (nunca 100% certo)
+  confidence = Math.min(92, Math.max(40, confidence));
   
   // Calculate recommended DCA layers based on volatility and position size
   let recommendedDcaLayers = 3; // Default
