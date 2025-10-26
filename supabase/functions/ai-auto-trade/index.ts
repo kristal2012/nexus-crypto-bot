@@ -282,12 +282,13 @@ serve(async (req) => {
     
     // Hard limit to prevent catastrophic losses even if calculations are wrong
     const MAX_POSITION_USD = 10000;
-    // Use 30% of available balance to distribute across opportunities (increased from 10% to ensure min notional is met)
-    const totalAnalysisAmount = Math.min(availableBalance * 0.30, MAX_POSITION_USD);
+    // Use 50% of available balance to distribute across opportunities for better profitability
+    const totalAnalysisAmount = Math.min(availableBalance * 0.50, MAX_POSITION_USD);
     
-    // Calculate minimum amount needed per opportunity (assume min notional of 5 USDT)
-    const MIN_NOTIONAL = 5;
-    const maxOpportunitiesWithBudget = Math.floor(totalAnalysisAmount / MIN_NOTIONAL);
+    // Calculate minimum amount per trade to ensure profitability (min 15 USDT with 3 layers = 5 USDT per layer)
+    const MIN_AMOUNT_PER_TRADE = 15;
+    const MIN_LAYERS = 3;
+    const maxOpportunitiesWithBudget = Math.floor(totalAnalysisAmount / MIN_AMOUNT_PER_TRADE);
     
     console.log(`Total analysis budget: ${totalAnalysisAmount} USDT, can execute up to ${maxOpportunitiesWithBudget} opportunities`);
 
@@ -318,11 +319,12 @@ serve(async (req) => {
     const stopLossPercent = config.stop_loss || 1.5;
 
     console.log(`Saldo disponível: ${availableBalance} USDT`);
-    console.log(`Valor total desta análise (30%): ${totalAnalysisAmount} USDT`);
+    console.log(`Valor total desta análise (50%): ${totalAnalysisAmount} USDT`);
     console.log(`Saldo inicial do dia: ${startingBalance} USDT`);
     console.log(`Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
     console.log(`Stop Loss: ${stopLossPercent}% por trade`);
-    console.log(`Executando até ${tradesToExecute.length} oportunidades`);
+    console.log(`Valor mínimo por trade: ${MIN_AMOUNT_PER_TRADE} USDT (${MIN_LAYERS} layers)`);
+    console.log(`Executando até ${tradesToExecute.length} oportunidades de alta qualidade`);
 
     const executedTrades = [];
     let remainingAmount = totalAnalysisAmount;
@@ -337,29 +339,33 @@ serve(async (req) => {
           break;
         }
 
-        // Calculate quantity per layer based on remaining amount divided by number of remaining opportunities
+        // Calculate amount per trade with minimum guarantee
         const remainingOpportunities: number = tradesToExecute.length - executedTrades.length;
-        let amountForThisTrade: number = remainingAmount / remainingOpportunities;
-        let dcaLayers = analysis.recommendedDcaLayers;
+        let amountForThisTrade: number = Math.max(
+          MIN_AMOUNT_PER_TRADE,
+          remainingAmount / remainingOpportunities
+        );
+        
+        // Use recommended layers but ensure at least MIN_LAYERS for profitability
+        let dcaLayers = Math.max(MIN_LAYERS, analysis.recommendedDcaLayers);
         let quantityPerLayer: number = amountForThisTrade / dcaLayers;
         
         // Ensure each layer meets minimum notional
-        const minRequiredAmount = analysis.minNotional * dcaLayers;
-        
-        if (amountForThisTrade < minRequiredAmount) {
-          // Not enough for recommended layers, reduce layers to fit budget
+        if (quantityPerLayer < analysis.minNotional) {
+          // Adjust layers to meet minimum notional
           dcaLayers = Math.floor(amountForThisTrade / analysis.minNotional);
           
-          if (dcaLayers < 1) {
-            console.log(`Skipping ${analysis.symbol}: insufficient amount (${amountForThisTrade.toFixed(2)} USDT) for min notional ${analysis.minNotional} USDT`);
+          if (dcaLayers < MIN_LAYERS) {
+            // If can't afford minimum layers, skip this trade
+            console.log(`Skipping ${analysis.symbol}: insufficient amount (${amountForThisTrade.toFixed(2)} USDT) for ${MIN_LAYERS} layers at ${analysis.minNotional} USDT each`);
             continue;
           }
           
-          // Recalculate with adjusted layers
           quantityPerLayer = analysis.minNotional;
           amountForThisTrade = quantityPerLayer * dcaLayers;
-          console.log(`Adjusted ${analysis.symbol}: ${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT = ${amountForThisTrade.toFixed(2)} USDT`);
         }
+        
+        console.log(`${analysis.symbol}: ${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT = ${amountForThisTrade.toFixed(2)} USDT (confidence: ${analysis.confidence}%)`);
 
         // Check if we have enough remaining amount
         if (amountForThisTrade > remainingAmount) {
