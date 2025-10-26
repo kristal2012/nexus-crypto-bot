@@ -24,3 +24,16 @@ verify_jwt = true
 [functions.monitor-positions]
 verify_jwt = true
 
+[functions.test-auto-trade]
+verify_jwt = true
+
+[functions.admin-emergency-stop]
+verify_jwt = true
+
+[functions.encrypt-api-secret]
+verify_jwt = true
+
+[functions.migrate-encrypt-secrets]
+verify_jwt = true
+
+

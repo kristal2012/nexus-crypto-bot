@@ -404,7 +404,7 @@ serve(async (req) => {
           body: {
             symbol: analysis.symbol,
             side: 'BUY',
-            quoteOrderQty: quantityPerLayer.toString(),
+            quoteOrderQty: quantityPerLayer.toFixed(8), // Limit to 8 decimal places
             takeProfitAmount,
             stopLossAmount: stopLossAmount
           }

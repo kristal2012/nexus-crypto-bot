@@ -157,8 +157,13 @@ serve(async (req) => {
     const valueToValidate = quoteOrderQty || quantity;
     const valueNum = parseFloat(valueToValidate);
     if (isNaN(valueNum)) {
+      console.error(`Validation failed: Invalid number format for ${quoteOrderQty ? 'quoteOrderQty' : 'quantity'}: ${valueToValidate}`);
       return new Response(
-        JSON.stringify({ error: 'Invalid value: must be a valid number' }),
+        JSON.stringify({ 
+          error: 'Invalid value: must be a valid number',
+          field: quoteOrderQty ? 'quoteOrderQty' : 'quantity',
+          value: valueToValidate
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -177,8 +182,14 @@ serve(async (req) => {
     // Check decimal places (max 8 for crypto)
     const decimalPlaces = (valueToValidate.toString().split('.')[1] || '').length;
     if (decimalPlaces > 8) {
+      console.error(`Validation failed: Too many decimal places for ${quoteOrderQty ? 'quoteOrderQty' : 'quantity'}: ${valueToValidate} (${decimalPlaces} places)`);
       return new Response(
-        JSON.stringify({ error: 'Invalid value: maximum 8 decimal places allowed' }),
+        JSON.stringify({ 
+          error: 'Invalid value: maximum 8 decimal places allowed',
+          field: quoteOrderQty ? 'quoteOrderQty' : 'quantity',
+          value: valueToValidate,
+          decimal_places: decimalPlaces
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
