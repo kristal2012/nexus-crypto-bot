@@ -451,177 +451,117 @@ serve(async (req) => {
 });
 
 async function fetchExchangeInfo(apiKey?: string, apiSecret?: string): Promise<Record<string, number>> {
-  // Try multiple Binance endpoints as fallback
-  const endpoints = [
-    'https://api.binance.com/api/v3/exchangeInfo',  // Spot API - mais estável
-    'https://api1.binance.com/api/v3/exchangeInfo',
-    'https://api2.binance.com/api/v3/exchangeInfo',
-    'https://api3.binance.com/api/v3/exchangeInfo'
-  ];
-  
-  for (const endpoint of endpoints) {
-    try {
-      console.log(`Trying endpoint: ${endpoint}`);
-      
-      const headers: Record<string, string> = {
-        'User-Agent': 'Mozilla/5.0',
-        'Accept': 'application/json'
-      };
-      
-      const response = await fetch(endpoint, { 
-        headers,
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
-      
-      if (!response.ok) {
-        console.error(`Endpoint ${endpoint} failed with status ${response.status}`);
-        continue; // Try next endpoint
-      }
-      
-      const data = await response.json();
-      
-      if (!data.symbols || !Array.isArray(data.symbols)) {
-        console.error(`Invalid data structure from ${endpoint}`);
-        continue;
-      }
-      
-      console.log(`Successfully fetched exchange info from ${endpoint} with ${data.symbols.length} symbols`);
-      
-      const minNotionals: Record<string, number> = {};
-      
-      // Filter for USDT pairs only
-      const usdtSymbols = data.symbols.filter((s: any) => 
-        s.symbol.endsWith('USDT') && 
-        s.status === 'TRADING'
+  try {
+    const endpoint = 'https://fapi.binance.com/fapi/v1/exchangeInfo';
+    console.log(`Fetching exchange info from Futures API: ${endpoint}`);
+    
+    const response = await fetch(endpoint, {
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (!response.ok) {
+      console.error(`Futures API failed with status ${response.status}`);
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.symbols || !Array.isArray(data.symbols)) {
+      console.error('Invalid data structure from Futures API');
+      throw new Error('Invalid response structure');
+    }
+    
+    console.log(`Successfully fetched exchange info from Futures API with ${data.symbols.length} symbols`);
+    
+    const minNotionals: Record<string, number> = {};
+    
+    // Filter for USDT perpetual futures
+    const usdtSymbols = data.symbols.filter((s: any) => 
+      s.symbol.endsWith('USDT') && 
+      s.status === 'TRADING' &&
+      s.contractType === 'PERPETUAL'
+    );
+    
+    for (const symbol of usdtSymbols) {
+      // Get min notional from filters
+      const minNotionalFilter = symbol.filters?.find((f: any) => 
+        f.filterType === 'MIN_NOTIONAL'
       );
       
-      for (const symbol of usdtSymbols) {
-        // Get min notional from filters
-        const minNotionalFilter = symbol.filters?.find((f: any) => 
-          f.filterType === 'MIN_NOTIONAL' || f.filterType === 'NOTIONAL'
-        );
-        
-        if (minNotionalFilter) {
-          const minNotional = parseFloat(minNotionalFilter.minNotional || minNotionalFilter.notional || '10');
-          minNotionals[symbol.symbol] = minNotional;
-        } else {
-          // Default min notional for spot trading
-          minNotionals[symbol.symbol] = 10;
-        }
+      if (minNotionalFilter) {
+        const minNotional = parseFloat(minNotionalFilter.notional || '5');
+        minNotionals[symbol.symbol] = minNotional;
+      } else {
+        minNotionals[symbol.symbol] = 5; // Default for futures
       }
-      
-      console.log(`Extracted min notionals for ${Object.keys(minNotionals).length} USDT pairs`);
-      return minNotionals;
-      
-    } catch (error) {
-      console.error(`Error with endpoint ${endpoint}:`, error);
-      continue; // Try next endpoint
     }
+    
+    console.log(`Extracted min notionals for ${Object.keys(minNotionals).length} USDT perpetual futures`);
+    return minNotionals;
+    
+  } catch (error) {
+    console.error('Error fetching from Futures API:', error);
+    // Return default values
+    return {
+      'BNBUSDT': 5,
+      'SOLUSDT': 5,
+      'ADAUSDT': 5,
+      'DOGEUSDT': 5,
+      'XRPUSDT': 5,
+      'DOTUSDT': 5,
+      'MATICUSDT': 5,
+      'AVAXUSDT': 5,
+      'LINKUSDT': 5,
+      'UNIUSDT': 5,
+      'LTCUSDT': 5,
+      'ATOMUSDT': 5,
+      'NEARUSDT': 5
+    };
   }
-  
-  // If all endpoints fail, return default values
-  console.error('All endpoints failed, using default notional values');
-  return {
-    'BNBUSDT': 5,
-    'SOLUSDT': 5,
-    'ADAUSDT': 5,
-    'DOGEUSDT': 5,
-    'XRPUSDT': 5,
-    'DOTUSDT': 5,
-    'MATICUSDT': 5,
-    'AVAXUSDT': 5,
-    'LINKUSDT': 5,
-    'UNIUSDT': 5,
-    'LTCUSDT': 5,
-    'ATOMUSDT': 5,
-    'NEARUSDT': 5
-  };
 }
 
 async function fetchPriceData(symbol: string, apiKey?: string, apiSecret?: string): Promise<PriceData> {
-  // Try multiple endpoints
-  const baseEndpoints = [
-    'https://api.binance.com/api/v3',
-    'https://api1.binance.com/api/v3',
-    'https://api2.binance.com/api/v3'
-  ];
-  
-  for (const baseUrl of baseEndpoints) {
-    try {
-      const headers: Record<string, string> = {
-        'User-Agent': 'Mozilla/5.0',
-        'Accept': 'application/json'
-      };
-      
-      let url = `${baseUrl}/klines?symbol=${symbol}&interval=1h&limit=24`;
-      
-      // Add authentication if credentials provided
-      if (apiKey && apiSecret) {
-        const timestamp = Date.now();
-        const queryString = `symbol=${symbol}&interval=1h&limit=24&timestamp=${timestamp}`;
-        
-        // Create HMAC signature
-        const encoder = new TextEncoder();
-        const keyData = encoder.encode(apiSecret);
-        const msgData = encoder.encode(queryString);
-        const cryptoKey = await crypto.subtle.importKey(
-          'raw',
-          keyData,
-          { name: 'HMAC', hash: 'SHA-256' },
-          false,
-          ['sign']
-        );
-        const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-        const signatureHex = Array.from(new Uint8Array(signature))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-        
-        url = `${baseUrl}/klines?${queryString}&signature=${signatureHex}`;
-        headers['X-MBX-APIKEY'] = apiKey;
-      }
-      
-      // Fetch 24h kline data (1h intervals)
-      const response = await fetch(url, { 
-        headers,
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
-      
-      if (!response.ok) {
-        console.error(`Failed to fetch from ${baseUrl}: ${response.status}`);
-        continue; // Try next endpoint
-      }
-
-      const klines = await response.json();
-      
-      if (!Array.isArray(klines) || klines.length === 0) {
-        console.error(`Invalid klines data from ${baseUrl}`);
-        continue;
-      }
-      
-      const prices = klines.map((k: any) => parseFloat(k[4])); // Close prices
-      const currentPrice = prices[prices.length - 1];
-      
-      // Calculate volatility (standard deviation)
-      const mean = prices.reduce((a: number, b: number) => a + b, 0) / prices.length;
-      const variance = prices.reduce((sum: number, price: number) => sum + Math.pow(price - mean, 2), 0) / prices.length;
-      const volatility = Math.sqrt(variance) / mean;
-
-      console.log(`Successfully fetched price data for ${symbol} from ${baseUrl}`);
-      
-      return {
-        symbol,
-        prices,
-        currentPrice,
-        volatility
-      };
-    } catch (error) {
-      console.error(`Error fetching ${symbol} from ${baseUrl}:`, error);
-      continue; // Try next endpoint
+  try {
+    const baseUrl = 'https://fapi.binance.com/fapi/v1';
+    
+    // Fetch 24h kline data (1h intervals) from Futures API
+    const url = `${baseUrl}/klines?symbol=${symbol}&interval=1h&limit=24`;
+    
+    console.log(`Fetching price data for ${symbol} from Futures API`);
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
+
+    const klines = await response.json();
+    
+    if (!Array.isArray(klines) || klines.length === 0) {
+      throw new Error('Invalid klines data');
+    }
+    
+    const prices = klines.map((k: any) => parseFloat(k[4])); // Close prices
+    const currentPrice = prices[prices.length - 1];
+    
+    // Calculate volatility (standard deviation)
+    const mean = prices.reduce((a: number, b: number) => a + b, 0) / prices.length;
+    const variance = prices.reduce((sum: number, price: number) => sum + Math.pow(price - mean, 2), 0) / prices.length;
+    const volatility = Math.sqrt(variance) / mean;
+
+    console.log(`Successfully fetched price data for ${symbol} from Futures API`);
+    
+    return {
+      symbol,
+      prices,
+      currentPrice,
+      volatility
+    };
+  } catch (error) {
+    console.error(`Error fetching ${symbol} from Futures API:`, error);
+    throw new Error(`Failed to fetch price data for ${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  
-  // If all endpoints fail
-  throw new Error(`Failed to fetch price data for ${symbol} from all endpoints`);
 }
 
 async function analyzeWithAI(priceData: PriceData, config: any, minNotional: number): Promise<AIAnalysis> {
