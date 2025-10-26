@@ -26,7 +26,7 @@ export const BinanceApiSettings = () => {
     try {
       const { data, error } = await supabase
         .from("binance_api_keys")
-        .select("api_key")
+        .select("api_key, api_secret_encrypted")
         .eq("user_id", user?.id)
         .maybeSingle();
 
@@ -34,7 +34,8 @@ export const BinanceApiSettings = () => {
 
       if (data) {
         setApiKey(data.api_key);
-        setHasKeys(true);
+        // Check if secret exists (don't load the actual encrypted value)
+        setHasKeys(!!data.api_secret_encrypted);
       }
     } catch (error) {
       console.error("Error loading API keys:", error);
@@ -74,13 +75,11 @@ export const BinanceApiSettings = () => {
 
       console.log("Chaves salvas com sucesso!");
       toast.success("✓ Chaves da API salvas e criptografadas com sucesso! Você já pode usar o IA Trading.");
-      setHasKeys(true);
-      setApiSecret(""); // Clear secret from memory after saving
       
-      // Reload the page after 2 seconds to refresh all components
+      // Reload the page after 1.5 seconds to refresh all components and clear secret from memory
       setTimeout(() => {
         window.location.reload();
-      }, 2000);
+      }, 1500);
     } catch (error: any) {
       console.error("Error saving API keys:", error);
       toast.error(error.message || "Erro ao salvar chaves da API");
