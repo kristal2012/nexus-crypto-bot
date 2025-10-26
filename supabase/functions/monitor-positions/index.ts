@@ -123,6 +123,7 @@ serve(async (req) => {
           
           const entryPrice = parseFloat(position.entry_price);
           const quantity = parseFloat(position.quantity);
+          const positionValue = entryPrice * quantity;
           const unrealizedPnL = (currentPrice - entryPrice) * quantity;
           
           // Update unrealized P&L
@@ -134,10 +135,10 @@ serve(async (req) => {
             })
             .eq('id', position.id);
 
-          // Calculate stop loss based on ATR (stored in config.stop_loss)
-          // For simplicity, we'll use a percentage-based stop loss
+          // Calculate stop loss as percentage of position value
+          // config.stop_loss is a percentage (e.g., 1.5 means 1.5% of position value)
           const stopLossPercent = config.stop_loss || 1.5;
-          const stopLossAmount = (entryPrice * quantity * stopLossPercent) / 100;
+          const stopLossAmount = (positionValue * stopLossPercent) / 100;
           
           // Check if stop loss triggered
           if (unrealizedPnL < 0 && Math.abs(unrealizedPnL) >= stopLossAmount) {
