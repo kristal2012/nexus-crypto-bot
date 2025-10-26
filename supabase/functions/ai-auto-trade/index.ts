@@ -334,15 +334,29 @@ serve(async (req) => {
     const executedTrades = [];
     let remainingAmount = totalAnalysisAmount;
 
-    // Distribute 10% of balance across all opportunities that fit
-    for (const analysis of tradesToExecute) {
+    // Distribute budget across all opportunities that fit
+    for (let i = 0; i < tradesToExecute.length; i++) {
+      const analysis = tradesToExecute[i];
+      
       try {
-        // Check trading status
+        console.log(`\n=== Processing opportunity ${i + 1}/${tradesToExecute.length}: ${analysis.symbol} (confidence: ${analysis.confidence}%) ===`);
+        
+        // Check trading status before each trade
+        console.log(`Checking trading status for ${analysis.symbol}...`);
         const statusCheck = await supabase.functions.invoke('check-trading-status');
-        if (statusCheck.error || !statusCheck.data?.can_trade) {
-          console.log('Trading paused due to daily limits');
+        
+        if (statusCheck.error) {
+          console.error(`Status check error for ${analysis.symbol}:`, statusCheck.error);
+          console.log('Stopping trade execution due to status check error');
           break;
         }
+        
+        if (!statusCheck.data?.can_trade) {
+          console.log(`Trading paused: ${JSON.stringify(statusCheck.data)}`);
+          break;
+        }
+        
+        console.log(`Trading status OK for ${analysis.symbol}`);
 
         // Calculate amount per trade with minimum guarantee
         const remainingOpportunities: number = tradesToExecute.length - executedTrades.length;
@@ -362,7 +376,7 @@ serve(async (req) => {
           
           if (dcaLayers < MIN_LAYERS) {
             // If can't afford minimum layers, skip this trade
-            console.log(`Skipping ${analysis.symbol}: insufficient amount (${amountForThisTrade.toFixed(2)} USDT) for ${MIN_LAYERS} layers at ${analysis.minNotional} USDT each`);
+            console.log(`⚠️ Skipping ${analysis.symbol}: insufficient amount (${amountForThisTrade.toFixed(2)} USDT) for ${MIN_LAYERS} layers at ${analysis.minNotional} USDT each`);
             continue;
           }
           
@@ -370,36 +384,42 @@ serve(async (req) => {
           amountForThisTrade = quantityPerLayer * dcaLayers;
         }
         
-        console.log(`${analysis.symbol}: ${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT = ${amountForThisTrade.toFixed(2)} USDT (confidence: ${analysis.confidence}%)`);
+        console.log(`📊 ${analysis.symbol}: ${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT = ${amountForThisTrade.toFixed(2)} USDT (confidence: ${analysis.confidence}%)`);
 
         // Check if we have enough remaining amount
         if (amountForThisTrade > remainingAmount) {
-          console.log(`Skipping ${analysis.symbol}: insufficient remaining amount`);
+          console.log(`⚠️ Skipping ${analysis.symbol}: insufficient remaining amount (need ${amountForThisTrade.toFixed(2)}, have ${remainingAmount.toFixed(2)})`);
           break;
         }
         
         // Calculate adaptive stop loss as percentage of position value
-        // Use config.stop_loss as percentage (e.g., 1.5 = 1.5%)
         const stopLossPercent = config.stop_loss || 1.5;
         const stopLossAmount = (amountForThisTrade * stopLossPercent) / 100;
         
-        console.log(`${analysis.symbol} - Stop Loss: ${stopLossPercent}% of ${amountForThisTrade.toFixed(2)} USDT = ${stopLossAmount.toFixed(4)} USDT`);
+        console.log(`🛡️ ${analysis.symbol} - Stop Loss: ${stopLossPercent}% of ${amountForThisTrade.toFixed(2)} USDT = ${stopLossAmount.toFixed(4)} USDT`);
         
         // Execute the trade
-        const { data: tradeResult } = await supabase.functions.invoke('auto-trade', {
+        console.log(`🔄 Invoking auto-trade for ${analysis.symbol}...`);
+        const { data: tradeResult, error: tradeError } = await supabase.functions.invoke('auto-trade', {
           body: {
             symbol: analysis.symbol,
             side: 'BUY',
-            quoteOrderQty: quantityPerLayer.toString(), // Use quoteOrderQty to specify value in USDT
+            quoteOrderQty: quantityPerLayer.toString(),
             takeProfitAmount,
             stopLossAmount: stopLossAmount
           }
         });
 
+        if (tradeError) {
+          console.error(`❌ Trade invocation error for ${analysis.symbol}:`, tradeError);
+          console.log('Continuing to next opportunity...');
+          continue;
+        }
+
+        console.log(`📥 Trade result for ${analysis.symbol}:`, JSON.stringify(tradeResult));
+
         if (tradeResult?.success) {
           remainingAmount -= amountForThisTrade;
-          const stopLossPercent = config.stop_loss || 1.5;
-          const stopLossAmount = (amountForThisTrade * stopLossPercent) / 100;
           
           executedTrades.push({
             symbol: analysis.symbol,
@@ -411,10 +431,15 @@ serve(async (req) => {
             stopLossAmount: stopLossAmount,
             stopLossPercent: stopLossPercent
           });
-          console.log(`Executed trade for ${analysis.symbol}: ${amountForThisTrade.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), SL: ${stopLossPercent}% (${stopLossAmount.toFixed(4)} USDT)`);
+          console.log(`✅ Successfully executed trade for ${analysis.symbol}: ${amountForThisTrade.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), SL: ${stopLossPercent}% (${stopLossAmount.toFixed(4)} USDT)`);
+          console.log(`💰 Remaining budget: ${remainingAmount.toFixed(2)} USDT`);
+        } else {
+          console.error(`❌ Trade failed for ${analysis.symbol}: ${tradeResult?.message || 'Unknown reason'}`);
+          console.log('Continuing to next opportunity...');
         }
       } catch (error) {
-        console.error(`Error executing trade for ${analysis.symbol}:`, error);
+        console.error(`❌ Exception executing trade for ${analysis.symbol}:`, error);
+        console.log('Continuing to next opportunity...');
       }
     }
 
