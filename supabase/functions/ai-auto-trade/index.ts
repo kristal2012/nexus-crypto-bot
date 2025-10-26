@@ -195,23 +195,67 @@ serve(async (req) => {
 
     console.log('Using authenticated Binance API');
 
-    // Fetch exchange info to get minimum notional values
-    const exchangeInfo = await fetchExchangeInfo(apiSettings.api_key, decryptedSecret);
-    console.log(`Fetched exchange info for ${Object.keys(exchangeInfo).length} pairs`);
-
-    // Fetch price data for all symbols
-    const priceDataPromises = symbols.map(symbol => 
-      fetchPriceData(symbol, apiSettings.api_key, decryptedSecret)
-    );
-    const priceDataResults = await Promise.allSettled(priceDataPromises);
+    // Try Binance Spot API first (less geographic restrictions), fallback to public CoinGecko
+    let exchangeInfo: Record<string, number> = {};
+    let validPriceData: PriceData[] = [];
     
-    const validPriceData: PriceData[] = priceDataResults
-      .filter((result): result is PromiseFulfilledResult<PriceData> => 
-        result.status === 'fulfilled' && result.value.prices.length >= 20
-      )
-      .map(result => result.value);
+    try {
+      console.log('Attempting to fetch from Binance Spot API...');
+      exchangeInfo = await fetchExchangeInfoSpot();
+      console.log(`Fetched exchange info for ${Object.keys(exchangeInfo).length} pairs from Spot API`);
+      
+      const priceDataPromises = symbols.map(symbol => 
+        fetchPriceDataSpot(symbol)
+      );
+      const priceDataResults = await Promise.allSettled(priceDataPromises);
+      
+      validPriceData = priceDataResults
+        .filter((result): result is PromiseFulfilledResult<PriceData> => 
+          result.status === 'fulfilled' && result.value.prices.length >= 20
+        )
+        .map(result => result.value);
+      
+      console.log(`Valid price data from Spot API: ${validPriceData.length} pairs`);
+    } catch (spotError) {
+      console.error('Spot API failed, falling back to CoinGecko:', spotError);
+      
+      // Fallback to CoinGecko (no geographic restrictions)
+      const coinGeckoIds: Record<string, string> = {
+        'BNBUSDT': 'binancecoin',
+        'SOLUSDT': 'solana',
+        'ADAUSDT': 'cardano',
+        'DOGEUSDT': 'dogecoin',
+        'XRPUSDT': 'ripple',
+        'DOTUSDT': 'polkadot',
+        'MATICUSDT': 'matic-network',
+        'AVAXUSDT': 'avalanche-2',
+        'LINKUSDT': 'chainlink',
+        'UNIUSDT': 'uniswap',
+        'LTCUSDT': 'litecoin',
+        'ATOMUSDT': 'cosmos',
+        'NEARUSDT': 'near'
+      };
+      
+      const coinGeckoPromises = symbols.map(symbol => 
+        fetchPriceDataCoinGecko(symbol, coinGeckoIds[symbol])
+      );
+      const coinGeckoResults = await Promise.allSettled(coinGeckoPromises);
+      
+      validPriceData = coinGeckoResults
+        .filter((result): result is PromiseFulfilledResult<PriceData> => 
+          result.status === 'fulfilled' && result.value.prices.length >= 20
+        )
+        .map(result => result.value);
+      
+      console.log(`Valid price data from CoinGecko: ${validPriceData.length} pairs`);
+      
+      // Set default minimum notional for all pairs
+      symbols.forEach(symbol => {
+        exchangeInfo[symbol] = 5; // Default 5 USDT
+      });
+    }
 
-    console.log(`Valid price data for ${validPriceData.length} pairs`);
+    console.log(`Total valid price data: ${validPriceData.length} pairs`);
 
     // Analyze each pair with AI
     const analyses: AIAnalysis[] = [];
@@ -435,20 +479,20 @@ serve(async (req) => {
       
       console.log(`Rate limited: ${remainingSeconds} seconds remaining`);
       
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
+        success: false,
         rate_limited: true,
-        message: `Aguarde ${remainingSeconds} segundos antes da próxima análise`,
+        message: 'Please wait before running another analysis',
         remaining_seconds: remainingSeconds
       }), {
-        status: 200, // Return 200 so frontend can handle rate limit gracefully
+        status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
     
-    // Handle other errors
     return new Response(JSON.stringify({ 
-      error: error.message || 'Erro desconhecido durante análise automática',
-      details: error.code || 'UNKNOWN_ERROR'
+      error: error.message || 'Internal server error',
+      details: error.toString()
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -527,6 +571,53 @@ async function fetchExchangeInfo(apiKey?: string, apiSecret?: string): Promise<R
   }
 }
 
+// Fetch from Binance Spot API (less geographic restrictions than Futures)
+async function fetchExchangeInfoSpot(): Promise<Record<string, number>> {
+  try {
+    const endpoint = 'https://api.binance.com/api/v3/exchangeInfo';
+    console.log(`Fetching exchange info from Spot API: ${endpoint}`);
+    
+    const response = await fetch(endpoint, {
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.symbols || !Array.isArray(data.symbols)) {
+      throw new Error('Invalid response structure');
+    }
+    
+    const minNotionals: Record<string, number> = {};
+    
+    const usdtSymbols = data.symbols.filter((s: any) => 
+      s.symbol.endsWith('USDT') && 
+      s.status === 'TRADING'
+    );
+    
+    for (const symbol of usdtSymbols) {
+      const minNotionalFilter = symbol.filters?.find((f: any) => 
+        f.filterType === 'NOTIONAL'
+      );
+      
+      if (minNotionalFilter) {
+        const minNotional = parseFloat(minNotionalFilter.minNotional || '10');
+        minNotionals[symbol.symbol] = minNotional;
+      } else {
+        minNotionals[symbol.symbol] = 10; // Default for spot
+      }
+    }
+    
+    return minNotionals;
+  } catch (error) {
+    console.error('Error fetching from Spot API:', error);
+    throw error;
+  }
+}
+
 async function fetchPriceData(symbol: string, apiKey?: string, apiSecret?: string): Promise<PriceData> {
   try {
     const baseUrl = 'https://fapi.binance.com/fapi/v1';
@@ -568,6 +659,92 @@ async function fetchPriceData(symbol: string, apiKey?: string, apiSecret?: strin
   } catch (error) {
     console.error(`Error fetching ${symbol} from Futures API:`, error);
     throw new Error(`Failed to fetch price data for ${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Fetch from Binance Spot API (less geographic restrictions)
+async function fetchPriceDataSpot(symbol: string): Promise<PriceData> {
+  try {
+    const baseUrl = 'https://api.binance.com/api/v3';
+    const url = `${baseUrl}/klines?symbol=${symbol}&interval=1h&limit=24`;
+    
+    console.log(`Fetching price data for ${symbol} from Spot API`);
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const klines = await response.json();
+    
+    if (!Array.isArray(klines) || klines.length === 0) {
+      throw new Error('Invalid klines data');
+    }
+    
+    const prices = klines.map((k: any) => parseFloat(k[4]));
+    const currentPrice = prices[prices.length - 1];
+    
+    const mean = prices.reduce((a: number, b: number) => a + b, 0) / prices.length;
+    const variance = prices.reduce((sum: number, price: number) => sum + Math.pow(price - mean, 2), 0) / prices.length;
+    const volatility = Math.sqrt(variance) / mean;
+    
+    return {
+      symbol,
+      prices,
+      currentPrice,
+      volatility
+    };
+  } catch (error) {
+    console.error(`Error fetching ${symbol} from Spot API:`, error);
+    throw error;
+  }
+}
+
+// Fetch from CoinGecko (no geographic restrictions, public API)
+async function fetchPriceDataCoinGecko(symbol: string, coinGeckoId: string): Promise<PriceData> {
+  try {
+    if (!coinGeckoId) {
+      throw new Error(`No CoinGecko ID for ${symbol}`);
+    }
+    
+    const url = `https://api.coingecko.com/api/v3/coins/${coinGeckoId}/market_chart?vs_currency=usd&days=1&interval=hourly`;
+    
+    console.log(`Fetching price data for ${symbol} from CoinGecko`);
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.prices || !Array.isArray(data.prices) || data.prices.length === 0) {
+      throw new Error('Invalid price data from CoinGecko');
+    }
+    
+    // CoinGecko returns [timestamp, price] pairs
+    const prices = data.prices.map((p: any) => p[1]);
+    const currentPrice = prices[prices.length - 1];
+    
+    const mean = prices.reduce((a: number, b: number) => a + b, 0) / prices.length;
+    const variance = prices.reduce((sum: number, price: number) => sum + Math.pow(price - mean, 2), 0) / prices.length;
+    const volatility = Math.sqrt(variance) / mean;
+    
+    console.log(`Successfully fetched ${symbol} from CoinGecko: $${currentPrice.toFixed(4)}`);
+    
+    return {
+      symbol,
+      prices,
+      currentPrice,
+      volatility
+    };
+  } catch (error) {
+    console.error(`Error fetching ${symbol} from CoinGecko:`, error);
+    throw error;
   }
 }
 
