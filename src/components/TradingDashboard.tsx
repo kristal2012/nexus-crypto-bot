@@ -91,15 +91,19 @@ export const TradingDashboard = () => {
 
         const { data } = await supabase
           .from("bot_daily_stats")
-          .select("current_balance, starting_balance")
+          .select("current_balance, starting_balance, date")
           .eq("user_id", user.id)
-          .gte("date", startOfMonth.toISOString().split('T')[0]);
+          .gte("date", startOfMonth.toISOString().split('T')[0])
+          .order("date", { ascending: true });
         
         if (data && data.length > 0) {
-          const firstDay = data[data.length - 1];
-          const lastDay = data[0];
-          const monthProfit = lastDay.current_balance - firstDay.starting_balance;
-          setMonthlyProfit(monthProfit);
+          // Sum the daily profit/loss for each day in the month
+          const totalMonthProfit = data.reduce((acc, day) => {
+            return acc + (day.current_balance - day.starting_balance);
+          }, 0);
+          setMonthlyProfit(totalMonthProfit);
+        } else {
+          setMonthlyProfit(0);
         }
       }
     };
