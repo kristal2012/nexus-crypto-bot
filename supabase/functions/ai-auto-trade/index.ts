@@ -314,14 +314,14 @@ serve(async (req) => {
     // Calcular valor absoluto de TP baseado no saldo inicial do dia
     const takeProfitAmount = (startingBalance * config.take_profit) / 100;
     
-    // Stop Loss adaptativo será calculado por trade usando ATR
-    const atrMultiplier = config.stop_loss || 1.5; // stop_loss agora armazena multiplicador ATR
+    // Stop Loss será aplicado como porcentagem do valor investido por trade
+    const stopLossPercent = config.stop_loss || 1.5;
 
     console.log(`Saldo disponível: ${availableBalance} USDT`);
     console.log(`Valor total desta análise (30%): ${totalAnalysisAmount} USDT`);
     console.log(`Saldo inicial do dia: ${startingBalance} USDT`);
     console.log(`Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
-    console.log(`Stop Loss: Adaptativo (ATR × ${atrMultiplier})`);
+    console.log(`Stop Loss: ${stopLossPercent}% por trade`);
     console.log(`Executando até ${tradesToExecute.length} oportunidades`);
 
     const executedTrades = [];
@@ -367,14 +367,12 @@ serve(async (req) => {
           break;
         }
         
-        // Calculate adaptive stop loss using ATR
-        const priceResult = priceDataResults.find(
-          (r): r is PromiseFulfilledResult<PriceData> => r.status === 'fulfilled' && r.value.symbol === analysis.symbol
-        );
-        const atr = calculateATR(priceResult?.value.prices || []);
-        const adaptiveStopLoss = atr * atrMultiplier;
+        // Calculate adaptive stop loss as percentage of position value
+        // Use config.stop_loss as percentage (e.g., 1.5 = 1.5%)
+        const stopLossPercent = config.stop_loss || 1.5;
+        const stopLossAmount = (amountForThisTrade * stopLossPercent) / 100;
         
-        console.log(`${analysis.symbol} - ATR: ${atr.toFixed(4)}, Adaptive SL: ${adaptiveStopLoss.toFixed(4)} USDT`);
+        console.log(`${analysis.symbol} - Stop Loss: ${stopLossPercent}% of ${amountForThisTrade.toFixed(2)} USDT = ${stopLossAmount.toFixed(4)} USDT`);
         
         // Execute the trade
         const { data: tradeResult } = await supabase.functions.invoke('auto-trade', {
@@ -383,17 +381,14 @@ serve(async (req) => {
             side: 'BUY',
             quoteOrderQty: quantityPerLayer.toString(), // Use quoteOrderQty to specify value in USDT
             takeProfitAmount,
-            stopLossAmount: adaptiveStopLoss
+            stopLossAmount: stopLossAmount
           }
         });
 
         if (tradeResult?.success) {
           remainingAmount -= amountForThisTrade;
-          const priceResult = priceDataResults.find(
-            (r): r is PromiseFulfilledResult<PriceData> => r.status === 'fulfilled' && r.value.symbol === analysis.symbol
-          );
-          const atr = calculateATR(priceResult?.value.prices || []);
-          const adaptiveStopLoss = atr * atrMultiplier;
+          const stopLossPercent = config.stop_loss || 1.5;
+          const stopLossAmount = (amountForThisTrade * stopLossPercent) / 100;
           
           executedTrades.push({
             symbol: analysis.symbol,
@@ -402,10 +397,10 @@ serve(async (req) => {
             predictedPrice: analysis.predictedPrice,
             amountUsed: amountForThisTrade,
             takeProfitAmount,
-            stopLossAmount: adaptiveStopLoss,
-            atr: atr
+            stopLossAmount: stopLossAmount,
+            stopLossPercent: stopLossPercent
           });
-          console.log(`Executed trade for ${analysis.symbol}: ${amountForThisTrade.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), Adaptive SL: ${adaptiveStopLoss.toFixed(4)} USDT`);
+          console.log(`Executed trade for ${analysis.symbol}: ${amountForThisTrade.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), SL: ${stopLossPercent}% (${stopLossAmount.toFixed(4)} USDT)`);
         }
       } catch (error) {
         console.error(`Error executing trade for ${analysis.symbol}:`, error);

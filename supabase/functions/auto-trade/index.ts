@@ -305,15 +305,7 @@ serve(async (req) => {
           });
       }
 
-      // Check if position should be closed due to stop loss
-      if (stopLossAmount && existingPosition) {
-        const currentPnL = (executedPrice - parseFloat(existingPosition.entry_price)) * parseFloat(existingPosition.quantity);
-        if (currentPnL < 0 && Math.abs(currentPnL) >= stopLossAmount) {
-          console.log(`Stop loss triggered for ${symbol}: P&L ${currentPnL.toFixed(2)} USDT <= -${stopLossAmount} USDT`);
-          // Trigger sell to close position
-          // This will be handled by the monitoring system
-        }
-      }
+      // Note: Stop loss monitoring is handled by monitor-positions function
     } else if (side === 'SELL') {
       // Closing or reducing a LONG position
       const { data: existingPosition } = await supabase
