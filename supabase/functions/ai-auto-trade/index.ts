@@ -453,35 +453,10 @@ serve(async (req) => {
 async function fetchExchangeInfo(apiKey?: string, apiSecret?: string): Promise<Record<string, number>> {
   try {
     const endpoint = 'https://fapi.binance.com/fapi/v1/exchangeInfo';
-    console.log(`Fetching exchange info from Futures API with authentication: ${endpoint}`);
+    console.log(`Fetching exchange info from Futures API (public endpoint): ${endpoint}`);
     
-    // Add timestamp and signature for authenticated request
-    const timestamp = Date.now();
-    const queryString = `timestamp=${timestamp}`;
-    
-    // Create HMAC SHA256 signature
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(apiSecret || '');
-    const messageData = encoder.encode(queryString);
-    
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    
-    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
-    const signature = signatureArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    const authenticatedUrl = `${endpoint}?${queryString}&signature=${signature}`;
-    
-    const response = await fetch(authenticatedUrl, {
-      headers: {
-        'X-MBX-APIKEY': apiKey || ''
-      },
+    // Public endpoint - no authentication required
+    const response = await fetch(endpoint, {
       signal: AbortSignal.timeout(10000)
     });
     
@@ -550,35 +525,11 @@ async function fetchPriceData(symbol: string, apiKey?: string, apiSecret?: strin
   try {
     const baseUrl = 'https://fapi.binance.com/fapi/v1';
     
-    // Create authenticated request with timestamp and signature
-    const timestamp = Date.now();
-    const queryString = `symbol=${symbol}&interval=1h&limit=24&timestamp=${timestamp}`;
+    // Public endpoint - no authentication required for klines
+    const url = `${baseUrl}/klines?symbol=${symbol}&interval=1h&limit=24`;
     
-    // Create HMAC SHA256 signature
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(apiSecret || '');
-    const messageData = encoder.encode(queryString);
-    
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    
-    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
-    const signature = signatureArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    // Fetch kline data with authentication
-    const url = `${baseUrl}/klines?${queryString}&signature=${signature}`;
-    
-    console.log(`Fetching price data for ${symbol} from Futures API with authentication`);
+    console.log(`Fetching price data for ${symbol} from Futures API (public endpoint)`);
     const response = await fetch(url, {
-      headers: {
-        'X-MBX-APIKEY': apiKey || ''
-      },
       signal: AbortSignal.timeout(10000)
     });
     
