@@ -23,6 +23,8 @@ import { TradingConfig } from "./TradingConfig";
 import { PositionCard } from "./PositionCard";
 import { MarketPrice } from "./MarketPrice";
 import { BinanceApiSettings } from "./BinanceApiSettings";
+import { BinanceConnectionStatus } from "./BinanceConnectionStatus";
+import { StrategyRecommendation } from "./StrategyRecommendation";
 import { AIPrediction } from "./AIPrediction";
 import { AutoTradingControl } from "./AutoTradingControl";
 import { TradingModeToggle } from "./TradingModeToggle";
@@ -380,6 +382,8 @@ export const TradingDashboard = () => {
           <TradingModeToggle />
           <AutoTradingControl />
           <BinanceApiSettings />
+          <BinanceConnectionStatus />
+          <StrategyRecommendation currentBalance={dailyStats?.current_balance || 0} />
           <TradingConfig />
         </div>
       </div>
