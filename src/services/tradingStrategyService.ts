@@ -23,33 +23,33 @@ export const TRADING_STRATEGIES: Record<string, TradingStrategy> = {
     name: "Conservadora",
     description: "Baixo risco, retornos moderados",
     minBalance: 1000,
-    quantityPerLayer: 20,  // Ajustado para respeitar minNotional
+    quantityPerLayer: 20,
     numLayers: 2,
     leverage: 3,
-    stopLoss: 2.0,        // Stop loss mais espaçado
-    takeProfit: 5.0,      // Take profit comprovadamente lucrativo
+    stopLoss: 4.0,        // SL mais largo - dá margem para volatilidade
+    takeProfit: 3.0,      // TP realista - mais fácil de atingir
     minConfidence: 85,
   },
   moderate: {
     name: "Moderada",
     description: "Equilíbrio entre risco e retorno",
     minBalance: 5000,
-    quantityPerLayer: 25,  // Ajustado para respeitar minNotional
+    quantityPerLayer: 25,
     numLayers: 2,
     leverage: 5,
-    stopLoss: 2.0,        // Stop loss mais espaçado
-    takeProfit: 5.0,      // Take profit comprovadamente lucrativo
+    stopLoss: 4.0,        // SL mais largo - dá margem para volatilidade
+    takeProfit: 3.0,      // TP realista - mais fácil de atingir
     minConfidence: 80,
   },
   aggressive: {
     name: "Agressiva",
     description: "Alto risco, altos retornos",
     minBalance: 10000,
-    quantityPerLayer: 50,  // Valores maiores para estratégia agressiva
+    quantityPerLayer: 50,
     numLayers: 3,
     leverage: 10,
-    stopLoss: 2.5,        // Stop loss mais permissivo
-    takeProfit: 6.0,      // Take profit mais ambicioso
+    stopLoss: 5.0,        // SL ainda mais largo para estratégia agressiva
+    takeProfit: 4.0,      // TP mais alto mas ainda realista
     minConfidence: 75,
   },
 };

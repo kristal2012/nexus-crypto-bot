@@ -78,8 +78,9 @@ serve(async (req) => {
     console.log(`📊 Monitoring ${positions.length} positions. Profit: ${currentProfitAmount.toFixed(2)}/${takeProfitAmount.toFixed(2)} USDT`);
 
     const closedPositions = [];
-    const stopLossPercent = config.stop_loss || 2.0;  // Aumentado para 2% (menos agressivo)
-    const takeProfitPercent = 5.0;  // Take profit em 5% (comprovadamente lucrativo)
+    // Parâmetros otimizados: SL mais largo (4%), TP mais realista (3%)
+    const stopLossPercent = 4.0; // Stop loss espaçado - dá margem para volatilidade
+    const takeProfitPercent = 3.0; // Take profit realista - mais fácil de atingir
 
     // Check if global take profit reached
     if (currentProfitAmount >= takeProfitAmount) {
@@ -102,24 +103,17 @@ serve(async (req) => {
         positions.map(position => evaluatePosition(position, stopLossPercent, takeProfitPercent))
       );
 
-      // Update positions with current prices AND highest prices (for trailing stop)
+      // Update positions with current prices (simplificado - sem trailing stop)
       await Promise.all(
         positions.map((position, index) => {
           const eval_result = evaluations[index];
           if (eval_result.currentPrice) {
-            const updates: any = {
-              current_price: eval_result.currentPrice,
-              unrealized_pnl: eval_result.pnl
-            };
-            
-            // Atualiza highest_price se necessário para trailing stop
-            if (eval_result.shouldUpdateHighest && eval_result.highestPrice) {
-              updates.highest_price = eval_result.highestPrice;
-            }
-            
             return supabase
               .from('positions')
-              .update(updates)
+              .update({
+                current_price: eval_result.currentPrice,
+                unrealized_pnl: eval_result.pnl
+              })
               .eq('id', position.id);
           }
           return Promise.resolve();
@@ -137,10 +131,7 @@ serve(async (req) => {
             closedPositions.push(result);
           }
         } else if (evaluation.currentPrice) {
-          const trailingInfo = evaluation.trailingStopPrice 
-            ? ` | Trailing: ${evaluation.trailingStopPrice.toFixed(2)}` 
-            : '';
-          console.log(`${position.symbol}: ${evaluation.pnl.toFixed(2)} USDT (${evaluation.pnlPercent.toFixed(2)}%)${trailingInfo}`);
+          console.log(`${position.symbol}: ${evaluation.pnl.toFixed(2)} USDT (${evaluation.pnlPercent.toFixed(2)}%)`);
         }
       }
     }

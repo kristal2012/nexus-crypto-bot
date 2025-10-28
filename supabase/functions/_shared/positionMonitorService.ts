@@ -1,18 +1,16 @@
 /**
- * Position Monitor Service - Lógica de monitoramento e fechamento de posições
- * Princípios: SRP, DRY
- * Agora com Trailing Stop Loss para proteger lucros
+ * Position Monitor Service - Estratégia simplificada e otimizada
+ * Princípios: SRP, KISS, YAGNI
+ * Apenas TP e SL - sem trailing stop (remover complexidade desnecessária)
  */
 
 import { getCurrentPrice } from './priceService.ts';
-import { calculateTrailingStop, shouldMoveToBreakeven, TRAILING_STOP_CONFIGS } from './trailingStopService.ts';
 
 interface Position {
   id: string;
   symbol: string;
   entry_price: string;
   quantity: string;
-  highest_price?: string | null;
 }
 
 interface MonitorResult {
@@ -30,15 +28,12 @@ interface EvaluationResult {
   currentPrice: number | null;
   pnl: number;
   pnlPercent: number;
-  highestPrice?: number;
-  trailingStopPrice?: number;
-  shouldUpdateHighest?: boolean;
 }
 
 export async function evaluatePosition(
   position: Position,
   stopLossPercent: number,
-  takeProfitPercent: number = 5.0  // Take profit em 5% (comprovadamente lucrativo)
+  takeProfitPercent: number = 3.0  // TP realista: 3% é mais fácil de atingir
 ): Promise<EvaluationResult> {
   const currentPrice = await getCurrentPrice(position.symbol);
   
@@ -58,7 +53,7 @@ export async function evaluatePosition(
   const unrealizedPnL = (currentPrice - entryPrice) * quantity;
   const pnlPercent = (unrealizedPnL / positionValue) * 100;
 
-  // 1. TAKE PROFIT PRINCIPAL (5% - valor comprovado)
+  // 1. TAKE PROFIT PRINCIPAL (3% - realista e alcançável)
   if (unrealizedPnL > 0 && pnlPercent >= takeProfitPercent) {
     return {
       shouldClose: true,
@@ -69,44 +64,8 @@ export async function evaluatePosition(
     };
   }
 
-  // 2. TRAILING STOP LOSS (protege lucros acima de 2%)
-  const highestPrice = position.highest_price ? parseFloat(position.highest_price) : null;
-  const trailingConfig = TRAILING_STOP_CONFIGS.moderate; // Usa configuração moderada
-  
-  const trailingResult = calculateTrailingStop(
-    entryPrice,
-    currentPrice,
-    highestPrice,
-    trailingConfig
-  );
-
-  if (trailingResult.shouldClose) {
-    return {
-      shouldClose: true,
-      reason: 'TRAILING_STOP',
-      currentPrice,
-      pnl: unrealizedPnL,
-      pnlPercent,
-      highestPrice: trailingResult.highestPrice,
-      trailingStopPrice: trailingResult.trailingStopPrice
-    };
-  }
-
-  // 3. BREAKEVEN PROTECTION (move stop para entrada após 2% lucro)
-  if (shouldMoveToBreakeven(entryPrice, currentPrice, 2.0)) {
-    // Se preço caiu abaixo da entrada após ter atingido 2% de lucro
-    if (currentPrice <= entryPrice) {
-      return {
-        shouldClose: true,
-        reason: 'BREAKEVEN_STOP',
-        currentPrice,
-        pnl: unrealizedPnL,
-        pnlPercent
-      };
-    }
-  }
-
-  // 4. STOP LOSS TRADICIONAL (último recurso)
+  // 2. STOP LOSS TRADICIONAL - único mecanismo de saída além do TP
+  // Simplificado: remove trailing stop e breakeven (complicavam demais)
   const stopLossAmount = (positionValue * stopLossPercent) / 100;
   if (unrealizedPnL < 0 && Math.abs(unrealizedPnL) >= stopLossAmount) {
     return {
@@ -118,15 +77,13 @@ export async function evaluatePosition(
     };
   }
 
-  // Atualiza highest_price se necessário
+  // Posição não atinge nenhum critério de saída - mantém aberta
   return {
     shouldClose: false,
     reason: '',
     currentPrice,
     pnl: unrealizedPnL,
-    pnlPercent,
-    highestPrice: trailingResult.highestPrice,
-    shouldUpdateHighest: trailingResult.highestPrice > (highestPrice || entryPrice)
+    pnlPercent
   };
 }
 
