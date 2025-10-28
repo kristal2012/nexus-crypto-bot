@@ -311,7 +311,10 @@ serve(async (req) => {
     // Sort by confidence (highest first)
     const sortedAnalyses = analyses.sort((a, b) => b.confidence - a.confidence);
     
-    // Calcular distribuição inteligente
+    // ============================================================================
+    // NOVA LÓGICA: Calcular distribuição considerando valores mínimos notionais
+    // ============================================================================
+    
     let amountPerPair: number;
     let tradesToExecute: AIAnalysis[];
     
@@ -319,21 +322,51 @@ serve(async (req) => {
       console.log('⚠️ Nenhum par elegível encontrado com a confiança mínima configurada');
       amountPerPair = 0;
       tradesToExecute = [];
-    } else if (eligiblePairs * BASE_AMOUNT_PER_PAIR <= MAX_DAILY_BUDGET) {
-      // Se conseguimos dar 10 USDT para cada par sem estourar o orçamento
-      amountPerPair = BASE_AMOUNT_PER_PAIR;
-      tradesToExecute = sortedAnalyses;
-      console.log(`✅ Distribuição: ${amountPerPair} USDT × ${eligiblePairs} pares = ${amountPerPair * eligiblePairs} USDT`);
     } else {
-      // Se temos muitos pares, usar todo o orçamento dividido entre eles
-      const maxPairs = Math.floor(MAX_DAILY_BUDGET / MIN_AMOUNT_PER_PAIR);
-      amountPerPair = MAX_DAILY_BUDGET / maxPairs;
-      tradesToExecute = sortedAnalyses.slice(0, maxPairs);
-      console.log(`📊 Muitos pares elegíveis (${eligiblePairs}). Limitando a ${maxPairs} pares com ${amountPerPair.toFixed(2)} USDT cada`);
-    }
-    
-    if (eligiblePairs > tradesToExecute.length) {
-      console.log(`⚠️ ${eligiblePairs - tradesToExecute.length} pares não serão executados por restrição de orçamento`);
+      // PASSO 1: Calcular distribuição inicial
+      let initialAmountPerPair = BASE_AMOUNT_PER_PAIR;
+      let maxPairsWithBudget = Math.floor(MAX_DAILY_BUDGET / BASE_AMOUNT_PER_PAIR);
+      
+      if (eligiblePairs > maxPairsWithBudget) {
+        // Muitos pares - distribuir orçamento entre os top N
+        initialAmountPerPair = MAX_DAILY_BUDGET / maxPairsWithBudget;
+      }
+      
+      console.log(`🔍 Distribuição inicial: ${initialAmountPerPair.toFixed(2)} USDT por par`);
+      
+      // PASSO 2: Filtrar pares que podem ser executados com a distribuição inicial
+      const executablePairs = sortedAnalyses.filter(analysis => {
+        const canExecute = analysis.minNotional <= initialAmountPerPair;
+        if (!canExecute) {
+          console.log(`⚠️ ${analysis.symbol} requer mínimo ${analysis.minNotional} USDT (calculado: ${initialAmountPerPair.toFixed(2)} USDT) - será ignorado`);
+        }
+        return canExecute;
+      });
+      
+      console.log(`✅ Pares executáveis após filtro de minNotional: ${executablePairs.length}/${eligiblePairs}`);
+      
+      // PASSO 3: Recalcular distribuição com pares executáveis
+      if (executablePairs.length === 0) {
+        console.log('❌ Nenhum par pode ser executado com o orçamento disponível');
+        amountPerPair = 0;
+        tradesToExecute = [];
+      } else if (executablePairs.length * BASE_AMOUNT_PER_PAIR <= MAX_DAILY_BUDGET) {
+        // Conseguimos dar valor base para todos
+        amountPerPair = BASE_AMOUNT_PER_PAIR;
+        tradesToExecute = executablePairs;
+        console.log(`✅ Distribuição final: ${amountPerPair} USDT × ${executablePairs.length} pares = ${amountPerPair * executablePairs.length} USDT`);
+      } else {
+        // Distribuir todo orçamento entre pares executáveis
+        const maxExecutable = Math.floor(MAX_DAILY_BUDGET / MIN_AMOUNT_PER_PAIR);
+        const pairsToUse = Math.min(executablePairs.length, maxExecutable);
+        amountPerPair = MAX_DAILY_BUDGET / pairsToUse;
+        tradesToExecute = executablePairs.slice(0, pairsToUse);
+        console.log(`📊 Distribuição final: ${amountPerPair.toFixed(2)} USDT × ${pairsToUse} pares = ${(amountPerPair * pairsToUse).toFixed(2)} USDT`);
+      }
+      
+      if (eligiblePairs > tradesToExecute.length) {
+        console.log(`⚠️ ${eligiblePairs - tradesToExecute.length} pares não serão executados (restrições de orçamento/minNotional)`);
+      }
     }
 
     // Buscar saldo inicial do dia para calcular TP
