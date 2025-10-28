@@ -31,19 +31,30 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
   try {
     const { data, error } = await supabase.functions.invoke('ai-auto-trade');
 
-    // Case 1: Network/Infrastructure error (no response from function)
-    if (error) {
-      throw parseSupabaseError(error);
+    // IMPORTANT: Check data first for rate_limited, even if error exists
+    // Supabase client reports 429 as "error" but still includes data
+    if (data?.rate_limited) {
+      return {
+        success: false,
+        rate_limited: true,
+        remaining_seconds: data.remaining_seconds,
+        message: data.message || 'Rate limited',
+      } as AutoTradeResponse;
     }
 
-    // Case 2: Function returned error in response body
+    // Case 1: Function returned error in response body
     if (data && !data.success) {
       throw {
-        isRateLimit: data.rate_limited || false,
+        isRateLimit: false,
         remainingSeconds: data.remaining_seconds,
         message: data.error || data.message || 'Unknown error',
         displayMessage: data.message || data.error || 'Erro na execução da análise',
       } as AutoTradeError;
+    }
+
+    // Case 2: Network/Infrastructure error (no valid data)
+    if (error && !data) {
+      throw parseSupabaseError(error);
     }
 
     // Case 3: Success
