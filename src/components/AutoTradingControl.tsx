@@ -7,6 +7,7 @@ import { Bot, Sparkles, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { executeAutoTradeAnalysis, AutoTradeError } from "@/services/autoTradeService";
 
 export const AutoTradingControl = () => {
   const [isActive, setIsActive] = useState(false);
@@ -59,61 +60,50 @@ export const AutoTradingControl = () => {
     const executeAutoAnalysis = async () => {
       try {
         console.log('Executing automatic analysis...');
-        const { data, error } = await supabase.functions.invoke('ai-auto-trade');
+        const response = await executeAutoTradeAnalysis();
 
-        if (error) {
-          console.error('Auto analysis error:', error);
-          
-          // Show the specific error message
-          const errorMessage = error.message || 'Erro desconhecido ao executar análise';
-          
-          toast({
-            title: "Erro na Análise",
-            description: errorMessage,
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Check for specific error responses from the function
-        if (data && !data.success && data.error) {
-          console.log('Function returned error:', data.error);
-          toast({
-            title: "Erro na Análise",
-            description: data.message || data.error,
-            variant: "destructive",
-          });
-          return;
-        }
-
-        if (data?.rate_limited) {
-          console.log('Rate limited:', data.message);
-          // Don't show toast for rate limit - it's expected behavior
-          // Schedule next execution after the remaining cooldown time
-          if (data.remaining_seconds) {
-            const waitTime = (data.remaining_seconds + 10) * 1000; // Add 10 seconds buffer
-            console.log(`Scheduling next analysis in ${data.remaining_seconds + 10} seconds`);
+        // Handle rate limit (don't show error, just schedule next run)
+        if (response.rate_limited) {
+          console.log('Rate limited:', response.message);
+          if (response.remaining_seconds) {
+            const waitTime = (response.remaining_seconds + 10) * 1000;
+            console.log(`Scheduling next analysis in ${response.remaining_seconds + 10} seconds`);
             timeoutId = setTimeout(executeAutoAnalysis, waitTime);
           }
           return;
         }
         
-        if (data?.executed_trades && data.executed_trades.length > 0) {
-          console.log(`Auto analysis completed: ${data.executed_trades.length} trades executed`);
+        // Handle successful execution
+        if (response.executed_trades && response.executed_trades.length > 0) {
+          console.log(`Auto analysis completed: ${response.executed_trades.length} trades executed`);
           loadLastAnalysis();
           toast({
             title: "Análise Automática Concluída",
-            description: `${data.executed_trades.length} operações executadas`,
+            description: `${response.executed_trades.length} operações executadas`,
           });
         } else {
           console.log('Auto analysis completed: no trades');
           loadLastAnalysis();
         }
       } catch (error) {
-        console.error('Error in auto analysis:', error);
+        // Error is already parsed by autoTradeService
+        const autoTradeError = error as AutoTradeError;
+        console.error('Auto analysis error:', autoTradeError.message);
+
+        // Handle rate limit silently (don't show error toast)
+        if (autoTradeError.isRateLimit) {
+          console.log('Rate limited, scheduling next execution');
+          if (autoTradeError.remainingSeconds) {
+            const waitTime = (autoTradeError.remainingSeconds + 10) * 1000;
+            timeoutId = setTimeout(executeAutoAnalysis, waitTime);
+          }
+          return;
+        }
+
+        // Show error toast for non-rate-limit errors
         toast({
           title: "Erro na Análise",
-          description: error instanceof Error ? error.message : "Erro desconhecido",
+          description: autoTradeError.displayMessage,
           variant: "destructive",
         });
       }
