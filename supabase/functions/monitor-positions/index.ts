@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { evaluatePosition, closePosition } from "../_shared/positionMonitorService.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,7 +32,7 @@ serve(async (req) => {
       );
     }
 
-    // Get all open positions for the user
+    // Get all open positions
     const { data: positions, error: positionsError } = await supabase
       .from('positions')
       .select('*')
@@ -47,7 +48,7 @@ serve(async (req) => {
       );
     }
 
-    // Get user's stop loss and take profit settings
+    // Get user's config
     const { data: config } = await supabase
       .from('auto_trading_config')
       .select('take_profit, stop_loss')
@@ -61,9 +62,7 @@ serve(async (req) => {
       );
     }
 
-    const closedPositions = [];
-
-    // Get today's starting balance for take profit calculation
+    // Get daily stats for global take profit
     const { data: dailyStats } = await supabase
       .from('bot_daily_stats')
       .select('starting_balance, current_balance')
@@ -76,146 +75,62 @@ serve(async (req) => {
     const takeProfitAmount = (startingBalance * config.take_profit) / 100;
     const currentProfitAmount = currentBalance - startingBalance;
 
-    console.log(`Monitoring ${positions.length} positions. Current profit: ${currentProfitAmount.toFixed(2)} USDT, Target: ${takeProfitAmount.toFixed(2)} USDT`);
+    console.log(`📊 Monitoring ${positions.length} positions. Profit: ${currentProfitAmount.toFixed(2)}/${takeProfitAmount.toFixed(2)} USDT`);
+
+    const closedPositions = [];
+    const stopLossPercent = config.stop_loss || 1.5;
+    const autoCloseProfitPercent = 1.5;
 
     // Check if global take profit reached
     if (currentProfitAmount >= takeProfitAmount) {
-      console.log('Global take profit reached! Closing all positions...');
+      console.log('🎯 Global take profit reached! Closing all positions...');
       
-      for (const position of positions) {
-        try {
-          // Get current market price from Futures API
-          const priceUrl = `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${position.symbol}`;
-          
-          const priceResponse = await fetch(priceUrl, {
-            signal: AbortSignal.timeout(5000)
-          });
-          
-          if (!priceResponse.ok) {
-            console.error(`Failed to get price for ${position.symbol}: ${priceResponse.status}`);
-            continue;
-          }
-          
-          const priceData = await priceResponse.json();
-          const currentPrice = parseFloat(priceData.price);
-          
-          // Close the position by selling
-          const { data: tradeResult, error: tradeError } = await supabase.functions.invoke('auto-trade', {
-            body: {
-              symbol: position.symbol,
-              side: 'SELL',
-              quantity: position.quantity.toString()
-            }
-          });
-
-          if (!tradeError && tradeResult?.success) {
-            closedPositions.push({
-              symbol: position.symbol,
-              reason: 'TAKE_PROFIT_GLOBAL',
-              entry_price: position.entry_price,
-              exit_price: currentPrice,
-              quantity: position.quantity
-            });
-            console.log(`Closed ${position.symbol} due to global take profit`);
-          }
-        } catch (error) {
-          console.error(`Error closing position ${position.symbol}:`, error);
+      // Close all positions in parallel
+      const closePromises = positions.map(async (position) => {
+        const evaluation = await evaluatePosition(position, stopLossPercent, autoCloseProfitPercent);
+        if (evaluation.currentPrice) {
+          return closePosition(supabase, position, evaluation.currentPrice, 'TAKE_PROFIT_GLOBAL');
         }
-      }
+        return null;
+      });
+
+      const results = await Promise.all(closePromises);
+      closedPositions.push(...results.filter(r => r !== null));
     } else {
-      // Check individual position stop losses and take profits
-      for (const position of positions) {
-        try {
-          // Get current market price from Futures API
-          const priceUrl = `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${position.symbol}`;
-          
-          const priceResponse = await fetch(priceUrl, {
-            signal: AbortSignal.timeout(5000)
-          });
-          
-          if (!priceResponse.ok) {
-            console.error(`Failed to get price for ${position.symbol}: ${priceResponse.status}`);
-            continue;
-          }
-          
-          const priceData = await priceResponse.json();
-          const currentPrice = parseFloat(priceData.price);
-          
-          const entryPrice = parseFloat(position.entry_price);
-          const quantity = parseFloat(position.quantity);
-          const positionValue = entryPrice * quantity;
-          const unrealizedPnL = (currentPrice - entryPrice) * quantity;
-          const pnlPercent = (unrealizedPnL / positionValue) * 100;
-          
-          // Update unrealized P&L
-          await supabase
-            .from('positions')
-            .update({
-              current_price: currentPrice,
-              unrealized_pnl: unrealizedPnL
-            })
-            .eq('id', position.id);
+      // Evaluate all positions in parallel
+      const evaluations = await Promise.all(
+        positions.map(position => evaluatePosition(position, stopLossPercent, autoCloseProfitPercent))
+      );
 
-          // Calculate stop loss as percentage of position value
-          const stopLossPercent = config.stop_loss || 1.5;
-          const stopLossAmount = (positionValue * stopLossPercent) / 100;
-          
-          // AUTO CLOSE PROFIT: Close position if profit > 1.5%
-          const autoCloseProfitPercent = 1.5;
-          
-          if (unrealizedPnL > 0 && pnlPercent >= autoCloseProfitPercent) {
-            console.log(`Auto-closing profitable position ${position.symbol}: P&L ${unrealizedPnL.toFixed(2)} USDT (${pnlPercent.toFixed(2)}%)`);
-            
-            // Close the position to realize profit
-            const { data: tradeResult, error: tradeError } = await supabase.functions.invoke('auto-trade', {
-              body: {
-                symbol: position.symbol,
-                side: 'SELL',
-                quantity: position.quantity.toString()
-              }
-            });
-
-            if (!tradeError && tradeResult?.success) {
-              closedPositions.push({
-                symbol: position.symbol,
-                reason: 'AUTO_TAKE_PROFIT',
-                entry_price: entryPrice,
-                exit_price: currentPrice,
-                quantity: quantity,
-                pnl: unrealizedPnL
-              });
-              console.log(`Closed ${position.symbol} to realize ${pnlPercent.toFixed(2)}% profit`);
-            }
+      // Update positions with current prices
+      await Promise.all(
+        positions.map((position, index) => {
+          const eval_result = evaluations[index];
+          if (eval_result.currentPrice) {
+            return supabase
+              .from('positions')
+              .update({
+                current_price: eval_result.currentPrice,
+                unrealized_pnl: eval_result.pnl
+              })
+              .eq('id', position.id);
           }
-          // Check if stop loss triggered
-          else if (unrealizedPnL < 0 && Math.abs(unrealizedPnL) >= stopLossAmount) {
-            console.log(`Stop loss triggered for ${position.symbol}: P&L ${unrealizedPnL.toFixed(2)} USDT`);
-            
-            // Close the position
-            const { data: tradeResult, error: tradeError } = await supabase.functions.invoke('auto-trade', {
-              body: {
-                symbol: position.symbol,
-                side: 'SELL',
-                quantity: position.quantity.toString()
-              }
-            });
+          return Promise.resolve();
+        })
+      );
 
-            if (!tradeError && tradeResult?.success) {
-              closedPositions.push({
-                symbol: position.symbol,
-                reason: 'STOP_LOSS',
-                entry_price: entryPrice,
-                exit_price: currentPrice,
-                quantity: quantity,
-                pnl: unrealizedPnL
-              });
-              console.log(`Closed ${position.symbol} due to stop loss`);
-            }
-          } else {
-            console.log(`${position.symbol}: Entry ${entryPrice.toFixed(4)}, Current ${currentPrice.toFixed(4)}, P&L ${unrealizedPnL.toFixed(2)} USDT (${pnlPercent.toFixed(2)}%)`);
+      // Close positions that need to be closed
+      for (let i = 0; i < positions.length; i++) {
+        const position = positions[i];
+        const evaluation = evaluations[i];
+
+        if (evaluation.shouldClose && evaluation.currentPrice) {
+          const result = await closePosition(supabase, position, evaluation.currentPrice, evaluation.reason);
+          if (result) {
+            closedPositions.push(result);
           }
-        } catch (error) {
-          console.error(`Error monitoring position ${position.symbol}:`, error);
+        } else if (evaluation.currentPrice) {
+          console.log(`${position.symbol}: ${evaluation.pnl.toFixed(2)} USDT (${evaluation.pnlPercent.toFixed(2)}%)`);
         }
       }
     }
