@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { runTradingModeTests } from "./test-trading-mode.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -208,16 +209,31 @@ serve(async (req) => {
       console.log('');
     }
 
-    console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed out of ${testCases.length} total\n`);
-
+    console.log('\n=== Running Trading Mode Security Tests ===');
+    const tradingModeTests = await runTradingModeTests(supabase, user.id);
+    
+    for (const test of tradingModeTests) {
+      results.push(test);
+      if (test.passed) {
+        passed++;
+        console.log(`✅ ${test.name}: ${test.message}`);
+      } else {
+        failed++;
+        console.log(`❌ ${test.name}: ${test.message}`);
+      }
+    }
+    
+    console.log('\n=== All Tests Completed ===');
+    console.log(`Total: ${testCases.length + tradingModeTests.length}, Passed: ${passed}, Failed: ${failed}`);
+    
     return new Response(
       JSON.stringify({
         success: true,
         summary: {
-          total: testCases.length,
+          total: testCases.length + tradingModeTests.length,
           passed,
           failed,
-          passRate: ((passed / testCases.length) * 100).toFixed(2) + '%'
+          passRate: ((passed / (testCases.length + tradingModeTests.length)) * 100).toFixed(2) + '%'
         },
         results
       }),

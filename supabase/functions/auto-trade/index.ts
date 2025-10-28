@@ -49,20 +49,23 @@ serve(async (req) => {
       );
     }
 
-    // Get trading settings to check if in demo mode
+    // ====================================================================
+    // CRITICAL SAFETY CHECK: Validate trading mode
+    // ====================================================================
     const { data: settingsData, error: settingsError } = await supabase
       .from('trading_settings')
-      .select('*')
+      .select('trading_mode, demo_balance, real_mode_confirmed_at')
       .eq('user_id', user.id)
       .maybeSingle();
 
     if (settingsError) {
-      console.error('Error fetching trading settings:', settingsError);
+      console.error('❌ Error fetching trading settings:', settingsError);
     }
 
-    // Create default settings if none exist
+    // Create default DEMO settings if none exist
     let settings = settingsData;
     if (!settings) {
+      console.log('⚠️ No trading settings found - creating DEMO mode by default');
       const { data: newSettings, error: insertError } = await supabase
         .from('trading_settings')
         .insert({
@@ -74,30 +77,50 @@ serve(async (req) => {
         .single();
       
       if (insertError) {
-        console.error('Error creating settings:', insertError);
+        console.error('❌ Error creating settings:', insertError);
+        // FAIL-SAFE: If we can't create settings, reject the trade
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Failed to initialize trading settings',
+            message: 'Could not determine trading mode. Please try again.'
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       } else {
         settings = newSettings;
       }
     }
 
-    const isDemo = settings?.trading_mode === 'DEMO';
+    // ====================================================================
+    // DETERMINE TRADING MODE - CRITICAL SECURITY LOGIC
+    // ====================================================================
+    const tradingMode = settings?.trading_mode || 'DEMO';
+    const isDemo = tradingMode === 'DEMO';
 
-    // For real mode, check if user has confirmed within last 5 minutes
-    if (!isDemo) {
+    if (isDemo) {
+      console.log('✅ DEMO MODE ACTIVE - Trade will be SIMULATED (no real Binance execution)');
+    } else {
+      console.log('🔴 REAL MODE - Preparing to execute REAL trade on Binance');
+      
+      // VALIDATION: For real mode, require recent confirmation (5 min window)
       const confirmedAt = settings?.real_mode_confirmed_at ? new Date(settings.real_mode_confirmed_at) : null;
       const now = new Date();
       const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
 
       if (!confirmedAt || confirmedAt < fiveMinutesAgo) {
+        console.warn('⚠️ REAL MODE BLOCKED: Confirmation expired or missing');
         return new Response(
           JSON.stringify({ 
             success: false, 
             error: 'Real mode requires confirmation',
-            message: 'Please confirm real mode trading in settings before executing trades'
+            message: 'Please confirm real mode trading in settings before executing trades. Confirmation expires after 5 minutes for security.'
           }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+      
+      console.log('✅ Real mode confirmation valid - proceeding with REAL trade');
     }
 
     // Check if bot can trade (with error handling)
@@ -210,14 +233,26 @@ serve(async (req) => {
       );
     }
 
-    console.log('Executing trade:', { symbol, side, quantity, quoteOrderQty, isDemo });
+    // ====================================================================
+    // TRADE EXECUTION - DEMO vs REAL
+    // ====================================================================
+    console.log(`📊 Executing ${isDemo ? 'DEMO' : 'REAL'} trade:`, { 
+      symbol, 
+      side, 
+      quantity, 
+      quoteOrderQty, 
+      mode: isDemo ? 'SIMULATED' : 'BINANCE_API' 
+    });
 
     let orderData;
     let executedPrice;
     let executedQty;
 
     if (isDemo) {
-      // Simulate trade execution using live market price
+      // ====================================================================
+      // DEMO MODE: Simulate trade using live prices (NO BINANCE API CALL)
+      // ====================================================================
+      console.log('💡 DEMO MODE: Fetching live market price for simulation...');
       const marketPriceResponse = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`);
       const marketPriceData = await marketPriceResponse.json();
       executedPrice = parseFloat(marketPriceData.price);
@@ -262,9 +297,13 @@ serve(async (req) => {
         status: 'FILLED'
       };
 
-      console.log('Demo trade executed:', orderData);
+      console.log('✅ DEMO trade simulated successfully:', orderData);
     } else {
-      // Execute real trade
+      // ====================================================================
+      // REAL MODE: Execute actual trade on Binance
+      // CRITICAL: This calls the real Binance API with real money
+      // ====================================================================
+      console.log('🔴 REAL MODE: Calling Binance API to execute REAL trade...');
       const orderBody: any = {
         symbol,
         side,

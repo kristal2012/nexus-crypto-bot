@@ -28,6 +28,7 @@ import { StrategyRecommendation } from "./StrategyRecommendation";
 import { AIPrediction } from "./AIPrediction";
 import { AutoTradingControl } from "./AutoTradingControl";
 import { TradingModeToggle } from "./TradingModeToggle";
+import { TradingModeSafetyIndicator } from "./TradingModeSafetyIndicator";
 
 export const TradingDashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -378,6 +379,7 @@ export const TradingDashboard = () => {
 
         {/* Right Column - Config & Status */}
         <div className="space-y-6">
+          <TradingModeSafetyIndicator />
           <BotStatus active={botActive} />
           <TradingModeToggle />
           <AutoTradingControl />

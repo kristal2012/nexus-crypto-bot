@@ -254,31 +254,41 @@ serve(async (req) => {
 
     console.log(`Found ${analyses.length} high-confidence trading opportunities`);
 
-    // Check trading mode and confirmation for real mode
+    // ====================================================================
+    // CRITICAL SAFETY CHECK: Validate trading mode before AI execution
+    // ====================================================================
     const { data: settings } = await supabase
       .from('trading_settings')
       .select('trading_mode, demo_balance, real_mode_confirmed_at')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    const isDemo = settings?.trading_mode === 'DEMO';
+    const tradingMode = settings?.trading_mode || 'DEMO';
+    const isDemo = tradingMode === 'DEMO';
 
-    // For real mode, check if user has confirmed within last 5 minutes
-    if (!isDemo) {
+    if (isDemo) {
+      console.log('✅ AI Auto-Trade: DEMO MODE ACTIVE - All trades will be simulated');
+    } else {
+      console.log('🔴 AI Auto-Trade: REAL MODE - Will execute REAL trades on Binance');
+      
+      // VALIDATION: For real mode, require recent confirmation (5 min window)
       const confirmedAt = settings?.real_mode_confirmed_at ? new Date(settings.real_mode_confirmed_at) : null;
       const now = new Date();
       const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
 
       if (!confirmedAt || confirmedAt < fiveMinutesAgo) {
+        console.warn('⚠️ AI Auto-Trade BLOCKED: Real mode confirmation expired');
         return new Response(JSON.stringify({ 
           success: false, 
           error: 'Real mode requires confirmation',
-          message: 'Please confirm real mode trading in settings before running AI analysis'
+          message: 'Please confirm real mode trading in settings before running AI analysis. Confirmation expires after 5 minutes for security.'
         }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+      
+      console.log('✅ Real mode confirmation valid - AI will execute REAL trades');
     }
 
     // Get current balance to calculate per analysis
