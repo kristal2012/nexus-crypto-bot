@@ -31,36 +31,43 @@ export const validateBinanceApiKeys = async (): Promise<BinanceApiKeyStatus> => 
     if (error) {
       console.error('Binance API validation error:', error);
       
-      // Analisa o tipo de erro
+      // Se a resposta tem dados, é um erro estruturado da edge function
+      if (data?.error) {
+        const errorMessage = data.error;
+        const errorCode = data.errorCode;
+        const requiresReconfiguration = data.requiresReconfiguration;
+
+        // Erro de descriptografia - credenciais corrompidas
+        if (errorCode === 'DECRYPTION_FAILED' || requiresReconfiguration) {
+          return {
+            isConfigured: true,
+            hasPermissions: false,
+            canTradeFutures: false,
+            error: '🔐 ' + errorMessage + '\n\n📝 Vá em "Configurações de API Binance" e reconfigure suas credenciais.'
+          };
+        }
+
+        // Credenciais não configuradas
+        if (errorCode === 'MISSING_CREDENTIALS') {
+          return {
+            isConfigured: false,
+            hasPermissions: false,
+            canTradeFutures: false,
+            error: errorMessage
+          };
+        }
+
+        // Outros erros da Binance
+        return {
+          isConfigured: true,
+          hasPermissions: false,
+          canTradeFutures: false,
+          error: errorMessage
+        };
+      }
+      
+      // Erro genérico
       const errorMessage = error.message || '';
-      
-      if (errorMessage.includes('not configured')) {
-        return {
-          isConfigured: false,
-          hasPermissions: false,
-          canTradeFutures: false,
-          error: 'API keys não configuradas. Configure suas chaves da Binance primeiro.'
-        };
-      }
-      
-      if (errorMessage.includes('Invalid API key') || errorMessage.includes('-2015')) {
-        return {
-          isConfigured: true,
-          hasPermissions: false,
-          canTradeFutures: false,
-          error: '⚠️ API Key sem permissões para Futures. Vá em Binance > API Management > Editar > Habilitar "Enable Futures"'
-        };
-      }
-
-      if (errorMessage.includes('timeout') || errorMessage.includes('-1021')) {
-        return {
-          isConfigured: true,
-          hasPermissions: false,
-          canTradeFutures: false,
-          error: 'Timeout na conexão. Verifique sua conexão e tente novamente.'
-        };
-      }
-
       return {
         isConfigured: true,
         hasPermissions: false,
