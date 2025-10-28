@@ -272,79 +272,55 @@ serve(async (req) => {
       console.log(`💰 [REAL MODE] Real balance from Binance: ${availableBalance} USDT`);
     }
     
-    // Nova lógica: usar até 100 USDT do saldo disponível para distribuir entre pares
-    const MAX_DAILY_BUDGET = Math.min(availableBalance, 100);
-    const BASE_AMOUNT_PER_PAIR = 10; // 10 USDT base por par
-    const MIN_AMOUNT_PER_PAIR = 10; // Mínimo 10 USDT por par
-    const MIN_LAYERS = 3;
-    
-    // Calcular quantos pares elegíveis temos e como distribuir
-    const eligiblePairs = analyses.length;
-    
-    console.log(`Saldo disponível: ${availableBalance} USDT`);
-    console.log(`Orçamento para esta análise: ${MAX_DAILY_BUDGET} USDT`);
-    console.log(`Pares elegíveis encontrados: ${eligiblePairs}`);
+    // ====================================================================
+    // BUDGET DISTRIBUTION: Using centralized service (SRP, SSOT principles)
+    // ====================================================================
+    const { 
+      calculateAvailableBudget, 
+      distributeBudget, 
+      validateDistribution,
+      BUDGET_CONFIG 
+    } = await import('../_shared/budgetDistributionService.ts');
 
-    // Sort by confidence (highest first)
-    const sortedAnalyses = analyses.sort((a, b) => b.confidence - a.confidence);
+    const availableBudgetForAnalysis = calculateAvailableBudget(availableBalance);
+    console.log(`💰 Saldo: ${availableBalance} USDT | Orçamento análise: ${availableBudgetForAnalysis} USDT`);
+    console.log(`🔍 Oportunidades encontradas: ${analyses.length} (confiança ≥${config.min_confidence}%)`);
+
+    // Preparar dados para distribuição
+    const opportunities = analyses.map(a => ({
+      symbol: a.symbol,
+      minNotional: a.minNotional,
+      confidence: a.confidence,
+      recommendedDcaLayers: a.recommendedDcaLayers,
+      predictedPrice: a.predictedPrice,
+      trend: a.trend
+    }));
+
+    // Calcular distribuição inteligente de orçamento
+    const distribution = distributeBudget(opportunities, availableBudgetForAnalysis);
     
-    // ============================================================================
-    // NOVA LÓGICA: Calcular distribuição considerando valores mínimos notionais
-    // ============================================================================
-    
-    let amountPerPair: number;
-    let tradesToExecute: AIAnalysis[];
-    
-    if (eligiblePairs === 0) {
-      console.log('⚠️ Nenhum par elegível encontrado com a confiança mínima configurada');
-      amountPerPair = 0;
-      tradesToExecute = [];
-    } else {
-      // PASSO 1: Calcular distribuição inicial
-      let initialAmountPerPair = BASE_AMOUNT_PER_PAIR;
-      let maxPairsWithBudget = Math.floor(MAX_DAILY_BUDGET / BASE_AMOUNT_PER_PAIR);
+    // Validar distribuição
+    const validation = validateDistribution(distribution);
+    if (!validation.isValid) {
+      console.log(`❌ Distribuição inválida: ${validation.reason}`);
       
-      if (eligiblePairs > maxPairsWithBudget) {
-        // Muitos pares - distribuir orçamento entre os top N
-        initialAmountPerPair = MAX_DAILY_BUDGET / maxPairsWithBudget;
-      }
-      
-      console.log(`🔍 Distribuição inicial: ${initialAmountPerPair.toFixed(2)} USDT por par`);
-      
-      // PASSO 2: Filtrar pares que podem ser executados com a distribuição inicial
-      const executablePairs = sortedAnalyses.filter(analysis => {
-        const canExecute = analysis.minNotional <= initialAmountPerPair;
-        if (!canExecute) {
-          console.log(`⚠️ ${analysis.symbol} requer mínimo ${analysis.minNotional} USDT (calculado: ${initialAmountPerPair.toFixed(2)} USDT) - será ignorado`);
+      // Retornar sucesso mas sem trades executados (não é um erro da função)
+      return new Response(JSON.stringify({ 
+        success: true,
+        executed_trades: [],
+        message: validation.reason,
+        analysis_summary: {
+          total_analyzed: validPriceData.length,
+          high_confidence: analyses.length,
+          executed: 0,
+          skipped: distribution.skippedPairs
         }
-        return canExecute;
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
-      
-      console.log(`✅ Pares executáveis após filtro de minNotional: ${executablePairs.length}/${eligiblePairs}`);
-      
-      // PASSO 3: Recalcular distribuição com pares executáveis
-      if (executablePairs.length === 0) {
-        console.log('❌ Nenhum par pode ser executado com o orçamento disponível');
-        amountPerPair = 0;
-        tradesToExecute = [];
-      } else if (executablePairs.length * BASE_AMOUNT_PER_PAIR <= MAX_DAILY_BUDGET) {
-        // Conseguimos dar valor base para todos
-        amountPerPair = BASE_AMOUNT_PER_PAIR;
-        tradesToExecute = executablePairs;
-        console.log(`✅ Distribuição final: ${amountPerPair} USDT × ${executablePairs.length} pares = ${amountPerPair * executablePairs.length} USDT`);
-      } else {
-        // Distribuir todo orçamento entre pares executáveis
-        const maxExecutable = Math.floor(MAX_DAILY_BUDGET / MIN_AMOUNT_PER_PAIR);
-        const pairsToUse = Math.min(executablePairs.length, maxExecutable);
-        amountPerPair = MAX_DAILY_BUDGET / pairsToUse;
-        tradesToExecute = executablePairs.slice(0, pairsToUse);
-        console.log(`📊 Distribuição final: ${amountPerPair.toFixed(2)} USDT × ${pairsToUse} pares = ${(amountPerPair * pairsToUse).toFixed(2)} USDT`);
-      }
-      
-      if (eligiblePairs > tradesToExecute.length) {
-        console.log(`⚠️ ${eligiblePairs - tradesToExecute.length} pares não serão executados (restrições de orçamento/minNotional)`);
-      }
     }
+
+    const { amountPerPair, tradesToExecute } = distribution;
 
     // Buscar saldo inicial do dia para calcular TP
     const { data: dailyStats } = await supabase
@@ -362,11 +338,10 @@ serve(async (req) => {
     // Stop Loss será aplicado como porcentagem do valor investido por trade
     const stopLossPercent = config.stop_loss || 1.5;
 
-    console.log(`Saldo inicial do dia: ${startingBalance} USDT`);
-    console.log(`Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
-    console.log(`Stop Loss: ${stopLossPercent}% por trade`);
-    console.log(`Valor por par: ${amountPerPair.toFixed(2)} USDT (${MIN_LAYERS} layers mínimo)`);
-    console.log(`Executando ${tradesToExecute.length} oportunidades com confiança ≥${config.min_confidence}%`);
+    console.log(`💵 Saldo inicial dia: ${startingBalance} USDT`);
+    console.log(`🎯 Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
+    console.log(`🛑 Stop Loss: ${stopLossPercent}% por trade`);
+    console.log(`📊 Executando ${tradesToExecute.length} trades × ${amountPerPair.toFixed(2)} USDT (${BUDGET_CONFIG.MIN_LAYERS} layers mínimo)`);
 
     const executedTrades = [];
 
@@ -398,7 +373,7 @@ serve(async (req) => {
         const amountForThisTrade = amountPerPair;
         
         // Use recommended layers but ensure at least MIN_LAYERS
-        let dcaLayers = Math.max(MIN_LAYERS, analysis.recommendedDcaLayers);
+        let dcaLayers = Math.max(BUDGET_CONFIG.MIN_LAYERS, analysis.recommendedDcaLayers);
         let quantityPerLayer: number = amountForThisTrade / dcaLayers;
         
         // Ensure each layer meets minimum notional
@@ -468,7 +443,7 @@ serve(async (req) => {
     }
 
     const totalUsed = executedTrades.reduce((sum, t) => sum + t.amountUsed, 0);
-    console.log(`Used ${totalUsed.toFixed(2)} USDT of ${MAX_DAILY_BUDGET} USDT budget`);
+    console.log(`✅ Usados ${totalUsed.toFixed(2)} USDT de ${distribution.totalBudgetUsed.toFixed(2)} USDT alocados`);
 
     return new Response(JSON.stringify({
       success: true,
