@@ -27,6 +27,9 @@ verify_jwt = true
 [functions.test-auto-trade]
 verify_jwt = true
 
+[functions.test-ai-auto-trade]
+verify_jwt = true
+
 [functions.admin-emergency-stop]
 verify_jwt = true
 

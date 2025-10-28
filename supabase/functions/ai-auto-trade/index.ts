@@ -116,82 +116,38 @@ serve(async (req) => {
 
     console.log(`Analyzing ${symbols.length} crypto pairs...`);
 
-    // Get user's Binance API credentials - REQUIRED for analysis
-    // Public API is blocked by geographic restrictions (error 451)
-    const { data: apiSettings, error: apiError } = await supabase
-      .from('binance_api_keys')
-      .select('api_key, api_secret_encrypted, encryption_salt')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // ====================================================================
+    // VALIDATE CREDENTIALS: Using centralized service (SRP principle)
+    // ====================================================================
+    const { validateAndGetCredentials } = await import('../_shared/binanceCredentialsService.ts');
     
-    console.log('API Settings query result:', { 
-      hasData: !!apiSettings, 
-      hasApiKey: !!apiSettings?.api_key,
-      hasSecret: !!apiSettings?.api_secret_encrypted,
-      hasSalt: !!apiSettings?.encryption_salt,
-      userId: user.id,
-      queryError: apiError
-    });
-
-    if (apiError) {
-      console.error('Error querying API keys:', apiError);
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: 'Erro ao buscar credenciais',
-        message: `Erro ao buscar suas credenciais da Binance: ${apiError.message}`
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const hasApiCredentials = apiSettings?.api_key && apiSettings?.api_secret_encrypted;
+    const { result: credentialResult, credentials } = await validateAndGetCredentials(supabase, user.id);
     
-    if (!hasApiCredentials) {
-      console.log('Binance API credentials not configured - missing keys');
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: 'Credenciais da Binance não configuradas',
-        message: 'Configure sua API Key e Secret da Binance nas configurações para habilitar análises automáticas. Acesse as configurações e adicione suas chaves.'
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Decrypt API secret
-    let decryptedSecret: string;
-    try {
-      console.log('Starting decryption process...');
-      if (apiSettings.encryption_salt) {
-        console.log('Using PBKDF2 decryption with salt');
-        decryptedSecret = await decryptSecret(apiSettings.api_secret_encrypted, apiSettings.encryption_salt);
-        console.log('API secret decrypted successfully with salt');
-      } else {
-        console.log('Using legacy decryption (no salt)');
-        // Fallback to legacy decryption for old keys
-        decryptedSecret = await decryptSecretLegacy(apiSettings.api_secret_encrypted);
-        console.log('API secret decrypted successfully with legacy method');
-      }
-    } catch (error) {
-      console.error('Failed to decrypt API secret:', error);
-      console.error('Decryption error details:', {
-        errorMessage: error instanceof Error ? error.message : String(error),
-        hasEncryptedSecret: !!apiSettings?.api_secret_encrypted,
-        hasSalt: !!apiSettings?.encryption_salt,
-        encryptedLength: apiSettings?.api_secret_encrypted?.length,
-        saltLength: apiSettings?.encryption_salt?.length
-      });
+    if (!credentialResult.isValid) {
+      console.error('❌ Credential validation failed:', credentialResult);
+      
+      // Return user-friendly error based on error code
+      const statusCode = credentialResult.errorCode === 'MISSING_CREDENTIALS' ? 400 : 500;
       
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Erro ao descriptografar credenciais',
-        message: 'Não foi possível descriptografar suas credenciais da Binance. Isso pode acontecer se as chaves foram corrompidas. Por favor, reconfigure suas chaves nas configurações.'
+        error: credentialResult.error,
+        message: credentialResult.errorCode === 'DECRYPTION_FAILED'
+          ? 'Não foi possível descriptografar suas credenciais. Por favor, reconfigure suas chaves da Binance nas configurações.'
+          : credentialResult.errorCode === 'MISSING_CREDENTIALS'
+          ? 'Configure sua API Key e Secret da Binance nas configurações para habilitar análises automáticas.'
+          : credentialResult.error,
+        errorCode: credentialResult.errorCode,
+        details: credentialResult.details
       }), {
-        status: 400,
+        status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+    
+    console.log('✅ Credentials validated successfully');
+    const apiKey = credentials!.apiKey;
+    const decryptedSecret = credentials!.apiSecret;
 
     console.log('Using Binance Futures API ONLY');
 
@@ -200,12 +156,12 @@ serve(async (req) => {
     let validPriceData: PriceData[] = [];
     
     console.log('Fetching from Binance Futures API...');
-    exchangeInfo = await fetchExchangeInfo(apiSettings.api_key, decryptedSecret);
+    exchangeInfo = await fetchExchangeInfo(apiKey, decryptedSecret);
     console.log(`Fetched exchange info for ${Object.keys(exchangeInfo).length} pairs from Futures API`);
     
     // Fetch price data from Binance FUTURES API
     const priceDataPromises = symbols.map(symbol => 
-      fetchPriceData(symbol, apiSettings.api_key, decryptedSecret)
+      fetchPriceData(symbol, apiKey, decryptedSecret)
     );
     const priceDataResults = await Promise.allSettled(priceDataPromises);
     
