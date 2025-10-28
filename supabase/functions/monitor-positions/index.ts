@@ -123,7 +123,7 @@ serve(async (req) => {
         }
       }
     } else {
-      // Check individual position stop losses
+      // Check individual position stop losses and take profits
       for (const position of positions) {
         try {
           // Get current market price from Futures API
@@ -145,6 +145,7 @@ serve(async (req) => {
           const quantity = parseFloat(position.quantity);
           const positionValue = entryPrice * quantity;
           const unrealizedPnL = (currentPrice - entryPrice) * quantity;
+          const pnlPercent = (unrealizedPnL / positionValue) * 100;
           
           // Update unrealized P&L
           await supabase
@@ -156,12 +157,38 @@ serve(async (req) => {
             .eq('id', position.id);
 
           // Calculate stop loss as percentage of position value
-          // config.stop_loss is a percentage (e.g., 1.5 means 1.5% of position value)
           const stopLossPercent = config.stop_loss || 1.5;
           const stopLossAmount = (positionValue * stopLossPercent) / 100;
           
+          // AUTO CLOSE PROFIT: Close position if profit > 1.5%
+          const autoCloseProfitPercent = 1.5;
+          
+          if (unrealizedPnL > 0 && pnlPercent >= autoCloseProfitPercent) {
+            console.log(`Auto-closing profitable position ${position.symbol}: P&L ${unrealizedPnL.toFixed(2)} USDT (${pnlPercent.toFixed(2)}%)`);
+            
+            // Close the position to realize profit
+            const { data: tradeResult, error: tradeError } = await supabase.functions.invoke('auto-trade', {
+              body: {
+                symbol: position.symbol,
+                side: 'SELL',
+                quantity: position.quantity.toString()
+              }
+            });
+
+            if (!tradeError && tradeResult?.success) {
+              closedPositions.push({
+                symbol: position.symbol,
+                reason: 'AUTO_TAKE_PROFIT',
+                entry_price: entryPrice,
+                exit_price: currentPrice,
+                quantity: quantity,
+                pnl: unrealizedPnL
+              });
+              console.log(`Closed ${position.symbol} to realize ${pnlPercent.toFixed(2)}% profit`);
+            }
+          }
           // Check if stop loss triggered
-          if (unrealizedPnL < 0 && Math.abs(unrealizedPnL) >= stopLossAmount) {
+          else if (unrealizedPnL < 0 && Math.abs(unrealizedPnL) >= stopLossAmount) {
             console.log(`Stop loss triggered for ${position.symbol}: P&L ${unrealizedPnL.toFixed(2)} USDT`);
             
             // Close the position
@@ -185,7 +212,7 @@ serve(async (req) => {
               console.log(`Closed ${position.symbol} due to stop loss`);
             }
           } else {
-            console.log(`${position.symbol}: Entry ${entryPrice.toFixed(4)}, Current ${currentPrice.toFixed(4)}, P&L ${unrealizedPnL.toFixed(2)} USDT`);
+            console.log(`${position.symbol}: Entry ${entryPrice.toFixed(4)}, Current ${currentPrice.toFixed(4)}, P&L ${unrealizedPnL.toFixed(2)} USDT (${pnlPercent.toFixed(2)}%)`);
           }
         } catch (error) {
           console.error(`Error monitoring position ${position.symbol}:`, error);
