@@ -262,6 +262,7 @@ export type Database = {
           created_at: string | null
           current_price: number | null
           entry_price: number
+          highest_price: number | null
           id: string
           is_demo: boolean | null
           quantity: number
@@ -275,6 +276,7 @@ export type Database = {
           created_at?: string | null
           current_price?: number | null
           entry_price: number
+          highest_price?: number | null
           id?: string
           is_demo?: boolean | null
           quantity: number
@@ -288,6 +290,7 @@ export type Database = {
           created_at?: string | null
           current_price?: number | null
           entry_price?: number
+          highest_price?: number | null
           id?: string
           is_demo?: boolean | null
           quantity?: number

@@ -78,8 +78,8 @@ serve(async (req) => {
     console.log(`📊 Monitoring ${positions.length} positions. Profit: ${currentProfitAmount.toFixed(2)}/${takeProfitAmount.toFixed(2)} USDT`);
 
     const closedPositions = [];
-    const stopLossPercent = config.stop_loss || 1.5;
-    const autoCloseProfitPercent = 1.5;
+    const stopLossPercent = config.stop_loss || 2.0;  // Aumentado para 2% (menos agressivo)
+    const takeProfitPercent = 5.0;  // Take profit em 5% (comprovadamente lucrativo)
 
     // Check if global take profit reached
     if (currentProfitAmount >= takeProfitAmount) {
@@ -87,7 +87,7 @@ serve(async (req) => {
       
       // Close all positions in parallel
       const closePromises = positions.map(async (position) => {
-        const evaluation = await evaluatePosition(position, stopLossPercent, autoCloseProfitPercent);
+        const evaluation = await evaluatePosition(position, stopLossPercent, takeProfitPercent);
         if (evaluation.currentPrice) {
           return closePosition(supabase, position, evaluation.currentPrice, 'TAKE_PROFIT_GLOBAL');
         }
@@ -99,20 +99,27 @@ serve(async (req) => {
     } else {
       // Evaluate all positions in parallel
       const evaluations = await Promise.all(
-        positions.map(position => evaluatePosition(position, stopLossPercent, autoCloseProfitPercent))
+        positions.map(position => evaluatePosition(position, stopLossPercent, takeProfitPercent))
       );
 
-      // Update positions with current prices
+      // Update positions with current prices AND highest prices (for trailing stop)
       await Promise.all(
         positions.map((position, index) => {
           const eval_result = evaluations[index];
           if (eval_result.currentPrice) {
+            const updates: any = {
+              current_price: eval_result.currentPrice,
+              unrealized_pnl: eval_result.pnl
+            };
+            
+            // Atualiza highest_price se necessário para trailing stop
+            if (eval_result.shouldUpdateHighest && eval_result.highestPrice) {
+              updates.highest_price = eval_result.highestPrice;
+            }
+            
             return supabase
               .from('positions')
-              .update({
-                current_price: eval_result.currentPrice,
-                unrealized_pnl: eval_result.pnl
-              })
+              .update(updates)
               .eq('id', position.id);
           }
           return Promise.resolve();
@@ -130,7 +137,10 @@ serve(async (req) => {
             closedPositions.push(result);
           }
         } else if (evaluation.currentPrice) {
-          console.log(`${position.symbol}: ${evaluation.pnl.toFixed(2)} USDT (${evaluation.pnlPercent.toFixed(2)}%)`);
+          const trailingInfo = evaluation.trailingStopPrice 
+            ? ` | Trailing: ${evaluation.trailingStopPrice.toFixed(2)}` 
+            : '';
+          console.log(`${position.symbol}: ${evaluation.pnl.toFixed(2)} USDT (${evaluation.pnlPercent.toFixed(2)}%)${trailingInfo}`);
         }
       }
     }

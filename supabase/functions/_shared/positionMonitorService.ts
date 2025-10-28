@@ -1,15 +1,18 @@
 /**
  * Position Monitor Service - Lógica de monitoramento e fechamento de posições
  * Princípios: SRP, DRY
+ * Agora com Trailing Stop Loss para proteger lucros
  */
 
 import { getCurrentPrice } from './priceService.ts';
+import { calculateTrailingStop, shouldMoveToBreakeven, TRAILING_STOP_CONFIGS } from './trailingStopService.ts';
 
 interface Position {
   id: string;
   symbol: string;
   entry_price: string;
   quantity: string;
+  highest_price?: string | null;
 }
 
 interface MonitorResult {
@@ -21,15 +24,32 @@ interface MonitorResult {
   pnl?: number;
 }
 
+interface EvaluationResult {
+  shouldClose: boolean;
+  reason: string;
+  currentPrice: number | null;
+  pnl: number;
+  pnlPercent: number;
+  highestPrice?: number;
+  trailingStopPrice?: number;
+  shouldUpdateHighest?: boolean;
+}
+
 export async function evaluatePosition(
   position: Position,
   stopLossPercent: number,
-  autoCloseProfitPercent: number
-): Promise<{ shouldClose: boolean; reason: string; currentPrice: number | null; pnl: number; pnlPercent: number }> {
+  takeProfitPercent: number = 5.0  // Take profit em 5% (comprovadamente lucrativo)
+): Promise<EvaluationResult> {
   const currentPrice = await getCurrentPrice(position.symbol);
   
   if (!currentPrice) {
-    return { shouldClose: false, reason: '', currentPrice: null, pnl: 0, pnlPercent: 0 };
+    return { 
+      shouldClose: false, 
+      reason: '', 
+      currentPrice: null, 
+      pnl: 0, 
+      pnlPercent: 0 
+    };
   }
 
   const entryPrice = parseFloat(position.entry_price);
@@ -38,18 +58,55 @@ export async function evaluatePosition(
   const unrealizedPnL = (currentPrice - entryPrice) * quantity;
   const pnlPercent = (unrealizedPnL / positionValue) * 100;
 
-  // Check auto-close profit (1.5%)
-  if (unrealizedPnL > 0 && pnlPercent >= autoCloseProfitPercent) {
+  // 1. TAKE PROFIT PRINCIPAL (5% - valor comprovado)
+  if (unrealizedPnL > 0 && pnlPercent >= takeProfitPercent) {
     return {
       shouldClose: true,
-      reason: 'AUTO_TAKE_PROFIT',
+      reason: 'TAKE_PROFIT',
       currentPrice,
       pnl: unrealizedPnL,
       pnlPercent
     };
   }
 
-  // Check stop loss
+  // 2. TRAILING STOP LOSS (protege lucros acima de 2%)
+  const highestPrice = position.highest_price ? parseFloat(position.highest_price) : null;
+  const trailingConfig = TRAILING_STOP_CONFIGS.moderate; // Usa configuração moderada
+  
+  const trailingResult = calculateTrailingStop(
+    entryPrice,
+    currentPrice,
+    highestPrice,
+    trailingConfig
+  );
+
+  if (trailingResult.shouldClose) {
+    return {
+      shouldClose: true,
+      reason: 'TRAILING_STOP',
+      currentPrice,
+      pnl: unrealizedPnL,
+      pnlPercent,
+      highestPrice: trailingResult.highestPrice,
+      trailingStopPrice: trailingResult.trailingStopPrice
+    };
+  }
+
+  // 3. BREAKEVEN PROTECTION (move stop para entrada após 2% lucro)
+  if (shouldMoveToBreakeven(entryPrice, currentPrice, 2.0)) {
+    // Se preço caiu abaixo da entrada após ter atingido 2% de lucro
+    if (currentPrice <= entryPrice) {
+      return {
+        shouldClose: true,
+        reason: 'BREAKEVEN_STOP',
+        currentPrice,
+        pnl: unrealizedPnL,
+        pnlPercent
+      };
+    }
+  }
+
+  // 4. STOP LOSS TRADICIONAL (último recurso)
   const stopLossAmount = (positionValue * stopLossPercent) / 100;
   if (unrealizedPnL < 0 && Math.abs(unrealizedPnL) >= stopLossAmount) {
     return {
@@ -61,12 +118,15 @@ export async function evaluatePosition(
     };
   }
 
+  // Atualiza highest_price se necessário
   return {
     shouldClose: false,
     reason: '',
     currentPrice,
     pnl: unrealizedPnL,
-    pnlPercent
+    pnlPercent,
+    highestPrice: trailingResult.highestPrice,
+    shouldUpdateHighest: trailingResult.highestPrice > (highestPrice || entryPrice)
   };
 }
 
