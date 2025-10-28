@@ -293,28 +293,47 @@ serve(async (req) => {
 
     // Get current balance to calculate per analysis
     const { data: accountInfo } = await supabase.functions.invoke('binance-account');
-    const availableBalance = accountInfo?.totalWalletBalance || config.quantity_usdt;
+    const availableBalance = accountInfo?.totalWalletBalance || 100;
     
-    // Hard limit to prevent catastrophic losses even if calculations are wrong
-    const MAX_POSITION_USD = 10000;
-    // Use 50% of available balance to distribute across opportunities for better profitability
-    const totalAnalysisAmount = Math.min(availableBalance * 0.50, MAX_POSITION_USD);
-    
-    // Calculate minimum amount per trade to ensure profitability (min 15 USDT with 3 layers = 5 USDT per layer)
-    const MIN_AMOUNT_PER_TRADE = 15;
+    // Nova lógica: usar até 100 USDT do saldo disponível para distribuir entre pares
+    const MAX_DAILY_BUDGET = Math.min(availableBalance, 100);
+    const BASE_AMOUNT_PER_PAIR = 10; // 10 USDT base por par
+    const MIN_AMOUNT_PER_PAIR = 10; // Mínimo 10 USDT por par
     const MIN_LAYERS = 3;
-    const maxOpportunitiesWithBudget = Math.floor(totalAnalysisAmount / MIN_AMOUNT_PER_TRADE);
     
-    console.log(`Total analysis budget: ${totalAnalysisAmount} USDT, can execute up to ${maxOpportunitiesWithBudget} opportunities`);
+    // Calcular quantos pares elegíveis temos e como distribuir
+    const eligiblePairs = analyses.length;
+    
+    console.log(`Saldo disponível: ${availableBalance} USDT`);
+    console.log(`Orçamento para esta análise: ${MAX_DAILY_BUDGET} USDT`);
+    console.log(`Pares elegíveis encontrados: ${eligiblePairs}`);
 
-    // Sort by confidence (highest first) - execute only opportunities that fit within budget
+    // Sort by confidence (highest first)
     const sortedAnalyses = analyses.sort((a, b) => b.confidence - a.confidence);
     
-    // Limit to max opportunities we can afford with current budget
-    const tradesToExecute = sortedAnalyses.slice(0, maxOpportunitiesWithBudget);
+    // Calcular distribuição inteligente
+    let amountPerPair: number;
+    let tradesToExecute: AIAnalysis[];
     
-    if (sortedAnalyses.length > maxOpportunitiesWithBudget) {
-      console.log(`Limiting to ${maxOpportunitiesWithBudget} opportunities (budget constraint). ${sortedAnalyses.length - maxOpportunitiesWithBudget} opportunities skipped.`);
+    if (eligiblePairs === 0) {
+      console.log('⚠️ Nenhum par elegível encontrado com a confiança mínima configurada');
+      amountPerPair = 0;
+      tradesToExecute = [];
+    } else if (eligiblePairs * BASE_AMOUNT_PER_PAIR <= MAX_DAILY_BUDGET) {
+      // Se conseguimos dar 10 USDT para cada par sem estourar o orçamento
+      amountPerPair = BASE_AMOUNT_PER_PAIR;
+      tradesToExecute = sortedAnalyses;
+      console.log(`✅ Distribuição: ${amountPerPair} USDT × ${eligiblePairs} pares = ${amountPerPair * eligiblePairs} USDT`);
+    } else {
+      // Se temos muitos pares, usar todo o orçamento dividido entre eles
+      const maxPairs = Math.floor(MAX_DAILY_BUDGET / MIN_AMOUNT_PER_PAIR);
+      amountPerPair = MAX_DAILY_BUDGET / maxPairs;
+      tradesToExecute = sortedAnalyses.slice(0, maxPairs);
+      console.log(`📊 Muitos pares elegíveis (${eligiblePairs}). Limitando a ${maxPairs} pares com ${amountPerPair.toFixed(2)} USDT cada`);
+    }
+    
+    if (eligiblePairs > tradesToExecute.length) {
+      console.log(`⚠️ ${eligiblePairs - tradesToExecute.length} pares não serão executados por restrição de orçamento`);
     }
 
     // Buscar saldo inicial do dia para calcular TP
@@ -333,18 +352,15 @@ serve(async (req) => {
     // Stop Loss será aplicado como porcentagem do valor investido por trade
     const stopLossPercent = config.stop_loss || 1.5;
 
-    console.log(`Saldo disponível: ${availableBalance} USDT`);
-    console.log(`Valor total desta análise (50%): ${totalAnalysisAmount} USDT`);
     console.log(`Saldo inicial do dia: ${startingBalance} USDT`);
     console.log(`Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
     console.log(`Stop Loss: ${stopLossPercent}% por trade`);
-    console.log(`Valor mínimo por trade: ${MIN_AMOUNT_PER_TRADE} USDT (${MIN_LAYERS} layers)`);
-    console.log(`Executando até ${tradesToExecute.length} oportunidades de alta qualidade`);
+    console.log(`Valor por par: ${amountPerPair.toFixed(2)} USDT (${MIN_LAYERS} layers mínimo)`);
+    console.log(`Executando ${tradesToExecute.length} oportunidades com confiança ≥${config.min_confidence}%`);
 
     const executedTrades = [];
-    let remainingAmount = totalAnalysisAmount;
 
-    // Distribute budget across all opportunities that fit
+    // Distribute budget equally across all selected opportunities
     for (let i = 0; i < tradesToExecute.length; i++) {
       const analysis = tradesToExecute[i];
       
@@ -368,45 +384,34 @@ serve(async (req) => {
         
         console.log(`Trading status OK for ${analysis.symbol}`);
 
-        // Calculate amount per trade with minimum guarantee
-        const remainingOpportunities: number = tradesToExecute.length - executedTrades.length;
-        let amountForThisTrade: number = Math.max(
-          MIN_AMOUNT_PER_TRADE,
-          remainingAmount / remainingOpportunities
-        );
+        // Usar o valor calculado por par
+        const amountForThisTrade = amountPerPair;
         
-        // Use recommended layers but ensure at least MIN_LAYERS for profitability
+        // Use recommended layers but ensure at least MIN_LAYERS
         let dcaLayers = Math.max(MIN_LAYERS, analysis.recommendedDcaLayers);
         let quantityPerLayer: number = amountForThisTrade / dcaLayers;
         
         // Ensure each layer meets minimum notional
         if (quantityPerLayer < analysis.minNotional) {
           // Adjust layers to meet minimum notional
-          dcaLayers = Math.floor(amountForThisTrade / analysis.minNotional);
+          dcaLayers = Math.max(1, Math.floor(amountForThisTrade / analysis.minNotional));
           
-          if (dcaLayers < MIN_LAYERS) {
-            // If can't afford minimum layers, skip this trade
-            console.log(`⚠️ Skipping ${analysis.symbol}: insufficient amount (${amountForThisTrade.toFixed(2)} USDT) for ${MIN_LAYERS} layers at ${analysis.minNotional} USDT each`);
+          if (dcaLayers === 0 || amountForThisTrade < analysis.minNotional) {
+            console.log(`⚠️ Skipping ${analysis.symbol}: amount ${amountForThisTrade.toFixed(2)} USDT below minimum notional ${analysis.minNotional} USDT`);
             continue;
           }
           
-          quantityPerLayer = analysis.minNotional;
-          amountForThisTrade = quantityPerLayer * dcaLayers;
+          quantityPerLayer = Math.max(analysis.minNotional, amountForThisTrade / dcaLayers);
         }
         
-        console.log(`📊 ${analysis.symbol}: ${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT = ${amountForThisTrade.toFixed(2)} USDT (confidence: ${analysis.confidence}%)`);
-
-        // Check if we have enough remaining amount
-        if (amountForThisTrade > remainingAmount) {
-          console.log(`⚠️ Skipping ${analysis.symbol}: insufficient remaining amount (need ${amountForThisTrade.toFixed(2)}, have ${remainingAmount.toFixed(2)})`);
-          break;
-        }
+        console.log(`📊 ${analysis.symbol}: ${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT = ${(dcaLayers * quantityPerLayer).toFixed(2)} USDT (confidence: ${analysis.confidence}%)`);
         
         // Calculate adaptive stop loss as percentage of position value
         const stopLossPercent = config.stop_loss || 1.5;
-        const stopLossAmount = (amountForThisTrade * stopLossPercent) / 100;
+        const totalTradeAmount = dcaLayers * quantityPerLayer;
+        const stopLossAmount = (totalTradeAmount * stopLossPercent) / 100;
         
-        console.log(`🛡️ ${analysis.symbol} - Stop Loss: ${stopLossPercent}% of ${amountForThisTrade.toFixed(2)} USDT = ${stopLossAmount.toFixed(4)} USDT`);
+        console.log(`🛡️ ${analysis.symbol} - Stop Loss: ${stopLossPercent}% of ${totalTradeAmount.toFixed(2)} USDT = ${stopLossAmount.toFixed(4)} USDT`);
         
         // Execute the trade
         console.log(`🔄 Invoking auto-trade for ${analysis.symbol}...`);
@@ -429,20 +434,19 @@ serve(async (req) => {
         console.log(`📥 Trade result for ${analysis.symbol}:`, JSON.stringify(tradeResult));
 
         if (tradeResult?.success) {
-          remainingAmount -= amountForThisTrade;
+          console.log(`✅ Trade executed successfully for ${analysis.symbol}`);
           
           executedTrades.push({
             symbol: analysis.symbol,
             confidence: analysis.confidence,
             dcaLayers: dcaLayers,
             predictedPrice: analysis.predictedPrice,
-            amountUsed: amountForThisTrade,
+            amountUsed: totalTradeAmount,
             takeProfitAmount,
             stopLossAmount: stopLossAmount,
             stopLossPercent: stopLossPercent
           });
-          console.log(`✅ Successfully executed trade for ${analysis.symbol}: ${amountForThisTrade.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), SL: ${stopLossPercent}% (${stopLossAmount.toFixed(4)} USDT)`);
-          console.log(`💰 Remaining budget: ${remainingAmount.toFixed(2)} USDT`);
+          console.log(`✅ Successfully executed trade for ${analysis.symbol}: ${totalTradeAmount.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), SL: ${stopLossPercent}% (${stopLossAmount.toFixed(4)} USDT)`);
         } else {
           console.error(`❌ Trade failed for ${analysis.symbol}: ${tradeResult?.message || 'Unknown reason'}`);
           console.log('Continuing to next opportunity...');
@@ -453,7 +457,8 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Used ${totalAnalysisAmount - remainingAmount} USDT of ${totalAnalysisAmount} USDT available`);
+    const totalUsed = executedTrades.reduce((sum, t) => sum + t.amountUsed, 0);
+    console.log(`Used ${totalUsed.toFixed(2)} USDT of ${MAX_DAILY_BUDGET} USDT budget`);
 
     return new Response(JSON.stringify({
       success: true,

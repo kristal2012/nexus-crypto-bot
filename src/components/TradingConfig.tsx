@@ -12,7 +12,7 @@ export const TradingConfig = () => {
   const [leverage, setLeverage] = useState(10);
   const takeProfit = 2.5; // Valor fixo pré-estabelecido
   const atrMultiplier = 1.5; // Valor fixo pré-estabelecido
-  const [minConfidence, setMinConfidence] = useState([70]);
+  const [minConfidence, setMinConfidence] = useState([60]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -221,12 +221,15 @@ export const TradingConfig = () => {
         </div>
 
         <div className="bg-secondary/50 p-4 rounded-lg border border-border">
-          <Label className="text-foreground mb-2">Valor por Análise</Label>
+          <Label className="text-foreground mb-2">Distribuição por Trade</Label>
           <div className="text-2xl font-bold text-primary mt-2">
-            10% do Saldo Disponível
+            10 USDT por Par
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            A cada análise, 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança nos 13 pares principais: BNB, SOL, ADA, DOGE, XRP, DOT, MATIC, AVAX, LINK, UNI, LTC, ATOM, NEAR.
+            Sistema distribui 10 USDT para cada par elegível (confiança ≥{minConfidence}%). Se houver poucos pares elegíveis, o valor é ajustado proporcionalmente para usar até 100 USDT do saldo disponível.
+          </p>
+          <p className="text-xs text-success mt-1">
+            ✅ Exemplo: 5 pares elegíveis = 20 USDT cada | 10 pares = 10 USDT cada
           </p>
         </div>
 
@@ -235,17 +238,17 @@ export const TradingConfig = () => {
           <Slider
             value={minConfidence}
             onValueChange={setMinConfidence}
-            min={70}
+            min={55}
             max={100}
             step={1}
             className="mt-2"
           />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
-            <span>70% (mínimo)</span>
+            <span>55% (mínimo)</span>
             <span>100%</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Apenas trades com confiança ≥ {minConfidence}% serão executados. O mínimo é 70% e não pode ser reduzido.
+            Apenas trades com confiança ≥ {minConfidence}% serão executados. Ajustado para capturar mais oportunidades no mercado atual (55-60%).
           </p>
         </div>
 
