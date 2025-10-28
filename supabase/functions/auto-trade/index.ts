@@ -502,11 +502,18 @@ serve(async (req) => {
       
       currentBalance = usdtBalance + positionsValue;
     } else {
-      // Get current account balance for real trades
+      // MODO REAL: Buscar saldo real da Binance
+      console.log("💰 [REAL MODE] Fetching balance from Binance...");
       const accountResponse = await supabase.functions.invoke('binance-account');
-      currentBalance = accountResponse.data?.totalWalletBalance 
-        ? parseFloat(accountResponse.data.totalWalletBalance) 
-        : stats.current_balance;
+      if (accountResponse.error) {
+        console.error("❌ [REAL MODE] Error fetching Binance balance:", accountResponse.error);
+        currentBalance = stats.current_balance; // Fallback to previous balance
+      } else {
+        currentBalance = accountResponse.data?.totalWalletBalance 
+          ? parseFloat(accountResponse.data.totalWalletBalance) 
+          : stats.current_balance;
+        console.log(`💰 [REAL MODE] Binance balance: ${currentBalance} USDT`);
+      }
     }
 
     const profitLossPercent = ((currentBalance - stats.starting_balance) / stats.starting_balance) * 100;

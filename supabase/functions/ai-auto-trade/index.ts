@@ -248,8 +248,29 @@ serve(async (req) => {
     }
 
     // Get current balance to calculate per analysis
-    const { data: accountInfo } = await supabase.functions.invoke('binance-account');
-    const availableBalance = accountInfo?.totalWalletBalance || 100;
+    // CRÍTICO: NUNCA chamar Binance em modo DEMO
+    let availableBalance: number;
+    
+    if (isDemo) {
+      availableBalance = settings?.demo_balance || 10000;
+      console.log(`💰 [DEMO MODE] Using virtual balance: ${availableBalance} USDT (no Binance API called)`);
+    } else {
+      console.log(`💰 [REAL MODE] Fetching actual balance from Binance...`);
+      const { data: accountInfo, error: accountError } = await supabase.functions.invoke('binance-account');
+      if (accountError) {
+        console.error("❌ [REAL MODE] Error fetching Binance account:", accountError);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'Failed to fetch Binance balance',
+          message: accountError.message 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      availableBalance = accountInfo?.totalWalletBalance || 100;
+      console.log(`💰 [REAL MODE] Real balance from Binance: ${availableBalance} USDT`);
+    }
     
     // Nova lógica: usar até 100 USDT do saldo disponível para distribuir entre pares
     const MAX_DAILY_BUDGET = Math.min(availableBalance, 100);
