@@ -48,7 +48,12 @@ serve(async (req) => {
       );
     }
 
-    // Get user's config
+    // ====================================================================
+    // SSOT: Buscar configurações (ÚNICA fonte de verdade)
+    // ====================================================================
+    console.log('📋 Fetching user trading configuration (SSOT)...');
+    
+    // Get user's config - SSOT for SL/TP
     const { data: config } = await supabase
       .from('auto_trading_config')
       .select('take_profit, stop_loss')
@@ -72,15 +77,17 @@ serve(async (req) => {
 
     const startingBalance = dailyStats?.starting_balance || 10000;
     const currentBalance = dailyStats?.current_balance || startingBalance;
-    const takeProfitAmount = (startingBalance * config.take_profit) / 100;
     const currentProfitAmount = currentBalance - startingBalance;
+    
+    // SSOT: Usar valores da configuração do usuário
+    const takeProfitAmount = (startingBalance * config.take_profit) / 100;
+    const stopLossPercent = Number(config.stop_loss);
+    const takeProfitPercent = Number(config.take_profit);
 
     console.log(`📊 Monitoring ${positions.length} positions. Profit: ${currentProfitAmount.toFixed(2)}/${takeProfitAmount.toFixed(2)} USDT`);
+    console.log(`⚙️ Position config (from auto_trading_config): SL ${stopLossPercent}% | TP ${takeProfitPercent}%`);
 
     const closedPositions = [];
-    // Parâmetros otimizados: SL mais largo (4%), TP mais realista (3%)
-    const stopLossPercent = 4.0; // Stop loss espaçado - dá margem para volatilidade
-    const takeProfitPercent = 3.0; // Take profit realista - mais fácil de atingir
 
     // Check if global take profit reached
     if (currentProfitAmount >= takeProfitAmount) {

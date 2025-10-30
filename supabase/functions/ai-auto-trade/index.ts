@@ -322,7 +322,11 @@ serve(async (req) => {
 
     const { amountPerPair, tradesToExecute } = distribution;
 
-    // Buscar saldo inicial do dia para calcular TP
+    // ====================================================================
+    // SSOT: Buscar configurações do usuário (ÚNICA fonte de verdade)
+    // ====================================================================
+    console.log('📋 Fetching user trading configuration (SSOT)...');
+    
     const { data: dailyStats } = await supabase
       .from('bot_daily_stats')
       .select('starting_balance')
@@ -332,15 +336,16 @@ serve(async (req) => {
 
     const startingBalance = dailyStats?.starting_balance || availableBalance;
     
-    // Calcular valor absoluto de TP baseado no saldo inicial do dia
-    const takeProfitAmount = (startingBalance * config.take_profit) / 100;
+    // SSOT: Usar config.take_profit e config.stop_loss como ÚNICA fonte de verdade
+    const takeProfitPercent = config.take_profit;
+    const stopLossPercent = config.stop_loss;
     
-    // Stop Loss será aplicado como porcentagem do valor investido por trade
-    const stopLossPercent = config.stop_loss || 1.5;
+    // Calcular valor absoluto de TP baseado no saldo inicial do dia
+    const takeProfitAmount = (startingBalance * takeProfitPercent) / 100;
 
     console.log(`💵 Saldo inicial dia: ${startingBalance} USDT`);
-    console.log(`🎯 Take Profit: ${config.take_profit}% = ${takeProfitAmount} USDT`);
-    console.log(`🛑 Stop Loss: ${stopLossPercent}% por trade`);
+    console.log(`🎯 Take Profit: ${takeProfitPercent}% = ${takeProfitAmount} USDT (from auto_trading_config)`);
+    console.log(`🛑 Stop Loss: ${stopLossPercent}% por trade (from auto_trading_config)`);
     console.log(`📊 Executando ${tradesToExecute.length} trades × ${amountPerPair.toFixed(2)} USDT (${BUDGET_CONFIG.MIN_LAYERS} layers mínimo)`);
 
     const executedTrades = [];
@@ -391,8 +396,7 @@ serve(async (req) => {
         
         console.log(`📊 ${analysis.symbol}: ${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT = ${(dcaLayers * quantityPerLayer).toFixed(2)} USDT (confidence: ${analysis.confidence}%)`);
         
-        // Calculate adaptive stop loss as percentage of position value
-        const stopLossPercent = config.stop_loss || 1.5;
+        // SSOT: Usar stopLossPercent já definido acima (linha 340)
         const totalTradeAmount = dcaLayers * quantityPerLayer;
         const stopLossAmount = (totalTradeAmount * stopLossPercent) / 100;
         

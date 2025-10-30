@@ -30,10 +30,14 @@ interface EvaluationResult {
   pnlPercent: number;
 }
 
+/**
+ * SSOT: Avalia posição usando configuração do usuário
+ * Recebe stopLossPercent e takeProfitPercent de auto_trading_config
+ */
 export async function evaluatePosition(
   position: Position,
   stopLossPercent: number,
-  takeProfitPercent: number = 3.0  // TP realista: 3% é mais fácil de atingir
+  takeProfitPercent: number
 ): Promise<EvaluationResult> {
   const currentPrice = await getCurrentPrice(position.symbol);
   
@@ -53,7 +57,7 @@ export async function evaluatePosition(
   const unrealizedPnL = (currentPrice - entryPrice) * quantity;
   const pnlPercent = (unrealizedPnL / positionValue) * 100;
 
-  // 1. TAKE PROFIT PRINCIPAL (3% - realista e alcançável)
+  // 1. TAKE PROFIT (usando valor da config do usuário)
   if (unrealizedPnL > 0 && pnlPercent >= takeProfitPercent) {
     return {
       shouldClose: true,
@@ -64,8 +68,7 @@ export async function evaluatePosition(
     };
   }
 
-  // 2. STOP LOSS TRADICIONAL - único mecanismo de saída além do TP
-  // Simplificado: remove trailing stop e breakeven (complicavam demais)
+  // 2. STOP LOSS (usando valor da config do usuário)
   const stopLossAmount = (positionValue * stopLossPercent) / 100;
   if (unrealizedPnL < 0 && Math.abs(unrealizedPnL) >= stopLossAmount) {
     return {

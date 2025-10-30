@@ -31,19 +31,21 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
   try {
     const { data, error } = await supabase.functions.invoke('ai-auto-trade');
 
-    // IMPORTANT: Check data first for rate_limited, even if error exists
-    // Supabase client reports 429 as "error" but still includes data
-    if (data?.rate_limited) {
+    // CRITICAL FIX: Always check data.rate_limited first, even if error exists
+    // Supabase SDK returns 429 status as "error" but data still contains rate limit info
+    if (data?.rate_limited === true) {
+      console.log('✅ Rate limit detected in response data');
       return {
         success: false,
         rate_limited: true,
-        remaining_seconds: data.remaining_seconds,
-        message: data.message || 'Rate limited',
+        remaining_seconds: data.remaining_seconds || 120,
+        message: data.message || 'Aguarde antes de executar outra análise',
       } as AutoTradeResponse;
     }
 
-    // Case 1: Function returned error in response body
-    if (data && !data.success) {
+    // Case 1: Function returned error in response body (but not rate limit)
+    if (data && !data.success && !data.rate_limited) {
+      console.error('❌ Function returned error:', data);
       throw {
         isRateLimit: false,
         remainingSeconds: data.remaining_seconds,
@@ -52,8 +54,9 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
       } as AutoTradeError;
     }
 
-    // Case 2: Network/Infrastructure error (no valid data)
+    // Case 2: Network/Infrastructure error (no valid data at all)
     if (error && !data) {
+      console.error('❌ Network/Infrastructure error:', error);
       throw parseSupabaseError(error);
     }
 
