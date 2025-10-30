@@ -5,164 +5,54 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Settings, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useTradingConfig } from "@/hooks/useTradingConfig";
 
 export const TradingConfig = () => {
+  const { config, loading: configLoading, updateConfig } = useTradingConfig();
   const [leverage, setLeverage] = useState(10);
-  const takeProfit = 2.5; // Valor fixo pré-estabelecido
-  const atrMultiplier = 1.5; // Valor fixo pré-estabelecido
+  const [takeProfit, setTakeProfit] = useState(2.5);
+  const [stopLoss, setStopLoss] = useState(1.5);
   const [minConfidence, setMinConfidence] = useState([60]);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
 
-  // Calcula alavancagem automaticamente baseada nos parâmetros de risco e volatilidade
+  // Sincroniza estado local com configuração do SSOT
   useEffect(() => {
-    const calculateSafeLeverage = () => {
-      const atr = atrMultiplier;
-      const tp = takeProfit;
-
-      // Fórmula de segurança baseada em volatilidade (ATR)
-      // Quanto menor o multiplicador ATR, mais conservador
-      // ATR 1.0x = até 50x leverage
-      // ATR 2.0x = até 25x leverage
-      let calculatedLeverage = Math.floor(50 / atr);
-      
-      // Ajuste baseado no take profit (ser mais conservador se TP for muito alto)
-      if (tp > 5) {
-        calculatedLeverage = Math.floor(calculatedLeverage * 0.7);
-      }
-      
-      // Limitar entre 1x e 125x
-      calculatedLeverage = Math.max(1, Math.min(125, calculatedLeverage));
-      
-      setLeverage(calculatedLeverage);
-    };
-
-    calculateSafeLeverage();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      loadConfig();
+    if (config) {
+      setLeverage(config.leverage);
+      setTakeProfit(config.takeProfit);
+      setStopLoss(config.stopLoss);
+      setMinConfidence([config.minConfidence]);
     }
-  }, [user]);
-
-  const loadConfig = async () => {
-    try {
-      console.log('Carregando configuração do usuário:', user?.id);
-      const { data, error } = await supabase
-        .from('auto_trading_config')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Erro ao carregar configuração:', error);
-        throw error;
-      }
-
-      if (data) {
-        console.log('Configuração carregada:', data);
-        setMinConfidence([Number(data.min_confidence)]);
-        setLeverage(data.leverage);
-      } else {
-        console.log('Nenhuma configuração encontrada, usando valores padrão');
-      }
-    } catch (error: any) {
-      console.error('Error loading config:', error);
-      toast({
-        title: "Erro ao carregar",
-        description: error.message || "Não foi possível carregar as configurações.",
-        variant: "destructive"
-      });
-    }
-  };
+  }, [config]);
 
   const handleSaveConfig = async () => {
-    if (!user) {
-      toast({
-        title: "Erro",
-        description: "Você precisa estar logado para salvar configurações.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setLoading(true);
+    setSaving(true);
     try {
-      console.log('Salvando configuração:', {
-        user_id: user.id,
+      const success = await updateConfig({
         leverage,
-        take_profit: takeProfit,
-        stop_loss: atrMultiplier,
-        min_confidence: minConfidence[0]
+        takeProfit,
+        stopLoss,
+        minConfidence: minConfidence[0],
       });
 
-      const { data: existing, error: selectError } = await supabase
-        .from('auto_trading_config')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (selectError) {
-        console.error('Erro ao verificar configuração existente:', selectError);
-        throw selectError;
-      }
-
-      if (existing) {
-        console.log('Atualizando configuração existente...');
-        const { error: updateError } = await supabase
-          .from('auto_trading_config')
-          .update({
-            leverage: leverage,
-            take_profit: takeProfit,
-            stop_loss: atrMultiplier,
-            min_confidence: minConfidence[0],
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-
-        if (updateError) {
-          console.error('Erro no update:', updateError);
-          throw updateError;
-        }
+      if (success) {
+        toast({
+          title: "Configuração salva",
+          description: "Suas configurações de trading foram atualizadas com sucesso.",
+        });
       } else {
-        console.log('Inserindo nova configuração...');
-        const { error: insertError } = await supabase
-          .from('auto_trading_config')
-          .insert({
-            user_id: user.id,
-            leverage: leverage,
-            take_profit: takeProfit,
-            stop_loss: atrMultiplier,
-            min_confidence: minConfidence[0]
-          });
-
-        if (insertError) {
-          console.error('Erro no insert:', insertError);
-          throw insertError;
-        }
+        throw new Error("Falha ao salvar configurações");
       }
-
-      console.log('Configuração salva com sucesso!');
-      toast({
-        title: "Configuração salva",
-        description: "Suas configurações de trading foram salvas com sucesso.",
-      });
-      
-      // Recarregar configuração para confirmar
-      await loadConfig();
     } catch (error: any) {
       console.error('Error saving config:', error);
       toast({
         title: "Erro ao salvar",
-        description: error.message || "Falha ao salvar configurações. Verifique o console para mais detalhes.",
+        description: error.message || "Falha ao salvar configurações.",
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -175,90 +65,105 @@ export const TradingConfig = () => {
 
       <div className="space-y-4">
         <div className="bg-secondary/50 p-4 rounded-lg border border-border">
-          <Label className="text-foreground mb-2">Alavancagem Calculada pela IA: {leverage}x</Label>
-          <div className="h-2 w-full bg-secondary rounded-full mt-2 overflow-hidden">
-            <div 
-              className="h-full bg-gradient-primary transition-all duration-300" 
-              style={{ width: `${(leverage / 125) * 100}%` }}
-            />
-          </div>
+          <Label className="text-foreground mb-2">Alavancagem: {leverage}x</Label>
+          <Slider
+            value={[leverage]}
+            onValueChange={(value) => setLeverage(value[0])}
+            min={1}
+            max={125}
+            step={1}
+            className="mt-2"
+          />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>1x</span>
             <span>125x</span>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            A IA calcula automaticamente a alavancagem ideal baseada em seus parâmetros de risco para proteger seu capital.
+            Controla a exposição de capital. Alavancagem alta aumenta tanto lucros quanto riscos.
           </p>
         </div>
 
         <div className="bg-secondary/50 p-4 rounded-lg border border-border">
-          <Label className="text-foreground mb-2">Take Profit: {takeProfit}% do saldo inicial do dia</Label>
-          <div className="text-2xl font-bold text-primary mt-2">
-            {takeProfit}%
+          <Label className="text-foreground mb-2">Take Profit: {takeProfit.toFixed(1)}%</Label>
+          <Slider
+            value={[takeProfit]}
+            onValueChange={(value) => setTakeProfit(value[0])}
+            min={0.5}
+            max={20}
+            step={0.5}
+            className="mt-2"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>0.5%</span>
+            <span>20%</span>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Baseado no saldo inicial do dia. Ex: Se saldo inicial for 1000 USDT, TP de {takeProfit}% = {(1000 * takeProfit / 100).toFixed(2)} USDT
-          </p>
-          <p className="text-xs text-muted-foreground mt-1 font-semibold">
-            ⚠️ Valor pré-estabelecido e otimizado pela IA
+            Percentual de lucro baseado no saldo inicial do dia. Posições são fechadas quando atingem este ganho.
           </p>
         </div>
 
         <div className="bg-secondary/50 p-4 rounded-lg border border-border">
-          <Label className="text-foreground mb-2">Stop Loss Adaptativo (ATR)</Label>
-          <div className="text-2xl font-bold text-primary mt-2">
-            {atrMultiplier}x Multiplicador
+          <Label className="text-foreground mb-2">Stop Loss: {stopLoss.toFixed(1)}%</Label>
+          <Slider
+            value={[stopLoss]}
+            onValueChange={(value) => setStopLoss(value[0])}
+            min={0.5}
+            max={10}
+            step={0.5}
+            className="mt-2"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>0.5%</span>
+            <span>10%</span>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            🧠 <strong>Stop Loss baseado em volatilidade (ATR - Average True Range):</strong> O sistema calcula automaticamente o SL ideal para cada trade usando ATR de 14 períodos. Quanto maior a volatilidade, maior o SL para evitar saídas prematuras.
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            ⚙️ O SL é recalculado a cada candle de 15min e ajustado automaticamente em operações DCA (preço médio).
-          </p>
-          <p className="text-xs text-muted-foreground mt-1 font-semibold">
-            ⚠️ Valor pré-estabelecido e otimizado pela IA
+            Percentual de perda máxima por posição baseado no valor investido. Protege seu capital limitando perdas.
           </p>
         </div>
 
         <div className="bg-secondary/50 p-4 rounded-lg border border-border">
-          <Label className="text-foreground mb-2">Distribuição por Trade</Label>
+          <Label className="text-foreground mb-2">Quantidade por Trade: {config?.quantityUsdt || 10} USDT</Label>
           <div className="text-2xl font-bold text-primary mt-2">
-            10 USDT por Par
+            {config?.quantityUsdt || 10} USDT
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Sistema distribui 10 USDT para cada par elegível (confiança ≥{minConfidence}%). Se houver poucos pares elegíveis, o valor é ajustado proporcionalmente para usar até 100 USDT do saldo disponível.
-          </p>
-          <p className="text-xs text-success mt-1">
-            ✅ Exemplo: 5 pares elegíveis = 20 USDT cada | 10 pares = 10 USDT cada
+            Valor em USDT alocado para cada operação individual. Este valor é multiplicado pela alavancagem.
           </p>
         </div>
 
         <div>
-          <Label className="text-foreground mb-2">Confiança Mínima IA: {minConfidence}%</Label>
+          <Label className="text-foreground mb-2">Confiança Mínima IA: {minConfidence[0]}%</Label>
           <Slider
             value={minConfidence}
             onValueChange={setMinConfidence}
-            min={55}
+            min={50}
             max={100}
             step={1}
             className="mt-2"
           />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
-            <span>55% (mínimo)</span>
+            <span>50%</span>
             <span>100%</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Apenas trades com confiança ≥ {minConfidence}% serão executados. Ajustado para capturar mais oportunidades no mercado atual (55-60%).
+            Apenas trades com confiança ≥ {minConfidence[0]}% serão executados pela IA.
+          </p>
+        </div>
+
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+          <p className="text-xs text-muted-foreground">
+            ⚙️ <strong>SSOT Ativo:</strong> Estas configurações são a fonte única de verdade para todo o sistema. 
+            Stop Loss e Take Profit configurados aqui são usados por todas as edge functions (ai-auto-trade, monitor-positions).
           </p>
         </div>
 
         <Button 
           onClick={handleSaveConfig}
           className="w-full bg-gradient-primary shadow-glow hover:shadow-glow/50 transition-all"
-          disabled={loading}
+          disabled={saving || configLoading}
         >
           <Save className="w-4 h-4 mr-2" />
-          {loading ? "Salvando..." : "Salvar Configuração"}
+          {saving ? "Salvando..." : "Salvar Configuração"}
         </Button>
       </div>
     </Card>

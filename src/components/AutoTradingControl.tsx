@@ -8,12 +8,14 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { executeAutoTradeAnalysis, AutoTradeError } from "@/services/autoTradeService";
+import { useTradingConfig } from "@/hooks/useTradingConfig";
 
 export const AutoTradingControl = () => {
   const [isActive, setIsActive] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<any>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { config } = useTradingConfig();
 
   useEffect(() => {
     if (user) {
@@ -191,10 +193,13 @@ export const AutoTradingControl = () => {
 
       setIsActive(checked);
 
+      const minConf = config?.minConfidence || 60;
+      const qty = config?.quantityUsdt || 10;
+      
       toast({
         title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
         description: checked 
-          ? "A IA executará análises automaticamente a cada 15 minutos e distribuirá 10% do saldo entre oportunidades com ≥70% de confiança" 
+          ? `A IA executará análises a cada 15min, operando ${qty} USDT por trade em pares com ≥${minConf}% de confiança` 
           : "A análise automática foi pausada",
       });
     } catch (error) {
@@ -288,13 +293,13 @@ export const AutoTradingControl = () => {
         )}
 
         {/* Active Info */}
-        {isActive && (
+        {isActive && config && (
           <div className="text-xs text-muted-foreground p-3 bg-success/5 rounded-lg border border-success/20">
             <div className="flex items-start gap-2">
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
                 <p className="font-medium text-foreground mb-1">✓ IA Ativa - Análises Automáticas</p>
-                <p>A IA executa análises automaticamente a cada 15 minutos. Em cada análise, 10% do saldo disponível é distribuído entre as oportunidades com ≥70% de confiança em 13 pares principais (BNB, SOL, ADA, DOGE, XRP, DOT, MATIC, AVAX, LINK, UNI, LTC, ATOM, NEAR).</p>
+                <p>A IA executa análises a cada 15min operando <strong>{config.quantityUsdt} USDT</strong> por trade com alavancagem <strong>{config.leverage}x</strong>. Take Profit: <strong className="text-success">{config.takeProfit}%</strong> | Stop Loss: <strong className="text-destructive">{config.stopLoss}%</strong> | Confiança mínima: <strong>{config.minConfidence}%</strong></p>
               </div>
             </div>
           </div>
