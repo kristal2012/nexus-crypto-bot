@@ -31,16 +31,35 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
   try {
     const { data, error } = await supabase.functions.invoke('ai-auto-trade');
 
-    // CRITICAL FIX: Always check data.rate_limited first, even if error exists
-    // Supabase SDK returns 429 status as "error" but data still contains rate limit info
+    // CRITICAL: Check for rate limit in data FIRST (even if error exists)
+    // The 429 response includes both error AND data with rate_limited flag
     if (data?.rate_limited === true) {
-      console.log('✅ Rate limit detected in response data');
+      console.log('⏳ Rate limit active - scheduling next analysis');
       return {
         success: false,
         rate_limited: true,
         remaining_seconds: data.remaining_seconds || 120,
         message: data.message || 'Aguarde antes de executar outra análise',
       } as AutoTradeResponse;
+    }
+
+    // Check if error is a 429 rate limit (fallback check)
+    if (error) {
+      const errorMsg = typeof error === 'string' ? error : error.message || JSON.stringify(error);
+      
+      // Parse 429 errors that might not have data.rate_limited set
+      if (errorMsg.includes('429') || errorMsg.includes('Rate limit')) {
+        console.log('⏳ Rate limit detected in error message');
+        const parsed = parseSupabaseError(error);
+        if (parsed.isRateLimit) {
+          return {
+            success: false,
+            rate_limited: true,
+            remaining_seconds: parsed.remainingSeconds || 120,
+            message: parsed.displayMessage,
+          } as AutoTradeResponse;
+        }
+      }
     }
 
     // Case 1: Function returned error in response body (but not rate limit)
