@@ -3,6 +3,7 @@ import { UserIdDisplay } from "@/components/UserIdDisplay";
 import { AdminEmergencyControl } from "@/components/AdminEmergencyControl";
 import { SystemHealthMonitor } from "@/components/SystemHealthMonitor";
 import { TradingModeDebugger } from "@/components/TradingModeDebugger";
+import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const Index = () => {
@@ -19,6 +20,7 @@ const Index = () => {
           </>
         )}
         <TradingModeDebugger />
+        <PerformanceMonitor />
         <TradingDashboard />
       </div>
     </div>

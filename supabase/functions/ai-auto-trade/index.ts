@@ -605,138 +605,166 @@ async function fetchPriceData(symbol: string, apiKey?: string, apiSecret?: strin
   }
 }
 
-// Melhorar a estratégia de análise para maior lucratividade
+// ANÁLISE AI OTIMIZADA - Maior precisão e lucratividade
 async function analyzeWithAI(priceData: PriceData, config: any, minNotional: number): Promise<AIAnalysis> {
   const { symbol, prices, currentPrice, volatility } = priceData;
   
-  // Calculate momentum indicators
+  // Calculate technical indicators
   const rsi = calculateRSI(prices);
   const macd = calculateMACD(prices);
   
-  // Enhanced trend analysis with multiple timeframes
-  const recentPrices = prices.slice(-6);  // Last 6 hours
-  const midPrices = prices.slice(-12, -6);  // Middle 6 hours
-  const olderPrices = prices.slice(-18, -12);  // Older 6 hours
+  // Multi-timeframe trend analysis (more granular)
+  const last3h = prices.slice(-3);
+  const last6h = prices.slice(-6);
+  const last12h = prices.slice(-12);
+  const last24h = prices;
   
-  const recentAvg = recentPrices.reduce((a, b) => a + b, 0) / recentPrices.length;
-  const midAvg = midPrices.reduce((a, b) => a + b, 0) / midPrices.length;
-  const olderAvg = olderPrices.reduce((a, b) => a + b, 0) / olderPrices.length;
+  const avg3h = last3h.reduce((a, b) => a + b, 0) / last3h.length;
+  const avg6h = last6h.reduce((a, b) => a + b, 0) / last6h.length;
+  const avg12h = last12h.reduce((a, b) => a + b, 0) / last12h.length;
+  const avg24h = last24h.reduce((a, b) => a + b, 0) / last24h.length;
   
-  // Calculate trend strength
-  const shortTermTrend = ((recentAvg - midAvg) / midAvg) * 100;
-  const mediumTermTrend = ((midAvg - olderAvg) / olderAvg) * 100;
-  const overallTrend = ((recentAvg - olderAvg) / olderAvg) * 100;
+  // Calculate trend percentages
+  const trend3h = ((avg3h - avg6h) / avg6h) * 100;
+  const trend6h = ((avg6h - avg12h) / avg12h) * 100;
+  const trend12h = ((avg12h - avg24h) / avg24h) * 100;
+  const overallTrend = ((currentPrice - avg24h) / avg24h) * 100;
   
-  // Determine trend direction with stricter criteria
+  // CRITÉRIOS OTIMIZADOS: Identificar tendências reais sem ser excessivamente rígido
   let trendDirection: 'up' | 'down' | 'neutral' = 'neutral';
   
-  // For uptrend: both short and medium term must be positive, or overall trend strong positive
-  if ((shortTermTrend > 0.3 && mediumTermTrend > 0.2) || overallTrend > 1.0) {
+  // Tendência de ALTA: Critérios mais realistas
+  if (
+    (trend3h > 0.15 && trend6h > 0.1) ||  // Tendência recente positiva consistente
+    (trend3h > 0.2) ||  // Forte tendência de curto prazo
+    (overallTrend > 0.5 && trend3h > 0)  // Tendência geral positiva com momentum recente
+  ) {
     trendDirection = 'up';
   } 
-  // For downtrend: both short and medium term must be negative, or overall trend strong negative
-  else if ((shortTermTrend < -0.3 && mediumTermTrend < -0.2) || overallTrend < -1.0) {
+  // Tendência de BAIXA
+  else if (
+    (trend3h < -0.15 && trend6h < -0.1) ||
+    (trend3h < -0.2) ||
+    (overallTrend < -0.5 && trend3h < 0)
+  ) {
     trendDirection = 'down';
   }
   
-  // Price prediction using linear regression on recent data
-  const recentData = prices.slice(-10);
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for (let i = 0; i < recentData.length; i++) {
-    sumX += i;
-    sumY += recentData[i];
-    sumXY += i * recentData[i];
-    sumX2 += i * i;
-  }
-  const n = recentData.length;
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  const intercept = (sumY - slope * sumX) / n;
-  const predictedPrice = slope * n + intercept;
+  // PREVISÃO DE PREÇO MELHORADA: Média ponderada exponencial
+  // Dar mais peso aos preços recentes
+  const weights = last6h.map((_, i) => Math.pow(1.5, i)); // Peso exponencial crescente
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const weightedAvg = last6h.reduce((sum, price, i) => sum + price * weights[i], 0) / totalWeight;
   
-  // ESTRATÉGIA MELHORADA: Análise mais rigorosa para maior lucratividade
-  let confidence = 50;  // Base mais alta para filtrar melhor
+  // Ajustar previsão baseado em momentum
+  const momentum = ((currentPrice - avg6h) / avg6h);
+  const predictedPrice = weightedAvg * (1 + momentum * 0.5); // 50% do momentum aplicado
   
-  // 1. Trend alignment - Critérios mais estritos
+  // SISTEMA DE CONFIDENCE REALISTA
+  let confidence = 55;  // Base realista
+  
+  // 1. TREND STRENGTH (máx +30 pontos)
   if (trendDirection === 'up') {
-    // Exigir tendência forte e consistente para alta confiança
-    if (shortTermTrend > 1.0 && mediumTermTrend > 0.8 && overallTrend > 1.5) {
-      confidence += 25;  // Tendência muito forte e alinhada
-    } else if (shortTermTrend > 0.5 && mediumTermTrend > 0.4) {
-      confidence += 15;  // Tendência moderada
-    } else if (shortTermTrend > 0.2) {
-      confidence += 8;  // Tendência fraca - menos confiável
+    if (trend3h > 0.5 && trend6h > 0.4 && trend12h > 0.3) {
+      confidence += 30;  // Tendência muito forte e alinhada
+    } else if (trend3h > 0.3 && trend6h > 0.2) {
+      confidence += 20;  // Tendência forte
+    } else if (trend3h > 0.15) {
+      confidence += 12;  // Tendência moderada
+    } else {
+      confidence += 5;  // Tendência fraca mas presente
     }
   } else {
-    confidence -= 20;  // Penalizar fortemente falta de tendência de alta
+    confidence -= 15;  // Penalidade mais suave para não-alta
   }
   
-  // 2. RSI - Zonas mais específicas para entradas lucrativas
+  // 2. RSI OPTIMAL ZONES (máx +15 pontos)
   if (trendDirection === 'up') {
-    if (rsi > 45 && rsi < 60) {
-      confidence += 20;  // RSI ideal - impulso sem sobrecompra
-    } else if (rsi >= 60 && rsi < 70) {
-      confidence += 10;  // RSI alto mas aceitável
-    } else if (rsi >= 70) {
-      confidence -= 15;  // Sobrecomprado - risco alto
-    } else if (rsi < 40) {
-      confidence -= 10;  // RSI baixo demais em tendência de alta
+    if (rsi >= 50 && rsi <= 65) {
+      confidence += 15;  // Zona ideal - momentum saudável
+    } else if (rsi > 40 && rsi < 50) {
+      confidence += 10;  // Boa zona de entrada
+    } else if (rsi > 65 && rsi < 75) {
+      confidence += 5;  // Aceitável mas pode corrigir
+    } else if (rsi >= 75) {
+      confidence -= 10;  // Sobrecompra - risco
     }
   }
   
-  // 3. MACD - Confirmação essencial
-  if (macd.signal === 'buy' && trendDirection === 'up') {
-    confidence += 20;  // MACD + tendência = sinal forte
-  } else if (macd.signal === 'sell') {
-    confidence -= 15;  // MACD divergente reduz confiança
+  // 3. MACD CONFIRMATION (máx +15 pontos)
+  if (trendDirection === 'up') {
+    if (macd.signal === 'buy') {
+      confidence += 15;  // Confirmação forte
+    } else if (macd.signal === 'neutral') {
+      confidence += 5;  // Neutro é OK
+    } else {
+      confidence -= 10;  // Sinal divergente
+    }
   }
   
-  // 4. Volatility - Preferir mercados mais estáveis para melhor previsibilidade
-  if (volatility < 0.012) {
-    confidence += 15;  // Baixa volatilidade = mais previsível
-  } else if (volatility < 0.02) {
-    confidence += 8;  // Volatilidade moderada
-  } else if (volatility > 0.04) {
-    confidence -= 10;  // Alta volatilidade = risco maior
+  // 4. VOLATILITY ASSESSMENT (máx +10 pontos)
+  if (volatility < 0.015) {
+    confidence += 10;  // Mercado estável - mais previsível
+  } else if (volatility < 0.025) {
+    confidence += 5;  // Volatilidade moderada
+  } else if (volatility > 0.05) {
+    confidence -= 8;  // Alta volatilidade - risco
   }
   
-  // 5. Momentum - Confirmar força do movimento
+  // 5. PRICE MOMENTUM (máx +15 pontos)
   const priceChange24h = ((currentPrice - prices[0]) / prices[0]) * 100;
   if (trendDirection === 'up') {
-    if (priceChange24h > 2.0) {
-      confidence += 15;  // Momentum muito forte
-    } else if (priceChange24h > 1.0) {
-      confidence += 10;  // Momentum forte
-    } else if (priceChange24h > 0.3) {
-      confidence += 5;  // Momentum positivo
-    } else if (priceChange24h < 0) {
-      confidence -= 10;  // Movimento negativo reduz confiança
+    if (priceChange24h > 3.0) {
+      confidence += 15;  // Momentum excepcional
+    } else if (priceChange24h > 1.5) {
+      confidence += 12;  // Momentum forte
+    } else if (priceChange24h > 0.5) {
+      confidence += 8;  // Momentum positivo
+    } else if (priceChange24h > 0) {
+      confidence += 3;  // Ligeiramente positivo
     }
   }
   
-  // 6. Volume analysis via volatility patterns
-  const recentVol = Math.sqrt(
-    recentPrices.reduce((sum, p) => {
-      const diff = p - recentAvg;
-      return sum + diff * diff;
-    }, 0) / recentPrices.length
-  ) / recentAvg;
+  // 6. CONSISTENCY CHECK (máx +10 pontos)
+  // Verificar se todas as médias estão subindo (consistência)
+  const allPositive = trend3h > 0 && trend6h > 0 && trend12h > 0;
+  const mostPositive = [trend3h > 0, trend6h > 0, trend12h > 0].filter(x => x).length >= 2;
   
-  if (recentVol < volatility * 0.8 && trendDirection === 'up') {
-    confidence += 10;  // Volatilidade decrescente em tendência de alta = consolidação
+  if (trendDirection === 'up') {
+    if (allPositive) {
+      confidence += 10;  // Tendência consistente em todos timeframes
+    } else if (mostPositive) {
+      confidence += 5;  // Maioria positiva
+    }
   }
   
-  // Cap confidence: mínimo 40, máximo 92 (nunca 100% certo)
-  confidence = Math.min(92, Math.max(40, confidence));
+  // 7. RECENT STRENGTH (máx +5 pontos)
+  // Verificar se o preço atual está acima das médias
+  if (currentPrice > avg3h && currentPrice > avg6h && currentPrice > avg12h) {
+    confidence += 5;  // Força recente confirmada
+  }
   
-  // Calculate recommended DCA layers based on volatility and position size
+  // Cap confidence: 45-92 (mais realista)
+  confidence = Math.min(92, Math.max(45, confidence));
+  
+  // Calculate recommended DCA layers based on volatility and confidence
   let recommendedDcaLayers = 3; // Default
   
-  if (volatility > 0.05) {
-    recommendedDcaLayers = 5; // High volatility = more layers
-  } else if (volatility > 0.03) {
+  if (confidence >= 80) {
+    recommendedDcaLayers = 4;  // Alta confiança = mais agressivo
+  } else if (confidence >= 75) {
     recommendedDcaLayers = 4;
+  } else if (confidence >= 70) {
+    recommendedDcaLayers = 3;
+  } else {
+    recommendedDcaLayers = 2;  // Baixa confiança = mais conservador
+  }
+  
+  // Adjust based on volatility
+  if (volatility > 0.04) {
+    recommendedDcaLayers = Math.min(recommendedDcaLayers + 1, 5); // Mais layers em alta volatilidade
   } else if (volatility < 0.01) {
-    recommendedDcaLayers = 2; // Low volatility = fewer layers
+    recommendedDcaLayers = Math.max(recommendedDcaLayers - 1, 2); // Menos layers em baixa volatilidade
   }
   
   // Adjust based on leverage
@@ -745,8 +773,6 @@ async function analyzeWithAI(priceData: PriceData, config: any, minNotional: num
   }
 
   // Calculate optimal quantity based on minNotional
-  // Use 1.5x the minimum to ensure order is accepted
-  // But also respect a reasonable maximum (e.g., 200 USDT per pair)
   const calculatedQuantity = Math.max(
     minNotional * 1.5,
     Math.min(minNotional * 3, 200)
