@@ -74,9 +74,13 @@ serve(async (req) => {
       console.error('Lock acquisition error:', lockError);
       
       // Check if it's a rate limit error
+      // CRITICAL: Return 200 status (not 429) to prevent error reporting
+      // The rate_limited flag tells the frontend to handle this gracefully
       if (lockError.message?.includes('Rate limit')) {
         const match = lockError.message.match(/(\d+) seconds remaining/);
         const remainingSeconds = match ? parseInt(match[1]) : 900;
+        
+        console.log(`⏳ Rate limit active: ${remainingSeconds}s remaining (returning 200 with rate_limited flag)`);
         
         return new Response(JSON.stringify({ 
           success: false,
@@ -84,7 +88,7 @@ serve(async (req) => {
           message: `Please wait before running another analysis`,
           remaining_seconds: remainingSeconds
         }), {
-          status: 429,
+          status: 200, // Changed from 429 to prevent error reporting
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
