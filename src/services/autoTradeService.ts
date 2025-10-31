@@ -11,14 +11,26 @@ export interface AutoTradeResponse {
   success: boolean;
   executed_trades?: any[];
   rate_limited?: boolean;
+  circuit_breaker?: boolean;
   remaining_seconds?: number;
+  metrics?: {
+    winRate: number;
+    totalTrades: number;
+    lossPercent: number;
+  };
   error?: string;
   message?: string;
 }
 
 export interface AutoTradeError {
   isRateLimit: boolean;
+  isCircuitBreaker?: boolean;
   remainingSeconds?: number;
+  metrics?: {
+    winRate: number;
+    totalTrades: number;
+    lossPercent: number;
+  };
   message: string;
   displayMessage: string;
 }
@@ -30,6 +42,17 @@ export interface AutoTradeError {
 export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => {
   try {
     const { data, error } = await supabase.functions.invoke('ai-auto-trade');
+
+    // CRITICAL: Circuit breaker detection
+    if (data?.circuit_breaker === true || data?.success === false && data?.message?.includes('pausado')) {
+      console.log('🛑 [autoTradeService] Circuit breaker activated - trading paused');
+      return {
+        success: false,
+        circuit_breaker: true,
+        metrics: data.metrics,
+        message: data.message || 'Trading pausado por segurança',
+      } as AutoTradeResponse;
+    }
 
     // CRITICAL: Rate limit detection - check data FIRST (even if error exists)
     // The 429 status code causes Supabase SDK to set both error AND data

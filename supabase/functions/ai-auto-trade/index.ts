@@ -102,6 +102,59 @@ serve(async (req) => {
       });
     }
 
+    console.log('🤖 AI Auto-Trade Function Started');
+
+    // ===== CIRCUIT BREAKER VALIDATION =====
+    // Verificar performance histórica antes de executar análise
+    const { data: recentTrades } = await supabase
+      .from('trades')
+      .select('profit_loss')
+      .eq('user_id', user.id)
+      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+    if (recentTrades && recentTrades.length >= 10) {
+      const totalTrades = recentTrades.length;
+      const winningTrades = recentTrades.filter((t: any) => t.profit_loss > 0).length;
+      const winRate = (winningTrades / totalTrades) * 100;
+      const totalProfitLoss = recentTrades.reduce((sum: number, t: any) => sum + (t.profit_loss || 0), 0);
+      const lossPercent = Math.abs(totalProfitLoss / 10000) * 100;
+
+      console.log(`📊 Circuit Breaker Check: Win Rate=${winRate.toFixed(1)}%, Loss=${lossPercent.toFixed(1)}%, Trades=${totalTrades}`);
+
+      // CRITICAL: Win rate abaixo de 20% = STOP TRADING
+      if (winRate < 20) {
+        console.error(`🛑 CIRCUIT BREAKER ACTIVATED: Win rate crítico (${winRate.toFixed(1)}%)`);
+        return new Response(JSON.stringify({
+          success: false,
+          circuit_breaker: true,
+          message: `Trading pausado por segurança: Win rate crítico de ${winRate.toFixed(1)}% (mínimo: 20%). Ajuste a estratégia antes de continuar.`,
+          metrics: { winRate, totalTrades, lossPercent }
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // CRITICAL: Perda acima de 10% = STOP TRADING
+      if (lossPercent > 10) {
+        console.error(`🛑 CIRCUIT BREAKER ACTIVATED: Perda crítica (${lossPercent.toFixed(1)}%)`);
+        return new Response(JSON.stringify({
+          success: false,
+          circuit_breaker: true,
+          message: `Trading pausado: Perda de ${lossPercent.toFixed(1)}% (máximo: 10%). Protegendo capital.`,
+          metrics: { winRate, totalTrades, lossPercent }
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // WARNING: Performance abaixo do ideal
+      if (winRate < 40 || lossPercent > 5) {
+        console.warn(`⚠️ Performance Warning: Win Rate=${winRate.toFixed(1)}%, Loss=${lossPercent.toFixed(1)}%`);
+      }
+    }
+
     const config = configData?.[0];
     if (!config) {
       return new Response(JSON.stringify({ 

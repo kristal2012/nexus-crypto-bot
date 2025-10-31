@@ -89,6 +89,18 @@ export const AutoTradingControl = () => {
           }
           return;
         }
+
+        // Handle circuit breaker (stop trading)
+        if (response.circuit_breaker) {
+          console.error(`🛑 [AutoTradingControl] Circuit breaker activated - stopping automatic trading`);
+          setIsActive(false);
+          toast({
+            title: "🛑 Trading Pausado Automaticamente",
+            description: response.message || "Performance crítica detectada. Revise a estratégia.",
+            variant: "destructive",
+          });
+          return;
+        }
         
         // Handle successful execution
         if (response.executed_trades && response.executed_trades.length > 0) {
