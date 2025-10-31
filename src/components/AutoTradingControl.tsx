@@ -61,15 +61,22 @@ export const AutoTradingControl = () => {
 
     const executeAutoAnalysis = async () => {
       try {
-        console.log('Executing automatic analysis...');
+        console.log('🤖 [AutoTradingControl] Executing automatic analysis...');
         const response = await executeAutoTradeAnalysis();
+
+        console.log('✅ [AutoTradingControl] Response received:', {
+          success: response.success,
+          rate_limited: response.rate_limited,
+          remaining_seconds: response.remaining_seconds,
+          trades_count: response.executed_trades?.length
+        });
 
         // Handle rate limit (don't show error, just schedule next run)
         if (response.rate_limited) {
-          console.log('Rate limited:', response.message);
+          console.log(`⏳ [AutoTradingControl] Rate limit active - waiting ${response.remaining_seconds}s`);
           if (response.remaining_seconds) {
             const waitTime = (response.remaining_seconds + 10) * 1000;
-            console.log(`Scheduling next analysis in ${response.remaining_seconds + 10} seconds`);
+            console.log(`⏰ [AutoTradingControl] Next analysis scheduled in ${response.remaining_seconds + 10}s`);
             timeoutId = setTimeout(executeAutoAnalysis, waitTime);
           }
           return;
@@ -90,19 +97,25 @@ export const AutoTradingControl = () => {
       } catch (error) {
         // Error is already parsed by autoTradeService
         const autoTradeError = error as AutoTradeError;
-        console.error('Auto analysis error:', autoTradeError.message);
+        console.error('❌ [AutoTradingControl] Error caught:', {
+          isRateLimit: autoTradeError.isRateLimit,
+          message: autoTradeError.message,
+          remainingSeconds: autoTradeError.remainingSeconds
+        });
 
-        // Handle rate limit silently (don't show error toast)
+        // Handle rate limit silently (don't show error toast, just schedule next run)
         if (autoTradeError.isRateLimit) {
-          console.log('Rate limited, scheduling next execution');
+          console.log('⏳ [AutoTradingControl] Rate limit in catch block - scheduling retry');
           if (autoTradeError.remainingSeconds) {
             const waitTime = (autoTradeError.remainingSeconds + 10) * 1000;
+            console.log(`⏰ [AutoTradingControl] Retry scheduled in ${autoTradeError.remainingSeconds + 10}s`);
             timeoutId = setTimeout(executeAutoAnalysis, waitTime);
           }
           return;
         }
 
         // Show error toast for non-rate-limit errors
+        console.error('💥 [AutoTradingControl] Showing error toast to user');
         toast({
           title: "Erro na Análise",
           description: autoTradeError.displayMessage,

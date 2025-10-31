@@ -31,10 +31,10 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
   try {
     const { data, error } = await supabase.functions.invoke('ai-auto-trade');
 
-    // CRITICAL: Check for rate limit in data FIRST (even if error exists)
-    // The 429 response includes both error AND data with rate_limited flag
+    // CRITICAL FIX: Rate limit (429) returns BOTH error AND data
+    // Check data.rate_limited FIRST, regardless of error presence
     if (data?.rate_limited === true) {
-      console.log('⏳ Rate limit active - scheduling next analysis');
+      console.log('⏳ Rate limit detected - this is expected behavior, not an error');
       return {
         success: false,
         rate_limited: true,
@@ -43,27 +43,26 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
       } as AutoTradeResponse;
     }
 
-    // Check if error is a 429 rate limit (fallback check)
+    // Fallback: Check if error object indicates 429 (in case data.rate_limited is missing)
     if (error) {
-      const errorMsg = typeof error === 'string' ? error : error.message || JSON.stringify(error);
-      
-      // Parse 429 errors that might not have data.rate_limited set
-      if (errorMsg.includes('429') || errorMsg.includes('Rate limit')) {
-        console.log('⏳ Rate limit detected in error message');
-        const parsed = parseSupabaseError(error);
-        if (parsed.isRateLimit) {
-          return {
-            success: false,
-            rate_limited: true,
-            remaining_seconds: parsed.remainingSeconds || 120,
-            message: parsed.displayMessage,
-          } as AutoTradeResponse;
-        }
+      const errorStr = JSON.stringify(error);
+      if (errorStr.includes('429') || errorStr.includes('rate_limit')) {
+        console.log('⏳ Rate limit detected in error object (fallback detection)');
+        
+        // Try to extract remaining_seconds from error or data
+        const remainingSeconds = data?.remaining_seconds || 120;
+        
+        return {
+          success: false,
+          rate_limited: true,
+          remaining_seconds: remainingSeconds,
+          message: data?.message || 'Aguarde antes de executar outra análise',
+        } as AutoTradeResponse;
       }
     }
 
-    // Case 1: Function returned error in response body (but not rate limit)
-    if (data && !data.success && !data.rate_limited) {
+    // Non-rate-limit errors: throw as AutoTradeError
+    if (data && !data.success) {
       console.error('❌ Function returned error:', data);
       throw {
         isRateLimit: false,
@@ -73,21 +72,22 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
       } as AutoTradeError;
     }
 
-    // Case 2: Network/Infrastructure error (no valid data at all)
+    // Network/infrastructure errors
     if (error && !data) {
       console.error('❌ Network/Infrastructure error:', error);
       throw parseSupabaseError(error);
     }
 
-    // Case 3: Success
+    // Success case
     return data as AutoTradeResponse;
   } catch (error) {
-    // Re-throw if already an AutoTradeError
+    // Re-throw if already parsed as AutoTradeError
     if (isAutoTradeError(error)) {
       throw error;
     }
 
-    // Parse and throw as AutoTradeError
+    // Unexpected errors
+    console.error('❌ Unexpected error:', error);
     throw {
       isRateLimit: false,
       message: error instanceof Error ? error.message : 'Unknown error',
