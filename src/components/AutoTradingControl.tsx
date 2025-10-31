@@ -58,8 +58,16 @@ export const AutoTradingControl = () => {
 
     let timeoutId: NodeJS.Timeout;
     let intervalId: NodeJS.Timeout;
+    let isExecuting = false; // Prevent concurrent executions
 
     const executeAutoAnalysis = async () => {
+      // Prevent concurrent executions
+      if (isExecuting) {
+        console.log('⚠️ [AutoTradingControl] Analysis already running, skipping');
+        return;
+      }
+
+      isExecuting = true;
       try {
         console.log('🤖 [AutoTradingControl] Executing automatic analysis...');
         const response = await executeAutoTradeAnalysis();
@@ -121,11 +129,15 @@ export const AutoTradingControl = () => {
           description: autoTradeError.displayMessage,
           variant: "destructive",
         });
+      } finally {
+        isExecuting = false;
       }
     };
 
-    // Execute immediately on activation
-    executeAutoAnalysis();
+    // Delay first execution to avoid immediate rate limit on page load
+    const initialDelay = 2000; // 2 seconds
+    console.log(`⏰ [AutoTradingControl] Scheduling first analysis in ${initialDelay/1000}s`);
+    timeoutId = setTimeout(executeAutoAnalysis, initialDelay);
 
     // Then execute every 15 minutes (900000 ms)
     intervalId = setInterval(executeAutoAnalysis, 900000);

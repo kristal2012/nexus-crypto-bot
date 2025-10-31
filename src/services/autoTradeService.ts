@@ -31,10 +31,10 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
   try {
     const { data, error } = await supabase.functions.invoke('ai-auto-trade');
 
-    // CRITICAL FIX: Rate limit (429) returns BOTH error AND data
-    // Check data.rate_limited FIRST, regardless of error presence
-    if (data?.rate_limited === true) {
-      console.log('⏳ Rate limit detected - this is expected behavior, not an error');
+    // CRITICAL: Rate limit detection - check data FIRST (even if error exists)
+    // The 429 status code causes Supabase SDK to set both error AND data
+    if (data?.rate_limited === true || data?.success === false && data?.message?.includes('wait')) {
+      console.log('⏳ [autoTradeService] Rate limit detected - treating as normal response');
       return {
         success: false,
         rate_limited: true,
@@ -43,14 +43,21 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
       } as AutoTradeResponse;
     }
 
-    // Fallback: Check if error object indicates 429 (in case data.rate_limited is missing)
+    // Additional rate limit detection in error object
     if (error) {
-      const errorStr = JSON.stringify(error);
-      if (errorStr.includes('429') || errorStr.includes('rate_limit')) {
-        console.log('⏳ Rate limit detected in error object (fallback detection)');
+      const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
+      const errorMsg = error?.message || errorStr;
+      
+      // Check for 429 or rate limit indicators
+      if (errorStr.includes('429') || errorMsg.includes('Rate limit') || errorMsg.includes('wait')) {
+        console.log('⏳ [autoTradeService] Rate limit detected in error (fallback)');
         
-        // Try to extract remaining_seconds from error or data
-        const remainingSeconds = data?.remaining_seconds || 120;
+        // Extract remaining seconds if available
+        let remainingSeconds = data?.remaining_seconds || 120;
+        const match = errorMsg.match(/(\d+)\s*second/i);
+        if (match) {
+          remainingSeconds = parseInt(match[1]);
+        }
         
         return {
           success: false,
