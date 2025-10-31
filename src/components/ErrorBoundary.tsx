@@ -17,11 +17,24 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    // Ignore rate limit errors (429) - these are handled by the application
+    const errorMsg = error.message || error.toString();
+    if (errorMsg.includes('429') || errorMsg.includes('rate_limit') || errorMsg.includes('Rate limit')) {
+      console.log('⏳ [ErrorBoundary] Rate limit error ignored (not a real error)');
+      return { hasError: false };
+    }
+
     console.error('ErrorBoundary caught error:', error);
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Ignore rate limit errors
+    const errorMsg = error.message || error.toString();
+    if (errorMsg.includes('429') || errorMsg.includes('rate_limit') || errorMsg.includes('Rate limit')) {
+      return;
+    }
+
     console.error('ErrorBoundary componentDidCatch:', {
       error: error.message,
       stack: error.stack,
