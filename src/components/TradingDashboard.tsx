@@ -100,11 +100,10 @@ export const TradingDashboard = () => {
           .order("date", { ascending: true });
         
         if (data && data.length > 0) {
-          // Sum the daily profit/loss for each day in the month
-          const totalMonthProfit = data.reduce((acc, day) => {
-            return acc + (day.current_balance - day.starting_balance);
-          }, 0);
-          setMonthlyProfit(totalMonthProfit);
+          // Calculate monthly profit: current balance (last day) - starting balance (first day of month)
+          const firstDayBalance = data[0].starting_balance;
+          const lastDayBalance = data[data.length - 1].current_balance;
+          setMonthlyProfit(lastDayBalance - firstDayBalance);
         } else {
           setMonthlyProfit(0);
         }
