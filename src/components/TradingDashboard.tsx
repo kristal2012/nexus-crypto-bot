@@ -18,7 +18,6 @@ import cryptumLogo from "@/assets/cryptum-logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { BotStatus } from "./BotStatus";
 import { TradingConfig } from "./TradingConfig";
 import { PositionCard } from "./PositionCard";
 import { MarketPrice } from "./MarketPrice";
@@ -26,9 +25,9 @@ import { BinanceApiSettings } from "./BinanceApiSettings";
 import { BinanceConnectionStatus } from "./BinanceConnectionStatus";
 import { StrategyRecommendation } from "./StrategyRecommendation";
 import { AIPrediction } from "./AIPrediction";
-import { AutoTradingControl } from "./AutoTradingControl";
 import { TradingModeToggle } from "./TradingModeToggle";
 import { TradingModeSafetyIndicator } from "./TradingModeSafetyIndicator";
+import { OperationsInProgress } from "./OperationsInProgress";
 
 export const TradingDashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -379,9 +378,8 @@ export const TradingDashboard = () => {
         {/* Right Column - Config & Status */}
         <div className="space-y-6">
           <TradingModeSafetyIndicator />
-          <BotStatus active={botActive} />
+          <OperationsInProgress />
           <TradingModeToggle />
-          <AutoTradingControl />
           <BinanceApiSettings />
           <BinanceConnectionStatus />
           <StrategyRecommendation currentBalance={dailyStats?.current_balance || 0} />
