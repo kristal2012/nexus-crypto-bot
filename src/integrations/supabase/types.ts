@@ -60,6 +60,7 @@ export type Database = {
           min_confidence: number
           quantity_usdt: number
           stop_loss: number
+          strategy_adjusted_at: string | null
           take_profit: number
           updated_at: string | null
           user_id: string
@@ -73,6 +74,7 @@ export type Database = {
           min_confidence?: number
           quantity_usdt?: number
           stop_loss?: number
+          strategy_adjusted_at?: string | null
           take_profit?: number
           updated_at?: string | null
           user_id: string
@@ -86,6 +88,7 @@ export type Database = {
           min_confidence?: number
           quantity_usdt?: number
           stop_loss?: number
+          strategy_adjusted_at?: string | null
           take_profit?: number
           updated_at?: string | null
           user_id?: string

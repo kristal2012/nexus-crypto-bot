@@ -64,12 +64,18 @@ export const StrategyAdjustmentSuggestions = () => {
 
     setApplying(true);
     try {
-      const success = await updateConfig(suggestions.adjustments);
+      // Adicionar timestamp de ajuste para resetar circuit breaker
+      const adjustmentsWithTimestamp = {
+        ...suggestions.adjustments,
+        strategy_adjusted_at: new Date().toISOString(),
+      };
+      
+      const success = await updateConfig(adjustmentsWithTimestamp);
       
       if (success) {
         toast({
-          title: "✅ Ajustes aplicados",
-          description: "Estratégia atualizada com os parâmetros sugeridos.",
+          title: "✅ Ajustes aplicados e Circuit Breaker resetado",
+          description: "Estratégia atualizada. Sistema liberado para trading.",
         });
         setSuggestions(null);
       }

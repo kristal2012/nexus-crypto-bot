@@ -105,12 +105,26 @@ serve(async (req) => {
     console.log('🤖 AI Auto-Trade Function Started');
 
     // ===== CIRCUIT BREAKER VALIDATION =====
+    // Verificar se estratégia foi ajustada recentemente
+    const { data: autoConfig } = await supabase
+      .from('auto_trading_config')
+      .select('strategy_adjusted_at')
+      .eq('user_id', user.id)
+      .single();
+
+    // Se estratégia foi ajustada, só considerar trades APÓS esse timestamp
+    const startDate = autoConfig?.strategy_adjusted_at 
+      ? new Date(autoConfig.strategy_adjusted_at).toISOString()
+      : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    console.log(`Circuit Breaker: Analisando trades desde ${startDate}${autoConfig?.strategy_adjusted_at ? ' (após ajuste de estratégia)' : ''}`);
+
     // Verificar performance histórica antes de executar análise
     const { data: recentTrades } = await supabase
       .from('trades')
       .select('profit_loss')
       .eq('user_id', user.id)
-      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+      .gte('created_at', startDate);
 
     if (recentTrades && recentTrades.length >= 10) {
       const totalTrades = recentTrades.length;

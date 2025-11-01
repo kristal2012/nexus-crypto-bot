@@ -19,11 +19,30 @@ export interface ValidationResult {
  */
 export const validateTradeExecution = async (): Promise<ValidationResult> => {
   try {
-    // Buscar métricas dos últimos 7 dias
+    // Buscar config para verificar se estratégia foi ajustada
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { isValid: true, severity: 'none' };
+    }
+
+    const { data: config } = await supabase
+      .from('auto_trading_config')
+      .select('strategy_adjusted_at')
+      .eq('user_id', user.id)
+      .single();
+
+    // Se estratégia foi ajustada, só considerar trades APÓS esse timestamp
+    const startDate = config?.strategy_adjusted_at 
+      ? new Date(config.strategy_adjusted_at).toISOString()
+      : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    console.log(`Circuit Breaker: Analisando trades desde ${startDate}${config?.strategy_adjusted_at ? ' (após ajuste de estratégia)' : ''}`);
+
+    // Buscar métricas dos últimos 7 dias OU desde último ajuste
     const { data: trades, error } = await supabase
       .from('trades')
       .select('profit_loss')
-      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+      .gte('created_at', startDate);
 
     if (error) {
       console.error('Erro ao buscar trades:', error);
