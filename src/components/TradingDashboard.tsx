@@ -28,6 +28,8 @@ import { AIPrediction } from "./AIPrediction";
 import { TradingModeToggle } from "./TradingModeToggle";
 import { TradingModeSafetyIndicator } from "./TradingModeSafetyIndicator";
 import { OperationsInProgress } from "./OperationsInProgress";
+import { CircuitBreakerReset } from "./CircuitBreakerReset";
+import { getCircuitBreakerStatus } from "@/services/tradeValidationService";
 
 export const TradingDashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -44,6 +46,7 @@ export const TradingDashboard = () => {
   const [monthlyProfit, setMonthlyProfit] = useState<number>(0);
   const [activePositions, setActivePositions] = useState<number>(0);
   const [winRate, setWinRate] = useState<number>(0);
+  const [circuitBreakerStatus, setCircuitBreakerStatus] = useState<any>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -150,6 +153,13 @@ export const TradingDashboard = () => {
     fetchActivePositions();
     fetchWinRate();
 
+    // Fetch circuit breaker status
+    const fetchCircuitBreaker = async () => {
+      const status = await getCircuitBreakerStatus();
+      setCircuitBreakerStatus(status);
+    };
+    fetchCircuitBreaker();
+
     // Monitor positions for stop loss and take profit
     const monitorPositions = async () => {
       if (user) {
@@ -167,6 +177,7 @@ export const TradingDashboard = () => {
       fetchMonthlyProfit();
       fetchActivePositions();
       fetchWinRate();
+      fetchCircuitBreaker();
       monitorPositions(); // Monitor positions every 30 seconds
     }, 30000);
 
@@ -378,6 +389,7 @@ export const TradingDashboard = () => {
         {/* Right Column - Config & Status */}
         <div className="space-y-6">
           <TradingModeSafetyIndicator />
+          <CircuitBreakerReset currentStatus={circuitBreakerStatus} />
           <OperationsInProgress />
           <TradingModeToggle />
           <BinanceApiSettings />
