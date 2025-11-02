@@ -7,6 +7,7 @@ import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { CircuitBreakerAlert } from "@/components/CircuitBreakerAlert";
 import { StrategyAdjustmentSuggestions } from "@/components/StrategyAdjustmentSuggestions";
 import { DemoBalanceManager } from "@/components/DemoBalanceManager";
+import { AutoTradingControl } from "@/components/AutoTradingControl";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const Index = () => {
@@ -21,6 +22,9 @@ const Index = () => {
         <CircuitBreakerAlert />
         <StrategyAdjustmentSuggestions />
         <DemoBalanceManager />
+        
+        {/* Auto Trading Control - Executa análises a cada 15min */}
+        <AutoTradingControl />
         
         {isAdmin && (
           <>
