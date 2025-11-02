@@ -7,8 +7,6 @@ import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { CircuitBreakerAlert } from "@/components/CircuitBreakerAlert";
 import { StrategyAdjustmentSuggestions } from "@/components/StrategyAdjustmentSuggestions";
 import { DemoBalanceManager } from "@/components/DemoBalanceManager";
-import { AutoTradingControl } from "@/components/AutoTradingControl";
-import { PerformanceAlert } from "@/components/PerformanceAlert";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const Index = () => {
@@ -19,14 +17,10 @@ const Index = () => {
       <div className="container mx-auto px-4 max-w-7xl space-y-4">
         <UserIdDisplay />
         
-        {/* Performance & Strategy Alerts */}
-        <PerformanceAlert />
+        {/* Circuit Breaker & Strategy Alerts */}
         <CircuitBreakerAlert />
         <StrategyAdjustmentSuggestions />
         <DemoBalanceManager />
-        
-        {/* Auto Trading Control - Executa análises a cada 15min */}
-        <AutoTradingControl />
         
         {isAdmin && (
           <>
