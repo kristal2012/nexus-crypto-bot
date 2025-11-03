@@ -19,8 +19,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { TradingConfig } from "./TradingConfig";
-import { PositionCard } from "./PositionCard";
-import { MarketPrice } from "./MarketPrice";
 import { BinanceApiSettings } from "./BinanceApiSettings";
 import { BinanceConnectionStatus } from "./BinanceConnectionStatus";
 
@@ -203,38 +201,6 @@ export const TradingDashboard = () => {
     return null;
   }
 
-  const mockPositions: Array<{
-    symbol: string;
-    side: "LONG" | "SHORT";
-    entryPrice: number;
-    currentPrice: number;
-    quantity: number;
-    leverage: number;
-    pnl: number;
-    pnlPercent: number;
-  }> = [
-    {
-      symbol: "BNBUSDT",
-      side: "LONG",
-      entryPrice: 310.50,
-      currentPrice: 315.20,
-      quantity: 2.5,
-      leverage: 10,
-      pnl: 117.50,
-      pnlPercent: 1.51,
-    },
-    {
-      symbol: "SOLUSDT",
-      side: "SHORT",
-      entryPrice: 98.75,
-      currentPrice: 97.30,
-      quantity: 8.0,
-      leverage: 15,
-      pnl: 174.00,
-      pnlPercent: 1.47,
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       {/* Header */}
@@ -359,33 +325,9 @@ export const TradingDashboard = () => {
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Positions */}
+        {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-foreground">Posições Abertas</h2>
-              <Badge variant="outline" className="border-primary text-primary">
-                {mockPositions.length} ativas
-              </Badge>
-            </div>
-            <div className="space-y-4">
-              {mockPositions.map((position, idx) => (
-                <PositionCard key={idx} position={position} />
-              ))}
-            </div>
-          </div>
-
           <LastTradingRound />
-
-          <div>
-            <h2 className="text-xl font-bold text-foreground mb-4">Preços em Tempo Real</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <MarketPrice symbol="BNBUSDT" />
-              <MarketPrice symbol="SOLUSDT" />
-              <MarketPrice symbol="ADAUSDT" />
-              <MarketPrice symbol="DOGEUSDT" />
-            </div>
-          </div>
         </div>
 
         {/* Right Column - Config & Status */}
