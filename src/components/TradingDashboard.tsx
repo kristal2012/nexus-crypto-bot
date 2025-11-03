@@ -27,7 +27,6 @@ import { StrategyRecommendation } from "./StrategyRecommendation";
 import { AIPrediction } from "./AIPrediction";
 import { TradingModeToggle } from "./TradingModeToggle";
 import { TradingModeSafetyIndicator } from "./TradingModeSafetyIndicator";
-import { OperationsInProgress } from "./OperationsInProgress";
 import { CircuitBreakerReset } from "./CircuitBreakerReset";
 import { getCircuitBreakerStatus } from "@/services/tradeValidationService";
 
@@ -390,7 +389,6 @@ export const TradingDashboard = () => {
         <div className="space-y-6">
           <TradingModeSafetyIndicator />
           <CircuitBreakerReset currentStatus={circuitBreakerStatus} />
-          <OperationsInProgress />
           <TradingModeToggle />
           <BinanceApiSettings />
           <BinanceConnectionStatus />
