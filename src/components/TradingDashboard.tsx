@@ -29,6 +29,7 @@ import { TradingModeToggle } from "./TradingModeToggle";
 import { TradingModeSafetyIndicator } from "./TradingModeSafetyIndicator";
 import { CircuitBreakerReset } from "./CircuitBreakerReset";
 import { getCircuitBreakerStatus } from "@/services/tradeValidationService";
+import { LastTradingRound } from "./LastTradingRound";
 
 export const TradingDashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -373,6 +374,8 @@ export const TradingDashboard = () => {
               ))}
             </div>
           </div>
+
+          <LastTradingRound />
 
           <div>
             <h2 className="text-xl font-bold text-foreground mb-4">Preços em Tempo Real</h2>

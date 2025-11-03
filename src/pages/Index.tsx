@@ -3,7 +3,7 @@ import { UserIdDisplay } from "@/components/UserIdDisplay";
 import { AdminEmergencyControl } from "@/components/AdminEmergencyControl";
 import { SystemHealthMonitor } from "@/components/SystemHealthMonitor";
 import { TradingModeDebugger } from "@/components/TradingModeDebugger";
-import { PerformanceMonitor } from "@/components/PerformanceMonitor";
+import { LastTradingRound } from "@/components/LastTradingRound";
 import { CircuitBreakerAlert } from "@/components/CircuitBreakerAlert";
 import { StrategyAdjustmentSuggestions } from "@/components/StrategyAdjustmentSuggestions";
 import { DemoBalanceManager } from "@/components/DemoBalanceManager";
@@ -30,7 +30,7 @@ const Index = () => {
           </>
         )}
         <TradingModeDebugger />
-        <PerformanceMonitor />
+        <LastTradingRound />
         <AutoTradingControl />
         <TradingDashboard />
       </div>
