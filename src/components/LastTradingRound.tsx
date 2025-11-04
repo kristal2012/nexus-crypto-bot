@@ -16,7 +16,8 @@ import {
   AlertCircle,
   CheckCircle,
   RefreshCw,
-  Clock
+  Clock,
+  AlertTriangle
 } from "lucide-react";
 import { 
   getLastTradingRound,
@@ -79,23 +80,31 @@ export const LastTradingRound = () => {
   }
 
   const recommendations = getRoundRecommendations(metrics);
-  const isProfitable = metrics.totalPnL > 0;
+  const isProfitable = metrics.totalPnL >= 0;
   const winRate = (metrics.winningTrades / metrics.totalTrades) * 100;
-  const isHealthy = winRate >= 50 && metrics.totalPnL > 0;
+  const isHealthy = winRate >= 50 && isProfitable;
+  const hasOpenPositions = metrics.trades.some(t => t.is_open_position);
 
   return (
     <Card className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Performance da Última Rodada</h3>
+          <h3 className="text-lg font-semibold">
+            {hasOpenPositions ? 'Posições Abertas Atualmente' : 'Performance da Última Rodada'}
+          </h3>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
             <Clock className="h-3 w-3" />
             <span>
               {format(new Date(metrics.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </span>
             <Badge variant="outline" className="ml-2">
-              {metrics.totalTrades} {metrics.totalTrades === 1 ? 'trade' : 'trades'}
+              {metrics.totalTrades} {metrics.totalTrades === 1 ? 'posição' : 'posições'}
             </Badge>
+            {hasOpenPositions && (
+              <Badge variant="outline" className="border-amber-500 text-amber-500">
+                ● Aguardando fechamento
+              </Badge>
+            )}
           </div>
         </div>
         <Button 
@@ -110,22 +119,29 @@ export const LastTradingRound = () => {
       </div>
 
       {/* Status Geral */}
-      <div className="flex items-center gap-2">
-        {isHealthy ? (
-          <>
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <span className="text-sm font-medium text-green-500">
-              Rodada lucrativa
-            </span>
-          </>
-        ) : (
-          <>
-            <AlertCircle className="h-5 w-5 text-yellow-500" />
-            <span className="text-sm font-medium text-yellow-500">
-              Rodada precisa de atenção
-            </span>
-          </>
-        )}
+      <div className={`p-4 rounded-lg border-2 ${
+        isHealthy 
+          ? 'bg-green-500/10 border-green-500/50' 
+          : 'bg-amber-500/10 border-amber-500/50'
+      }`}>
+        <div className="flex items-center gap-3">
+          {isHealthy ? (
+            <TrendingUp className="h-6 w-6 text-green-500" />
+          ) : (
+            <AlertTriangle className="h-6 w-6 text-amber-500" />
+          )}
+          <div>
+            <p className="text-sm text-muted-foreground">
+              {hasOpenPositions ? 'Lucro Atual (Não Realizado)' : 'Status da Rodada'}
+            </p>
+            <p className={`font-bold ${isHealthy ? 'text-green-500' : 'text-amber-500'}`}>
+              {hasOpenPositions 
+                ? (isProfitable ? 'Em Lucro' : 'Em Perda Temporária')
+                : (isHealthy ? 'Desempenho Positivo' : 'Necessita Atenção')
+              }
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Métricas Principais */}
@@ -146,7 +162,9 @@ export const LastTradingRound = () => {
         </div>
 
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">P&L Total</p>
+          <p className="text-xs text-muted-foreground">
+            {hasOpenPositions ? 'P&L Não Realizado' : 'P&L Total'}
+          </p>
           <div className="flex items-center gap-2">
             {isProfitable ? (
               <TrendingUp className="h-5 w-5 text-green-500" />
@@ -157,7 +175,10 @@ export const LastTradingRound = () => {
               {isProfitable ? '+' : ''}{metrics.totalPnL.toFixed(2)}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">USDT</p>
+          <p className="text-xs text-muted-foreground">
+            USDT
+            {hasOpenPositions && <span className="ml-1 text-amber-500">(provisório)</span>}
+          </p>
         </div>
 
         <div className="space-y-1">
@@ -193,27 +214,48 @@ export const LastTradingRound = () => {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">Detalhes das Operações</span>
+          <span className="text-sm font-medium">
+            {hasOpenPositions ? 'Posições Abertas' : 'Detalhes das Operações'}
+          </span>
         </div>
         <div className="space-y-2 max-h-60 overflow-y-auto">
           {metrics.trades.map((trade) => {
-            const pnl = trade.profit_loss || 0;
-            const isProfitableTrade = pnl > 0;
+            const pnl = trade.is_open_position ? (trade.unrealized_pnl || 0) : (trade.profit_loss || 0);
+            const isProfitableTrade = pnl >= 0;
+            const pnlPercent = trade.is_open_position && trade.entry_price && trade.current_price
+              ? ((trade.current_price - trade.entry_price) / trade.entry_price) * 100
+              : 0;
             
             return (
               <div 
                 key={trade.id} 
-                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg text-sm"
+                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg text-sm border-l-4"
+                style={{ borderColor: isProfitableTrade ? 'rgb(34 197 94)' : 'rgb(239 68 68)' }}
               >
                 <div className="flex items-center gap-3">
-                  <Badge variant={trade.side === "BUY" ? "default" : "secondary"}>
-                    {trade.side}
-                  </Badge>
                   <div>
-                    <p className="font-medium">{trade.symbol}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant={trade.side === "BUY" ? "default" : "secondary"}>
+                        {trade.side}
+                      </Badge>
+                      <p className="font-medium">{trade.symbol}</p>
+                      {trade.is_open_position && (
+                        <Badge variant="outline" className="text-xs border-amber-500 text-amber-500">
+                          ABERTA
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      {trade.quantity} @ ${trade.price.toFixed(2)}
+                      {trade.quantity.toFixed(4)} @ ${(trade.entry_price || trade.price).toFixed(4)}
                     </p>
+                    {trade.is_open_position && trade.current_price && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Preço atual: ${trade.current_price.toFixed(4)}
+                        <span className={`ml-2 font-medium ${pnlPercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          ({pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%)
+                        </span>
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">

@@ -16,6 +16,10 @@ export interface TradeDetail {
   profit_loss: number | null;
   executed_at: string;
   created_at: string;
+  is_open_position?: boolean;
+  entry_price?: number;
+  current_price?: number;
+  unrealized_pnl?: number;
 }
 
 export interface TradingRoundMetrics {
@@ -41,22 +45,75 @@ export interface TradingRoundRecommendations {
 }
 
 /**
- * Busca a última rodada de trades (trades executados no mesmo momento)
- * Define "mesma rodada" como trades com até 2 minutos de diferença
+ * Busca a última rodada de trades E posições abertas
+ * Mostra trades finalizados recentes OU posições abertas atuais
  */
 export const getLastTradingRound = async (): Promise<TradingRoundMetrics | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    // Buscar últimos trades ordenados por data de criação
+    // Buscar posições abertas (mais relevante para análise atual)
+    const { data: openPositions, error: posError } = await supabase
+      .from('positions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    // Se há posições abertas, mostrar elas
+    if (openPositions && openPositions.length > 0) {
+      const positionTrades: TradeDetail[] = openPositions.map(pos => ({
+        id: pos.id,
+        symbol: pos.symbol,
+        side: pos.side === 'LONG' ? 'BUY' : 'SELL',
+        quantity: pos.quantity,
+        price: pos.entry_price,
+        profit_loss: pos.unrealized_pnl || 0,
+        executed_at: pos.created_at,
+        created_at: pos.created_at,
+        is_open_position: true,
+        entry_price: pos.entry_price,
+        current_price: pos.current_price,
+        unrealized_pnl: pos.unrealized_pnl || 0
+      }));
+
+      const totalPnL = positionTrades.reduce((sum, t) => sum + (t.unrealized_pnl || 0), 0);
+      const winningTrades = positionTrades.filter(t => (t.unrealized_pnl || 0) > 0).length;
+      const losingTrades = positionTrades.filter(t => (t.unrealized_pnl || 0) < 0).length;
+      const avgPnL = totalPnL / positionTrades.length;
+
+      const profits = positionTrades
+        .map(t => t.unrealized_pnl || 0)
+        .filter(p => p > 0);
+      const losses = positionTrades
+        .map(t => t.unrealized_pnl || 0)
+        .filter(p => p < 0);
+
+      const largestWin = profits.length > 0 ? Math.max(...profits) : 0;
+      const largestLoss = losses.length > 0 ? Math.abs(Math.min(...losses)) : 0;
+
+      return {
+        timestamp: openPositions[0].created_at,
+        trades: positionTrades,
+        totalTrades: positionTrades.length,
+        totalPnL,
+        winningTrades,
+        losingTrades,
+        avgPnL,
+        largestWin,
+        largestLoss,
+      };
+    }
+
+    // Se não há posições abertas, buscar última rodada de trades finalizados
     const { data: allTrades, error } = await supabase
       .from('trades')
       .select('*')
       .eq('user_id', user.id)
       .eq('status', 'FILLED')
+      .not('profit_loss', 'is', null) // Apenas trades com P&L (vendas)
       .order('created_at', { ascending: false })
-      .limit(50); // Buscar mais para garantir que pegamos a rodada completa
+      .limit(50);
 
     if (error || !allTrades || allTrades.length === 0) {
       return null;
