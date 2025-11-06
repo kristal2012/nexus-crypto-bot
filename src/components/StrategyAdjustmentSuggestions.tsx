@@ -71,16 +71,31 @@ export const StrategyAdjustmentSuggestions = () => {
           minConfidence: Number(config.minConfidence),
         });
 
-        // Verifica se os ajustes já foram aplicados
-        const adjustmentsApplied = areAdjustmentsApplied(config, result.adjustments);
-        
+        console.log('📊 Current config:', {
+          stopLoss: config.stopLoss,
+          takeProfit: config.takeProfit,
+          leverage: config.leverage,
+          minConfidence: config.minConfidence,
+          strategy_adjusted_at: config.strategy_adjusted_at
+        });
+        console.log('💡 Suggested adjustments:', result.adjustments);
+
         // Verifica se strategy_adjusted_at é recente (últimas 48h)
         const isRecentlyAdjusted = config.strategy_adjusted_at && 
           (Date.now() - new Date(config.strategy_adjusted_at).getTime()) < 48 * 60 * 60 * 1000;
 
+        console.log('⏰ Recently adjusted:', isRecentlyAdjusted);
+
+        // Verifica se os ajustes já foram aplicados
+        const adjustmentsApplied = areAdjustmentsApplied(config, result.adjustments);
+        console.log('✅ Adjustments applied:', adjustmentsApplied);
+
+        // Só mostra sugestões se há ajustes E eles não foram aplicados E não foi ajustado recentemente
         if (result.suggestions.length > 0 && !adjustmentsApplied && !isRecentlyAdjusted) {
+          console.log('🔔 Showing suggestions');
           setSuggestions(result);
         } else {
+          console.log('✨ No suggestions needed');
           setSuggestions(null);
         }
       } catch (error) {
