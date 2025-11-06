@@ -94,15 +94,28 @@ export const TradingDashboard = () => {
 
         const { data } = await supabase
           .from("bot_daily_stats")
-          .select("current_balance, starting_balance, date")
+          .select("current_balance, starting_balance, date, updated_at")
           .eq("user_id", user.id)
           .gte("date", startOfMonth.toISOString().split('T')[0])
-          .order("date", { ascending: true });
+          .order("date", { ascending: true })
+          .order("updated_at", { ascending: false });
         
         if (data && data.length > 0) {
-          // Calculate monthly profit: current balance (last day) - starting balance (first day of month)
-          const firstDayBalance = data[0].starting_balance;
-          const lastDayBalance = data[data.length - 1].current_balance;
+          // Group by date and get the most recent record for each day
+          const dailyRecords = new Map();
+          data.forEach(record => {
+            if (!dailyRecords.has(record.date)) {
+              dailyRecords.set(record.date, record);
+            }
+          });
+          
+          const sortedDates = Array.from(dailyRecords.keys()).sort();
+          const firstDayRecord = dailyRecords.get(sortedDates[0]);
+          const lastDayRecord = dailyRecords.get(sortedDates[sortedDates.length - 1]);
+          
+          // Calculate monthly profit: current balance (today) - starting balance (first day of month)
+          const firstDayBalance = firstDayRecord.starting_balance;
+          const lastDayBalance = lastDayRecord.current_balance;
           setMonthlyProfit(lastDayBalance - firstDayBalance);
         } else {
           setMonthlyProfit(0);
