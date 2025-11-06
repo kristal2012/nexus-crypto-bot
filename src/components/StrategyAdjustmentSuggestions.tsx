@@ -20,6 +20,29 @@ export const StrategyAdjustmentSuggestions = () => {
   const { toast } = useToast();
   const [applying, setApplying] = useState(false);
 
+  // Verifica se os ajustes já foram aplicados
+  const areAdjustmentsApplied = (
+    currentConfig: any,
+    suggestedAdjustments: any
+  ): boolean => {
+    if (!suggestedAdjustments || Object.keys(suggestedAdjustments).length === 0) {
+      return true;
+    }
+
+    // Verifica cada ajuste sugerido
+    for (const key in suggestedAdjustments) {
+      const suggested = suggestedAdjustments[key];
+      const current = Number(currentConfig[key]);
+      
+      // Tolerância de 0.1 para comparação de valores numéricos
+      if (Math.abs(current - suggested) > 0.1) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -48,8 +71,17 @@ export const StrategyAdjustmentSuggestions = () => {
           minConfidence: Number(config.minConfidence),
         });
 
-        if (result.suggestions.length > 0) {
+        // Verifica se os ajustes já foram aplicados
+        const adjustmentsApplied = areAdjustmentsApplied(config, result.adjustments);
+        
+        // Verifica se strategy_adjusted_at é recente (últimas 48h)
+        const isRecentlyAdjusted = config.strategy_adjusted_at && 
+          (Date.now() - new Date(config.strategy_adjusted_at).getTime()) < 48 * 60 * 60 * 1000;
+
+        if (result.suggestions.length > 0 && !adjustmentsApplied && !isRecentlyAdjusted) {
           setSuggestions(result);
+        } else {
+          setSuggestions(null);
         }
       } catch (error) {
         console.error('Erro ao carregar sugestões:', error);
@@ -89,6 +121,35 @@ export const StrategyAdjustmentSuggestions = () => {
       setApplying(false);
     }
   };
+
+  // Se tem métricas mas não tem sugestões = configuração está OK
+  if (metrics && !suggestions) {
+    const winRate = ((metrics.winningTrades / metrics.totalTrades) * 100).toFixed(1);
+    
+    return (
+      <Card className="border-green-200 dark:border-green-800">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Lightbulb className="h-5 w-5 text-green-600" />
+            <CardTitle className="text-green-800 dark:text-green-200">
+              ✅ Configurações Ajustadas
+            </CardTitle>
+          </div>
+          <CardDescription>
+            Performance atual: {winRate}% win rate com {metrics.totalTrades} trades
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert className="border-green-200 dark:border-green-800">
+            <AlertDescription className="text-green-700 dark:text-green-300">
+              As configurações estão otimizadas com base na performance recente. 
+              O sistema continuará monitorando e sugerirá novos ajustes se necessário.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!suggestions || !metrics) return null;
 

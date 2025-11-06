@@ -15,6 +15,7 @@ export interface TradingConfig {
   leverage: number;
   minConfidence: number;
   lastAnalysisAt: string | null;
+  strategy_adjusted_at?: string | null;
 }
 
 /**
@@ -25,7 +26,7 @@ export const getTradingConfig = async (userId: string): Promise<TradingConfig | 
   try {
     const { data, error } = await supabase
       .from('auto_trading_config')
-      .select('is_active, take_profit, stop_loss, quantity_usdt, leverage, min_confidence, last_analysis_at')
+      .select('is_active, take_profit, stop_loss, quantity_usdt, leverage, min_confidence, last_analysis_at, strategy_adjusted_at')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -46,6 +47,7 @@ export const getTradingConfig = async (userId: string): Promise<TradingConfig | 
       leverage: Number(data.leverage),
       minConfidence: Number(data.min_confidence),
       lastAnalysisAt: data.last_analysis_at,
+      strategy_adjusted_at: data.strategy_adjusted_at,
     };
   } catch (error) {
     console.error('Exception in getTradingConfig:', error);
@@ -61,16 +63,19 @@ export const updateTradingConfig = async (
   updates: Partial<Omit<TradingConfig, 'lastAnalysisAt'>>
 ): Promise<boolean> => {
   try {
+    const updateData: any = {};
+    
+    if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
+    if (updates.takeProfit !== undefined) updateData.take_profit = updates.takeProfit;
+    if (updates.stopLoss !== undefined) updateData.stop_loss = updates.stopLoss;
+    if (updates.quantityUsdt !== undefined) updateData.quantity_usdt = updates.quantityUsdt;
+    if (updates.leverage !== undefined) updateData.leverage = updates.leverage;
+    if (updates.minConfidence !== undefined) updateData.min_confidence = updates.minConfidence;
+    if (updates.strategy_adjusted_at !== undefined) updateData.strategy_adjusted_at = updates.strategy_adjusted_at;
+    
     const { error } = await supabase
       .from('auto_trading_config')
-      .update({
-        is_active: updates.isActive,
-        take_profit: updates.takeProfit,
-        stop_loss: updates.stopLoss,
-        quantity_usdt: updates.quantityUsdt,
-        leverage: updates.leverage,
-        min_confidence: updates.minConfidence,
-      })
+      .update(updateData)
       .eq('user_id', userId);
 
     if (error) {
