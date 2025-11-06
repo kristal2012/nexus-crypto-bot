@@ -39,10 +39,13 @@ export const validateTradeExecution = async (): Promise<ValidationResult> => {
     console.log(`Circuit Breaker: Analisando trades desde ${startDate}${config?.strategy_adjusted_at ? ' (após ajuste de estratégia)' : ''}`);
 
     // Buscar métricas dos últimos 7 dias OU desde último ajuste
+    // IMPORTANTE: Só considera trades FECHADOS (com profit_loss calculado)
+    // Ignora posições abertas para não acionar circuit breaker prematuramente
     const { data: trades, error } = await supabase
       .from('trades')
       .select('profit_loss')
-      .gte('created_at', startDate);
+      .gte('created_at', startDate)
+      .not('profit_loss', 'is', null); // Apenas trades fechados (realizados)
 
     if (error) {
       console.error('Erro ao buscar trades:', error);
