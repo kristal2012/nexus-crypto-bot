@@ -20,17 +20,28 @@ export const StrategyAdjustmentSuggestions = () => {
   const { toast } = useToast();
   const [applying, setApplying] = useState(false);
 
+  // Verifica se há ajustes reais pendentes
+  const hasRealAdjustments = (suggestedAdjustments: any): boolean => {
+    if (!suggestedAdjustments) return false;
+    const keys = Object.keys(suggestedAdjustments);
+    // Ignora strategy_adjusted_at na contagem
+    const adjustmentKeys = keys.filter(k => k !== 'strategy_adjusted_at');
+    return adjustmentKeys.length > 0;
+  };
+
   // Verifica se os ajustes já foram aplicados
   const areAdjustmentsApplied = (
     currentConfig: any,
     suggestedAdjustments: any
   ): boolean => {
-    if (!suggestedAdjustments || Object.keys(suggestedAdjustments).length === 0) {
-      return true;
+    if (!hasRealAdjustments(suggestedAdjustments)) {
+      return true; // Sem ajustes = considera aplicado
     }
 
     // Verifica cada ajuste sugerido
     for (const key in suggestedAdjustments) {
+      if (key === 'strategy_adjusted_at') continue;
+      
       const suggested = suggestedAdjustments[key];
       const current = Number(currentConfig[key]);
       
@@ -71,6 +82,13 @@ export const StrategyAdjustmentSuggestions = () => {
           minConfidence: Number(config.minConfidence),
         });
 
+        // Primeira verificação: se não há ajustes reais, não mostrar nada
+        if (!hasRealAdjustments(result.adjustments)) {
+          console.log('✨ No real adjustments needed - config is optimal');
+          setSuggestions(null);
+          return;
+        }
+
         console.log('📊 Current config:', {
           stopLoss: config.stopLoss,
           takeProfit: config.takeProfit,
@@ -80,18 +98,25 @@ export const StrategyAdjustmentSuggestions = () => {
         });
         console.log('💡 Suggested adjustments:', result.adjustments);
 
-        // Verifica se strategy_adjusted_at é recente (últimas 48h)
+        // Verifica se strategy_adjusted_at é recente (últimas 72h para dar tempo de estabilizar)
         const isRecentlyAdjusted = config.strategy_adjusted_at && 
-          (Date.now() - new Date(config.strategy_adjusted_at).getTime()) < 48 * 60 * 60 * 1000;
+          (Date.now() - new Date(config.strategy_adjusted_at).getTime()) < 72 * 60 * 60 * 1000;
 
         console.log('⏰ Recently adjusted:', isRecentlyAdjusted);
+
+        // Se foi ajustado recentemente, aguardar período de estabilização
+        if (isRecentlyAdjusted) {
+          console.log('⏳ Waiting for stabilization period (72h)');
+          setSuggestions(null);
+          return;
+        }
 
         // Verifica se os ajustes já foram aplicados
         const adjustmentsApplied = areAdjustmentsApplied(config, result.adjustments);
         console.log('✅ Adjustments applied:', adjustmentsApplied);
 
-        // Só mostra sugestões se há ajustes E eles não foram aplicados E não foi ajustado recentemente
-        if (result.suggestions.length > 0 && !adjustmentsApplied && !isRecentlyAdjusted) {
+        // Só mostra sugestões se há ajustes reais E eles não foram aplicados
+        if (result.suggestions.length > 0 && !adjustmentsApplied) {
           console.log('🔔 Showing suggestions');
           setSuggestions(result);
         } else {

@@ -145,9 +145,15 @@ export const getSuggestedStrategyAdjustments = (
   metrics: TradeMetrics,
   currentConfig: { stopLoss: number; takeProfit: number; leverage: number; minConfidence: number }
 ) => {
-  const winRate = (metrics.winningTrades / metrics.totalTrades) * 100;
   const suggestions: string[] = [];
   const adjustments: any = {};
+
+  // Se não há trades suficientes, não sugerir nada
+  if (metrics.totalTrades < THRESHOLDS.MIN_TRADES_FOR_ANALYSIS) {
+    return { suggestions: [], adjustments: {} };
+  }
+
+  const winRate = (metrics.winningTrades / metrics.totalTrades) * 100;
 
   // Se win rate muito baixo, ajustes agressivos
   if (winRate < 30) {
