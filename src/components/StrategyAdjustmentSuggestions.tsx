@@ -56,75 +56,94 @@ export const StrategyAdjustmentSuggestions = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!config) return;
+
       try {
-        // Buscar trades dos últimos 7 dias
-        const { data: trades } = await supabase
+        // SOLUÇÃO DEFINITIVA: Período de estabilização de 72h após qualquer ajuste
+        if (config.strategy_adjusted_at) {
+          const timeSinceAdjustment = Date.now() - new Date(config.strategy_adjusted_at).getTime();
+          const stabilizationPeriod = 72 * 60 * 60 * 1000; // 72h
+
+          if (timeSinceAdjustment < stabilizationPeriod) {
+            const hoursRemaining = ((stabilizationPeriod - timeSinceAdjustment) / (60 * 60 * 1000)).toFixed(1);
+            console.log(`⏳ Período de estabilização ativo: ${hoursRemaining}h restantes`);
+            setSuggestions(null);
+            setMetrics(null);
+            return;
+          }
+        }
+
+        // SOLUÇÃO DEFINITIVA: Buscar trades APÓS o último ajuste (ou últimos 7 dias se nunca ajustou)
+        const analysisStartDate = config.strategy_adjusted_at 
+          ? new Date(config.strategy_adjusted_at).toISOString()
+          : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+        console.log(`📊 Analisando trades desde: ${analysisStartDate} ${config.strategy_adjusted_at ? '(após ajuste)' : '(últimos 7 dias)'}`);
+
+        const { data: trades, error } = await supabase
           .from('trades')
-          .select('profit_loss')
-          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+          .select('profit_loss, created_at')
+          .gte('created_at', analysisStartDate)
+          .order('created_at', { ascending: false });
 
-        if (!trades || trades.length < 10 || !config) return;
+        if (error) throw error;
 
-        const tradeMetrics: TradeMetrics = {
-          totalTrades: trades.length,
-          winningTrades: trades.filter(t => t.profit_loss && t.profit_loss > 0).length,
-          losingTrades: trades.filter(t => t.profit_loss && t.profit_loss < 0).length,
-          totalProfitLoss: trades.reduce((sum, t) => sum + (t.profit_loss || 0), 0),
-          avgProfitLoss: trades.reduce((sum, t) => sum + (t.profit_loss || 0), 0) / trades.length,
+        // SOLUÇÃO DEFINITIVA: Mínimo de 10 trades para análise válida
+        if (!trades || trades.length < 10) {
+          console.log(`📉 Trades insuficientes para análise: ${trades?.length || 0}/10`);
+          setSuggestions(null);
+          setMetrics(null);
+          return;
+        }
+
+        const totalTrades = trades.length;
+        const winningTrades = trades.filter(t => Number(t.profit_loss) > 0).length;
+        const losingTrades = trades.filter(t => Number(t.profit_loss) < 0).length;
+        const totalProfitLoss = trades.reduce((sum, t) => sum + Number(t.profit_loss), 0);
+        const winRate = (winningTrades / totalTrades) * 100;
+
+        console.log(`📈 Métricas: ${totalTrades} trades | Win Rate: ${winRate.toFixed(1)}% | P&L: ${totalProfitLoss.toFixed(2)} USDT`);
+
+        const calculatedMetrics: TradeMetrics = {
+          totalTrades,
+          winningTrades,
+          losingTrades,
+          totalProfitLoss,
+          avgProfitLoss: totalProfitLoss / totalTrades,
         };
 
-        setMetrics(tradeMetrics);
+        setMetrics(calculatedMetrics);
 
-        const result = getSuggestedStrategyAdjustments(tradeMetrics, {
+        const result = getSuggestedStrategyAdjustments(calculatedMetrics, {
           stopLoss: Number(config.stopLoss),
           takeProfit: Number(config.takeProfit),
-          leverage: config.leverage,
+          leverage: Number(config.leverage),
           minConfidence: Number(config.minConfidence),
         });
 
-        // Primeira verificação: se não há ajustes reais, não mostrar nada
+        // SOLUÇÃO DEFINITIVA: Se não há ajustes reais, não mostrar nada
         if (!hasRealAdjustments(result.adjustments)) {
-          console.log('✨ No real adjustments needed - config is optimal');
+          console.log('✨ Configuração atual está ótima - sem ajustes necessários');
           setSuggestions(null);
           return;
         }
 
-        console.log('📊 Current config:', {
-          stopLoss: config.stopLoss,
-          takeProfit: config.takeProfit,
-          leverage: config.leverage,
-          minConfidence: config.minConfidence,
-          strategy_adjusted_at: config.strategy_adjusted_at
-        });
-        console.log('💡 Suggested adjustments:', result.adjustments);
+        console.log('💡 Ajustes sugeridos:', result.adjustments);
 
-        // Verifica se strategy_adjusted_at é recente (últimas 72h para dar tempo de estabilizar)
-        const isRecentlyAdjusted = config.strategy_adjusted_at && 
-          (Date.now() - new Date(config.strategy_adjusted_at).getTime()) < 72 * 60 * 60 * 1000;
-
-        console.log('⏰ Recently adjusted:', isRecentlyAdjusted);
-
-        // Se foi ajustado recentemente, aguardar período de estabilização
-        if (isRecentlyAdjusted) {
-          console.log('⏳ Waiting for stabilization period (72h)');
-          setSuggestions(null);
-          return;
-        }
-
-        // Verifica se os ajustes já foram aplicados
+        // SOLUÇÃO DEFINITIVA: Verifica se os ajustes já foram aplicados
         const adjustmentsApplied = areAdjustmentsApplied(config, result.adjustments);
-        console.log('✅ Adjustments applied:', adjustmentsApplied);
+        console.log('✅ Ajustes já aplicados:', adjustmentsApplied);
 
         // Só mostra sugestões se há ajustes reais E eles não foram aplicados
         if (result.suggestions.length > 0 && !adjustmentsApplied) {
-          console.log('🔔 Showing suggestions');
+          console.log('🔔 Exibindo sugestões de ajuste');
           setSuggestions(result);
         } else {
-          console.log('✨ No suggestions needed');
+          console.log('✨ Configuração já está otimizada');
           setSuggestions(null);
         }
       } catch (error) {
-        console.error('Erro ao carregar sugestões:', error);
+        console.error('Erro ao carregar sugestões de ajuste:', error);
       }
     };
 

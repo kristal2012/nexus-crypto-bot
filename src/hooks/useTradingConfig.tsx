@@ -38,9 +38,25 @@ export const useTradingConfig = () => {
   const updateConfig = async (updates: Partial<Omit<TradingConfig, 'lastAnalysisAt'>>) => {
     if (!user?.id) return false;
 
-    const success = await updateTradingConfig(user.id, updates);
+    // SOLUÇÃO DEFINITIVA: Sempre atualizar strategy_adjusted_at quando houver mudanças em configurações de estratégia
+    const hasStrategyChanges = 
+      updates.stopLoss !== undefined ||
+      updates.takeProfit !== undefined ||
+      updates.leverage !== undefined ||
+      updates.minConfidence !== undefined;
+
+    const finalUpdates = hasStrategyChanges && !updates.strategy_adjusted_at
+      ? { ...updates, strategy_adjusted_at: new Date().toISOString() }
+      : updates;
+
+    console.log('💾 Salvando configuração:', finalUpdates);
+
+    const success = await updateTradingConfig(user.id, finalUpdates);
     if (success) {
       await fetchConfig();
+      if (hasStrategyChanges) {
+        console.log('✅ Configuração de estratégia atualizada - timestamp resetado');
+      }
     }
     return success;
   };
