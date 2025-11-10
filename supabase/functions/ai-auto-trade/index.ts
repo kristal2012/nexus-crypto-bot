@@ -65,7 +65,7 @@ serve(async (req) => {
 
     // Use atomic row-level locking to prevent race conditions
     // This ensures only one analysis runs at a time per user
-    const { data: configData, error: lockError } = await supabase.rpc('acquire_analysis_lock', {
+    const { data: lockData, error: lockError } = await supabase.rpc('acquire_analysis_lock', {
       p_user_id: user.id,
       p_cooldown_minutes: 2  // Reduced to 2 minutes for more frequent analysis attempts
     });
@@ -103,6 +103,74 @@ serve(async (req) => {
     }
 
     console.log('🤖 AI Auto-Trade Function Started');
+
+    // Buscar configuração primeiro (necessário para ajuste adaptativo)
+    const { data: configData, error: configError } = await supabase
+      .from('auto_trading_config')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (configError || !configData) {
+      console.error('❌ Erro ao buscar configuração:', configError);
+      return new Response(JSON.stringify({ 
+        error: 'Configuration not found' 
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const config = configData;
+
+    // ===== SISTEMA ADAPTATIVO: Detectar e ajustar perdas consecutivas =====
+    console.log(`\n🔄 Verificando necessidade de ajuste adaptativo...`);
+    
+    // Importar serviço adaptativo
+    const { analyzeConsecutiveLosses, applyAdaptiveAdjustment, getCurrentStrategyName } = 
+      await import('../_shared/adaptiveStrategyService.ts');
+    
+    // Obter estratégia atual
+    const currentStrategyName = getCurrentStrategyName({
+      leverage: config.leverage,
+      stop_loss: config.stop_loss,
+      take_profit: config.take_profit,
+      min_confidence: config.min_confidence
+    });
+    
+    console.log(`📊 Estratégia Atual: ${currentStrategyName}`);
+    
+    // Analisar perdas consecutivas
+    const lossAnalysis = await analyzeConsecutiveLosses(supabase, user.id, currentStrategyName);
+    
+    console.log(`📈 Análise de Perdas: 
+      - Perdas consecutivas: ${lossAnalysis.consecutiveLosses}
+      - Ajuste necessário: ${lossAnalysis.shouldAdjust}
+      - Estratégia recomendada: ${lossAnalysis.recommendedStrategy}
+      - Razão: ${lossAnalysis.reason}
+    `);
+    
+    // Aplicar ajuste adaptativo se necessário
+    if (lossAnalysis.shouldAdjust) {
+      console.log(`🔧 Aplicando ajuste adaptativo automático...`);
+      const adjusted = await applyAdaptiveAdjustment(supabase, user.id, lossAnalysis);
+      
+      if (adjusted) {
+        console.log(`✅ Estratégia ajustada automaticamente de ${currentStrategyName} para ${lossAnalysis.recommendedStrategy}`);
+        
+        // Recarregar configuração atualizada
+        const { data: updatedConfig } = await supabase
+          .from('auto_trading_config')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (updatedConfig) {
+          Object.assign(config, updatedConfig);
+          console.log(`🔄 Configuração recarregada com novos parâmetros`);
+        }
+      }
+    }
 
     // ===== CIRCUIT BREAKER VALIDATION =====
     // Verificar se estratégia foi ajustada recentemente
@@ -178,15 +246,6 @@ serve(async (req) => {
       if (winRate < 40 || lossPercent > 5) {
         console.warn(`⚠️ Performance Warning: Win Rate=${winRate.toFixed(1)}%, Loss=${lossPercent.toFixed(1)}%`);
       }
-    }
-
-    const config = configData?.[0];
-    if (!config) {
-      return new Response(JSON.stringify({ 
-        error: 'Configuration not found' 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
     }
 
     // Major crypto pairs to analyze (excluding BTC and ETH)

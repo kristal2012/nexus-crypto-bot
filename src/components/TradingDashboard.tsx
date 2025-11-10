@@ -18,7 +18,7 @@ import cryptumLogo from "@/assets/cryptum-logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { TradingConfig } from "./TradingConfig";
+// TradingConfig removido - ajustes agora são automáticos via adaptiveStrategyService
 import { BinanceApiSettings } from "./BinanceApiSettings";
 import { BinanceConnectionStatus } from "./BinanceConnectionStatus";
 
@@ -350,8 +350,6 @@ export const TradingDashboard = () => {
           <TradingModeToggle />
           <BinanceApiSettings />
           <BinanceConnectionStatus />
-          
-          <TradingConfig />
         </div>
       </div>
     </div>
