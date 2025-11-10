@@ -120,20 +120,31 @@ serve(async (req) => {
     console.log(`Circuit Breaker: Analisando trades desde ${startDate}${autoConfig?.strategy_adjusted_at ? ' (após ajuste de estratégia)' : ''}`);
 
     // Verificar performance histórica antes de executar análise
+    // IMPORTANTE: Só considera trades FECHADOS (com profit_loss calculado)
+    // Ignora posições abertas para não acionar circuit breaker prematuramente
     const { data: recentTrades } = await supabase
       .from('trades')
       .select('profit_loss')
       .eq('user_id', user.id)
-      .gte('created_at', startDate);
+      .gte('created_at', startDate)
+      .not('profit_loss', 'is', null); // ✅ Ignora posições abertas
 
     if (recentTrades && recentTrades.length >= 10) {
       const totalTrades = recentTrades.length;
       const winningTrades = recentTrades.filter((t: any) => t.profit_loss > 0).length;
+      const losingTrades = recentTrades.filter((t: any) => t.profit_loss < 0).length;
       const winRate = (winningTrades / totalTrades) * 100;
       const totalProfitLoss = recentTrades.reduce((sum: number, t: any) => sum + (t.profit_loss || 0), 0);
       const lossPercent = Math.abs(totalProfitLoss / 10000) * 100;
 
-      console.log(`📊 Circuit Breaker Check: Win Rate=${winRate.toFixed(1)}%, Loss=${lossPercent.toFixed(1)}%, Trades=${totalTrades}`);
+      console.log(`📊 Circuit Breaker Check: 
+  - Total trades fechados: ${totalTrades}
+  - Wins: ${winningTrades}
+  - Losses: ${losingTrades}
+  - Win Rate: ${winRate.toFixed(1)}%
+  - Loss %: ${lossPercent.toFixed(1)}%
+  - (Posições abertas ignoradas)
+`);
 
       // CRITICAL: Win rate abaixo de 20% = STOP TRADING
       if (winRate < 20) {
