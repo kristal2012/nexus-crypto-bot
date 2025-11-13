@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { 
   getLastTradingRound,
-  getRoundRecommendations,
   type TradingRoundMetrics 
 } from "@/services/lastTradingRoundService";
 import { useToast } from "@/hooks/use-toast";
@@ -79,7 +78,6 @@ export const LastTradingRound = () => {
     );
   }
 
-  const recommendations = getRoundRecommendations(metrics);
   const isProfitable = metrics.totalPnL >= 0;
   const winRate = (metrics.winningTrades / metrics.totalTrades) * 100;
   const isHealthy = winRate >= 50 && isProfitable;
@@ -271,44 +269,6 @@ export const LastTradingRound = () => {
           })}
         </div>
       </div>
-
-      {/* Recomendações */}
-      {recommendations.shouldAdjust && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-yellow-500" />
-            <span className="text-sm font-medium">Recomendações de Ajuste</span>
-          </div>
-          <div className="space-y-2">
-            {recommendations.recommendations.map((rec, index) => (
-              <div key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                <span className="text-yellow-500 mt-0.5">•</span>
-                <span>{rec}</span>
-              </div>
-            ))}
-          </div>
-          {Object.keys(recommendations.suggestedChanges).length > 0 && (
-            <div className="p-3 bg-primary/10 rounded-lg space-y-2">
-              <p className="text-sm font-medium">Mudanças Sugeridas:</p>
-              {recommendations.suggestedChanges.takeProfit && (
-                <p className="text-sm">
-                  • Take Profit: <span className="font-semibold">{recommendations.suggestedChanges.takeProfit}%</span>
-                </p>
-              )}
-              {recommendations.suggestedChanges.stopLoss && (
-                <p className="text-sm">
-                  • Stop Loss: <span className="font-semibold">{recommendations.suggestedChanges.stopLoss}%</span>
-                </p>
-              )}
-              {recommendations.suggestedChanges.minConfidence && (
-                <p className="text-sm">
-                  • Min Confidence: <span className="font-semibold">{recommendations.suggestedChanges.minConfidence}%</span>
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </Card>
   );
 };
