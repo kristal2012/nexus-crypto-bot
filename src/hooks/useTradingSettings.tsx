@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getTestUserId } from "@/services/testUserService";
 
 interface TradingSettings {
   trading_mode: "REAL" | "DEMO";
   demo_balance: number;
-  initial_capital: number;
 }
 
 export const useTradingSettings = () => {
@@ -15,13 +15,12 @@ export const useTradingSettings = () => {
 
   const fetchSettings = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = getTestUserId();
 
       let { data, error } = await supabase
         .from("trading_settings")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (error) throw error;
@@ -31,10 +30,9 @@ export const useTradingSettings = () => {
         const { data: newSettings, error: insertError } = await supabase
           .from("trading_settings")
           .insert({
-            user_id: user.id,
+            user_id: userId,
             trading_mode: "DEMO",
             demo_balance: 10000,
-            initial_capital: 10000,
           })
           .select()
           .single();
@@ -46,7 +44,6 @@ export const useTradingSettings = () => {
       setSettings({
         trading_mode: data.trading_mode as "REAL" | "DEMO",
         demo_balance: typeof data.demo_balance === 'string' ? parseFloat(data.demo_balance) : data.demo_balance,
-        initial_capital: typeof data.initial_capital === 'string' ? parseFloat(data.initial_capital) : data.initial_capital,
       });
     } catch (error) {
       console.error("Error fetching trading settings:", error);
@@ -66,8 +63,7 @@ export const useTradingSettings = () => {
 
   const updateTradingMode = async (mode: "REAL" | "DEMO") => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = getTestUserId();
 
       // If switching to REAL mode, set confirmation timestamp
       const updateData: any = { trading_mode: mode };
@@ -78,7 +74,7 @@ export const useTradingSettings = () => {
       const { error } = await supabase
         .from("trading_settings")
         .update(updateData)
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       if (error) throw error;
 
@@ -100,22 +96,16 @@ export const useTradingSettings = () => {
 
   const updateDemoBalance = async (amount: number) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = getTestUserId();
 
-      // Atualiza tanto demo_balance quanto initial_capital
-      // O capital inicial representa o saldo de partida da conta
       const { error } = await supabase
         .from("trading_settings")
-        .update({ 
-          demo_balance: amount,
-          initial_capital: amount 
-        })
-        .eq("user_id", user.id);
+        .update({ demo_balance: amount })
+        .eq("user_id", userId);
 
       if (error) throw error;
 
-      setSettings((prev) => prev ? { ...prev, demo_balance: amount, initial_capital: amount } : null);
+      setSettings((prev) => prev ? { ...prev, demo_balance: amount } : null);
     } catch (error) {
       console.error("Error updating demo balance:", error);
       throw error;
