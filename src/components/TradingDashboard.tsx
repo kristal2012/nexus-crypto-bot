@@ -41,6 +41,7 @@ export const TradingDashboard = () => {
     current_balance: number;
     profit_loss_percent: number;
   } | null>(null);
+  const [initialCapital, setInitialCapital] = useState<number>(0);
   const [monthlyProfit, setMonthlyProfit] = useState<number>(0);
   const [activePositions, setActivePositions] = useState<number>(0);
   const [winRate, setWinRate] = useState<number>(0);
@@ -68,6 +69,27 @@ export const TradingDashboard = () => {
     };
     
     fetchProfile();
+  }, [user]);
+
+  // Busca o capital inicial do usuário
+  useEffect(() => {
+    const fetchInitialCapital = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from("trading_settings")
+          .select("initial_capital")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (data) {
+          setInitialCapital(typeof data.initial_capital === 'string' 
+            ? parseFloat(data.initial_capital) 
+            : data.initial_capital);
+        }
+      }
+    };
+    
+    fetchInitialCapital();
   }, [user]);
 
   useEffect(() => {
@@ -276,9 +298,9 @@ export const TradingDashboard = () => {
               <BarChart3 className="w-4 h-4 text-primary" />
             </div>
             <p className="text-2xl font-bold text-foreground">
-              ${dailyStats?.starting_balance.toFixed(2) || "0.00"}
+              ${initialCapital.toFixed(2)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Saldo do dia</p>
+            <p className="text-xs text-muted-foreground mt-1">Capital inicial da conta</p>
           </Card>
 
           <Card className="p-4 bg-gradient-card border-border shadow-card">
