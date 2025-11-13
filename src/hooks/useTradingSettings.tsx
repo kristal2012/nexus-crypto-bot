@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 interface TradingSettings {
   trading_mode: "REAL" | "DEMO";
   demo_balance: number;
+  initial_capital: number;
 }
 
 export const useTradingSettings = () => {
@@ -33,6 +34,7 @@ export const useTradingSettings = () => {
             user_id: user.id,
             trading_mode: "DEMO",
             demo_balance: 10000,
+            initial_capital: 10000,
           })
           .select()
           .single();
@@ -44,6 +46,7 @@ export const useTradingSettings = () => {
       setSettings({
         trading_mode: data.trading_mode as "REAL" | "DEMO",
         demo_balance: typeof data.demo_balance === 'string' ? parseFloat(data.demo_balance) : data.demo_balance,
+        initial_capital: typeof data.initial_capital === 'string' ? parseFloat(data.initial_capital) : data.initial_capital,
       });
     } catch (error) {
       console.error("Error fetching trading settings:", error);
@@ -100,14 +103,19 @@ export const useTradingSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Atualiza tanto demo_balance quanto initial_capital
+      // O capital inicial representa o saldo de partida da conta
       const { error } = await supabase
         .from("trading_settings")
-        .update({ demo_balance: amount })
+        .update({ 
+          demo_balance: amount,
+          initial_capital: amount 
+        })
         .eq("user_id", user.id);
 
       if (error) throw error;
 
-      setSettings((prev) => prev ? { ...prev, demo_balance: amount } : null);
+      setSettings((prev) => prev ? { ...prev, demo_balance: amount, initial_capital: amount } : null);
     } catch (error) {
       console.error("Error updating demo balance:", error);
       throw error;
