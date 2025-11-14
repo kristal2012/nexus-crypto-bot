@@ -23,6 +23,7 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
+  // Show loading only while checking authentication
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -34,6 +35,7 @@ const Index = () => {
     );
   }
 
+  // If not authenticated, return null (will redirect in useEffect)
   if (!user) {
     return null;
   }
