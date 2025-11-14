@@ -22,9 +22,12 @@ import { TradingModeSafetyIndicator } from "./TradingModeSafetyIndicator";
 import { CircuitBreakerReset } from "./CircuitBreakerReset";
 import { getCircuitBreakerStatus } from "@/services/tradeValidationService";
 import { LastTradingRound } from "./LastTradingRound";
-import { getTestUserId } from "@/services/testUserService";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 export const TradingDashboard = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [botActive, setBotActive] = useState(false);
   const [selectedPair, setSelectedPair] = useState("BNBUSDT");
   const [bnbPrices, setBnbPrices] = useState<number[]>([]);
@@ -39,14 +42,23 @@ export const TradingDashboard = () => {
   const [winRate, setWinRate] = useState<number>(0);
   const [circuitBreakerStatus, setCircuitBreakerStatus] = useState<any>(null);
 
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
+
   // Busca o capital inicial do usuário
   useEffect(() => {
+    if (!user?.id) return;
+    
     const fetchInitialCapital = async () => {
       try {
         const { data, error } = await supabase
           .from('trading_settings')
           .select('demo_balance')
-          .eq('user_id', getTestUserId())
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (error) {
@@ -66,15 +78,16 @@ export const TradingDashboard = () => {
     };
 
     fetchInitialCapital();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    
     const fetchDailyStats = async () => {
-      const userId = getTestUserId();
       const { data } = await supabase
         .from("bot_daily_stats")
         .select("starting_balance, current_balance, profit_loss_percent")
-        .eq("user_id", userId)
+        .eq("user_id", user.id)
         .eq("date", new Date().toISOString().split('T')[0])
         .single();
       
@@ -84,7 +97,6 @@ export const TradingDashboard = () => {
     };
 
     const fetchMonthlyProfit = async () => {
-      const userId = getTestUserId();
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -92,7 +104,7 @@ export const TradingDashboard = () => {
       const { data } = await supabase
         .from("bot_daily_stats")
         .select("current_balance, starting_balance, date, updated_at")
-        .eq("user_id", userId)
+        .eq("user_id", user.id)
         .gte("date", startOfMonth.toISOString().split('T')[0])
         .order("date", { ascending: true })
         .order("updated_at", { ascending: false });
@@ -126,11 +138,10 @@ export const TradingDashboard = () => {
     const fetchPositions = async () => {
       try {
         // Temporariamente desabilitado - tabela bot_positions não existe ainda
-        // const userId = getTestUserId();
         // const { data, error } = await supabase
         //   .from("bot_positions")
         //   .select("*", { count: 'exact' })
-        //   .eq("user_id", userId)
+        //   .eq("user_id", user.id)
         //   .eq("status", "open");
         
         // if (!error && data) {
@@ -145,11 +156,10 @@ export const TradingDashboard = () => {
     const fetchWinRate = async () => {
       try {
         // Temporariamente desabilitado - tabela bot_trades não existe ainda
-        // const userId = getTestUserId();
         // const { data, error } = await supabase
         //   .from("bot_trades")
         //   .select("profit")
-        //   .eq("user_id", userId);
+        //   .eq("user_id", user.id);
         
         // if (!error && data && data.length > 0) {
         //   const wins = data.filter((t: any) => t.profit > 0).length;
@@ -188,7 +198,7 @@ export const TradingDashboard = () => {
       clearInterval(winRateInterval);
       clearInterval(cbInterval);
     };
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     // Simulate real-time price updates
