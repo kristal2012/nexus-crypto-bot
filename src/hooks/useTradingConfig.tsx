@@ -7,17 +7,19 @@
 
 import { useState, useEffect } from "react";
 import { getTradingConfig, updateTradingConfig, type TradingConfig } from "@/services/tradingConfigService";
-import { getTestUserId } from "@/services/testUserService";
+import { useAuth } from "./useAuth";
 
 export const useTradingConfig = () => {
+  const { user } = useAuth();
   const [config, setConfig] = useState<TradingConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchConfig = async () => {
+    if (!user?.id) return;
+    
     setLoading(true);
     try {
-      const userId = getTestUserId();
-      const data = await getTradingConfig(userId);
+      const data = await getTradingConfig(user.id);
       setConfig(data);
     } catch (error) {
       console.error('Error fetching trading config:', error);
@@ -28,10 +30,10 @@ export const useTradingConfig = () => {
 
   useEffect(() => {
     fetchConfig();
-  }, []);
+  }, [user?.id]);
 
   const updateConfig = async (updates: Partial<Omit<TradingConfig, 'lastAnalysisAt'>>) => {
-    const userId = getTestUserId();
+    if (!user?.id) return false;
 
     // SOLUÇÃO DEFINITIVA: Sempre atualizar strategy_adjusted_at quando houver mudanças em configurações de estratégia
     const hasStrategyChanges = 
@@ -46,7 +48,7 @@ export const useTradingConfig = () => {
 
     console.log('💾 Salvando configuração:', finalUpdates);
 
-    const success = await updateTradingConfig(userId, finalUpdates);
+    const success = await updateTradingConfig(user.id, finalUpdates);
     if (success) {
       await fetchConfig();
       if (hasStrategyChanges) {
