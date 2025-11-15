@@ -7,10 +7,10 @@
 
 import { useState, useEffect } from "react";
 import { getTradingConfig, updateTradingConfig, type TradingConfig } from "@/services/tradingConfigService";
-import { useAuth } from "./useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 export const useTradingConfig = () => {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const [config, setConfig] = useState<TradingConfig | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -1,4 +1,4 @@
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Copy, Check } from "lucide-react";
@@ -6,7 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export const UserIdDisplay = () => {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = () => {

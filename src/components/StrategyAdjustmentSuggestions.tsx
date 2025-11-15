@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Settings, Info } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { 
   getCurrentStrategyName, 
   hasStrategyChangedSinceLastRound 
@@ -24,7 +24,7 @@ export const StrategyAdjustmentSuggestions = () => {
     changeDate?: string;
   } | null>(null);
   const { config } = useTradingConfig();
-  const { user } = useAuth();
+  const { user } = useAuthContext();
 
   useEffect(() => {
     const fetchStrategyInfo = async () => {
