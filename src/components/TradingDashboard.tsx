@@ -224,6 +224,26 @@ export const TradingDashboard = () => {
             <p className="text-sm text-muted-foreground">Sistema de Trading Automatizado</p>
           </div>
         </div>
+        
+        {/* Bot Control Button */}
+        <Button
+          size="lg"
+          variant={botActive ? "destructive" : "default"}
+          onClick={() => setBotActive(!botActive)}
+          className="gap-2"
+        >
+          {botActive ? (
+            <>
+              <Pause className="h-5 w-5" />
+              Pausar Bot
+            </>
+          ) : (
+            <>
+              <Play className="h-5 w-5" />
+              Iniciar Bot
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Safety Indicators */}

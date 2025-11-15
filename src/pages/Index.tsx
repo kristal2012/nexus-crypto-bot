@@ -10,6 +10,7 @@ import { DemoBalanceManager } from "@/components/DemoBalanceManager";
 import { AutoTradingControl } from "@/components/AutoTradingControl";
 import { UserIdDisplay } from "@/components/UserIdDisplay";
 import { AdminEmergencyControl } from "@/components/AdminEmergencyControl";
+import { BotStatus } from "@/components/BotStatus";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const Index = () => {
@@ -52,10 +53,11 @@ const Index = () => {
         <UserIdDisplay />
         {isAdmin && <AdminEmergencyControl />}
         
+        <TradingDashboard />
+        <BotStatus active={true} />
         <SystemHealthMonitor />
         <TradingModeDebugger />
         <AutoTradingControl />
-        <TradingDashboard />
       </div>
     </div>
   );
