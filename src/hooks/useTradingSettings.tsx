@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "./useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 interface TradingSettings {
   trading_mode: "REAL" | "DEMO";
@@ -9,7 +9,7 @@ interface TradingSettings {
 }
 
 export const useTradingSettings = () => {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const [settings, setSettings] = useState<TradingSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();

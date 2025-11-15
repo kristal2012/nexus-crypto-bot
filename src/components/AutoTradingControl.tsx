@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bot, Sparkles, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { executeAutoTradeAnalysis, AutoTradeError } from "@/services/autoTradeService";
 import { useTradingConfig } from "@/hooks/useTradingConfig";
 
@@ -14,7 +14,7 @@ export const AutoTradingControl = () => {
   const [isActive, setIsActive] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<any>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const { config } = useTradingConfig();
 
   useEffect(() => {

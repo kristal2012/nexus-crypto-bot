@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { TradingDashboard } from "@/components/TradingDashboard";
 import { SystemHealthMonitor } from "@/components/SystemHealthMonitor";
 import { TradingModeDebugger } from "@/components/TradingModeDebugger";
@@ -8,15 +11,13 @@ import { AutoTradingControl } from "@/components/AutoTradingControl";
 import { UserIdDisplay } from "@/components/UserIdDisplay";
 import { AdminEmergencyControl } from "@/components/AdminEmergencyControl";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 
 const Index = () => {
-  const { isAdmin } = useIsAdmin();
-  const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { user, loading } = useAuthContext();
+  const { isAdmin } = useIsAdmin();
 
+  // Se não autenticado, redireciona para login
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth", { replace: true });
@@ -26,7 +27,7 @@ const Index = () => {
   // Show loading only while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-2 text-muted-foreground">Carregando...</p>

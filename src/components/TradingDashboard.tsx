@@ -22,11 +22,11 @@ import { TradingModeSafetyIndicator } from "./TradingModeSafetyIndicator";
 import { CircuitBreakerReset } from "./CircuitBreakerReset";
 import { getCircuitBreakerStatus } from "@/services/tradeValidationService";
 import { LastTradingRound } from "./LastTradingRound";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 export const TradingDashboard = () => {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const navigate = useNavigate();
   const [botActive, setBotActive] = useState(false);
   const [selectedPair, setSelectedPair] = useState("BNBUSDT");

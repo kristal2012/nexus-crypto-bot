@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "./useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 export const useIsAdmin = () => {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
 
   const { data: isAdmin, isLoading } = useQuery({
     queryKey: ['is-admin', user?.id],

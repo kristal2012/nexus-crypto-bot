@@ -1,6 +1,8 @@
 /**
  * Binance Service - Centraliza toda lógica de integração com Binance API
  * Princípios: SRP, DRY, SSOT
+ * 
+ * NOVO: Sistema de cache e throttling para evitar rate limits (429)
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -20,12 +22,70 @@ export interface BinanceAccountInfo {
   positions: any[];
 }
 
+// CACHE: Evita chamadas desnecessárias à API da Binance
+interface CacheEntry {
+  data: BinanceApiKeyStatus;
+  timestamp: number;
+}
+
+let validationCache: CacheEntry | null = null;
+const CACHE_DURATION = 30000; // 30 segundos
+
+// THROTTLE: Previne múltiplas chamadas simultâneas
+let validationPromise: Promise<BinanceApiKeyStatus> | null = null;
+
 /**
  * Valida se as API keys estão configuradas e têm as permissões corretas
+ * COM CACHE E THROTTLING para evitar rate limits
  */
 export const validateBinanceApiKeys = async (): Promise<BinanceApiKeyStatus> => {
+  // Verifica cache
+  if (validationCache && (Date.now() - validationCache.timestamp) < CACHE_DURATION) {
+    console.log('✅ Using cached Binance validation result');
+    return validationCache.data;
+  }
+
+  // Throttle: Se já há uma validação em andamento, retorna a mesma promise
+  if (validationPromise) {
+    console.log('⏳ Reusing in-flight Binance validation request');
+    return validationPromise;
+  }
+
+  // Nova validação
+  validationPromise = performValidation();
+  
   try {
-    // Tenta buscar informações da conta
+    const result = await validationPromise;
+    
+    // Armazena no cache apenas se for sucesso
+    if (result.isConfigured && result.hasPermissions) {
+      validationCache = {
+        data: result,
+        timestamp: Date.now()
+      };
+    }
+    
+    return result;
+  } finally {
+    validationPromise = null;
+  }
+};
+
+/**
+ * Limpa o cache (útil após reconfigurar API keys)
+ */
+export const clearBinanceValidationCache = () => {
+  validationCache = null;
+  console.log('🗑️ Binance validation cache cleared');
+};
+
+/**
+ * Função interna que faz a validação real
+ */
+async function performValidation(): Promise<BinanceApiKeyStatus> {
+  try {
+    console.log('🔍 Validating Binance API keys...');
+    
     const { data, error } = await supabase.functions.invoke('binance-account');
 
     if (error) {
@@ -36,6 +96,16 @@ export const validateBinanceApiKeys = async (): Promise<BinanceApiKeyStatus> => 
         const errorMessage = data.error;
         const errorCode = data.errorCode;
         const requiresReconfiguration = data.requiresReconfiguration;
+
+        // Erro de rate limit (429) - não armazena no cache
+        if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
+          return {
+            isConfigured: true,
+            hasPermissions: false,
+            canTradeFutures: false,
+            error: '⏸️ Muitas requisições à Binance. Aguarde 1 minuto e recarregue a página.'
+          };
+        }
 
         // Erro de descriptografia - credenciais corrompidas
         if (errorCode === 'DECRYPTION_FAILED' || requiresReconfiguration) {
@@ -94,7 +164,7 @@ export const validateBinanceApiKeys = async (): Promise<BinanceApiKeyStatus> => 
       error: 'Erro inesperado ao validar API keys'
     };
   }
-};
+}
 
 /**
  * Busca informações da conta Binance Futures
