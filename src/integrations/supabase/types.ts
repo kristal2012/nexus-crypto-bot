@@ -475,6 +475,7 @@ export type Database = {
           created_at: string
           demo_balance: number
           id: string
+          initial_capital: number
           real_mode_confirmed_at: string | null
           trading_mode: string
           updated_at: string
@@ -484,6 +485,7 @@ export type Database = {
           created_at?: string
           demo_balance?: number
           id?: string
+          initial_capital?: number
           real_mode_confirmed_at?: string | null
           trading_mode?: string
           updated_at?: string
@@ -493,6 +495,7 @@ export type Database = {
           created_at?: string
           demo_balance?: number
           id?: string
+          initial_capital?: number
           real_mode_confirmed_at?: string | null
           trading_mode?: string
           updated_at?: string
