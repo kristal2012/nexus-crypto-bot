@@ -219,7 +219,7 @@ export const TradingDashboard = () => {
         <div className="flex items-center gap-3">
           <img src={cryptumLogo} alt="Cryptum" className="h-12 w-12" />
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">NEXUS TRADING BOT</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">CRYPTUM 7.1</h1>
             <p className="text-sm text-muted-foreground">Sistema de Trading Automatizado</p>
           </div>
         </div>
