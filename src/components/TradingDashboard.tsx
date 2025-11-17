@@ -48,7 +48,7 @@ export const TradingDashboard = () => {
     }
   }, [user, navigate]);
 
-  // Busca o capital inicial do usuário
+  // Busca o capital inicial do usuário (SSOT: initial_capital é imutável)
   useEffect(() => {
     if (!user?.id) return;
     
@@ -56,7 +56,7 @@ export const TradingDashboard = () => {
       try {
         const { data, error } = await supabase
           .from('trading_settings')
-          .select('demo_balance')
+          .select('initial_capital, demo_balance')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -66,9 +66,11 @@ export const TradingDashboard = () => {
         }
 
         if (data) {
-          const capital = typeof data.demo_balance === 'string' 
-            ? parseFloat(data.demo_balance) 
-            : data.demo_balance;
+          // initial_capital é o valor inicial da conta (imutável)
+          // demo_balance é o saldo atual (mutável após trades)
+          const capital = typeof data.initial_capital === 'string' 
+            ? parseFloat(data.initial_capital) 
+            : data.initial_capital;
           setInitialCapital(capital);
         }
       } catch (error) {
@@ -136,38 +138,40 @@ export const TradingDashboard = () => {
 
     const fetchPositions = async () => {
       try {
-        // Temporariamente desabilitado - tabela bot_positions não existe ainda
-        // const { data, error } = await supabase
-        //   .from("bot_positions")
-        //   .select("*", { count: 'exact' })
-        //   .eq("user_id", user.id)
-        //   .eq("status", "open");
+        const { data, error } = await supabase
+          .from("positions")
+          .select("*", { count: 'exact' })
+          .eq("user_id", user.id);
         
-        // if (!error && data) {
-        //   setActivePositions(data.length);
-        // }
-        setActivePositions(0);
+        if (!error && data) {
+          setActivePositions(data.length);
+        } else {
+          setActivePositions(0);
+        }
       } catch (error) {
         console.error("Error fetching positions:", error);
+        setActivePositions(0);
       }
     };
 
     const fetchWinRate = async () => {
       try {
-        // Temporariamente desabilitado - tabela bot_trades não existe ainda
-        // const { data, error } = await supabase
-        //   .from("bot_trades")
-        //   .select("profit")
-        //   .eq("user_id", user.id);
+        const { data, error } = await supabase
+          .from("trades")
+          .select("profit_loss")
+          .eq("user_id", user.id)
+          .eq("status", "FILLED");
         
-        // if (!error && data && data.length > 0) {
-        //   const wins = data.filter((t: any) => t.profit > 0).length;
-        //   const winRate = (wins / data.length) * 100;
-        //   setWinRate(winRate);
-        // }
-        setWinRate(0);
+        if (!error && data && data.length > 0) {
+          const wins = data.filter((t: any) => t.profit_loss && t.profit_loss > 0).length;
+          const winRate = (wins / data.length) * 100;
+          setWinRate(winRate);
+        } else {
+          setWinRate(0);
+        }
       } catch (error) {
         console.error("Error fetching win rate:", error);
+        setWinRate(0);
       }
     };
 
@@ -249,7 +253,7 @@ export const TradingDashboard = () => {
       <TradingModeSafetyIndicator />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -266,7 +270,7 @@ export const TradingDashboard = () => {
             <div>
               <p className="text-sm text-muted-foreground">Saldo Atual</p>
               <p className="text-2xl font-bold">
-                ${dailyStats?.current_balance.toFixed(2) || "0.00"}
+                ${(dailyStats?.current_balance || initialCapital).toFixed(2)}
               </p>
               <div className="flex items-center gap-2 mt-1">
                 {isPositive ? (
@@ -301,14 +305,25 @@ export const TradingDashboard = () => {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
+              <p className="text-sm text-muted-foreground">Posições Ativas</p>
+              <p className="text-2xl font-bold">{activePositions}</p>
+              <p className="text-xs text-muted-foreground mt-1">Operações em andamento</p>
+            </div>
+            <BarChart3 className="h-8 w-8 text-primary" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
               <p className="text-sm text-muted-foreground">Win Rate</p>
               <p className="text-2xl font-bold">{winRate.toFixed(1)}%</p>
               <p className="text-xs text-muted-foreground mt-1">Taxa de acerto</p>
             </div>
-            <BarChart3 className="h-8 w-8 text-primary" />
+            <Target className="h-8 w-8 text-primary" />
           </div>
-      </Card>
-    </div>
+        </Card>
+      </div>
 
       {/* Trading Mode Toggle */}
       <TradingModeToggle />
