@@ -297,7 +297,7 @@ export const AutoTradingControl = () => {
                 <span className="text-foreground font-medium">{lastAnalysis.total}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Oportunidades (≥70%):</span>
+                <span className="text-muted-foreground">Oportunidades (≥85%):</span>
                 <span className="text-success font-bold">{lastAnalysis.highConfidence}</span>
               </div>
             </div>
