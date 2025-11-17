@@ -16,7 +16,6 @@ import cryptumLogo from "@/assets/cryptum-logo.png";
 import { supabase } from "@/integrations/supabase/client";
 import { BinanceApiSettings } from "./BinanceApiSettings";
 import { BinanceConnectionStatus } from "./BinanceConnectionStatus";
-import { AIPrediction } from "./AIPrediction";
 import { TradingModeToggle } from "./TradingModeToggle";
 import { TradingModeSafetyIndicator } from "./TradingModeSafetyIndicator";
 import { CircuitBreakerReset } from "./CircuitBreakerReset";
@@ -308,15 +307,8 @@ export const TradingDashboard = () => {
             </div>
             <BarChart3 className="h-8 w-8 text-primary" />
           </div>
-        </Card>
-      </div>
-
-      {/* AI Prediction */}
-      <AIPrediction 
-        symbol={selectedPair}
-        currentPrice={bnbPrices[bnbPrices.length - 1] || 0}
-        historicalPrices={bnbPrices}
-      />
+      </Card>
+    </div>
 
       {/* Trading Mode Toggle */}
       <TradingModeToggle />
