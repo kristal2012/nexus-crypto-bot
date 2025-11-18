@@ -36,6 +36,7 @@ export const TradingDashboard = () => {
     profit_loss_percent: number;
   } | null>(null);
   const [initialCapital, setInitialCapital] = useState<number>(0);
+  const [dailyProfit, setDailyProfit] = useState<number>(0);
   const [monthlyProfit, setMonthlyProfit] = useState<number>(0);
   const [activePositions, setActivePositions] = useState<number>(0);
   const [winRate, setWinRate] = useState<number>(0);
@@ -79,6 +80,47 @@ export const TradingDashboard = () => {
     };
 
     fetchInitialCapital();
+  }, [user?.id]);
+
+  // Busca o lucro do dia atual
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchDailyProfit = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const { data, error } = await supabase
+          .from('trades')
+          .select('profit_loss')
+          .eq('user_id', user.id)
+          .gte('executed_at', today)
+          .eq('status', 'FILLED');
+
+        if (error) {
+          console.error('Error fetching daily profit:', error);
+          return;
+        }
+
+        if (data) {
+          const totalProfit = data.reduce((sum, trade) => {
+            const pl = typeof trade.profit_loss === 'string' 
+              ? parseFloat(trade.profit_loss) 
+              : trade.profit_loss || 0;
+            return sum + pl;
+          }, 0);
+          setDailyProfit(totalProfit);
+        }
+      } catch (error) {
+        console.error('Error in fetchDailyProfit:', error);
+      }
+    };
+
+    fetchDailyProfit();
+
+    // Atualiza a cada 30 segundos
+    const interval = setInterval(fetchDailyProfit, 30000);
+    return () => clearInterval(interval);
   }, [user?.id]);
 
   useEffect(() => {
@@ -253,7 +295,7 @@ export const TradingDashboard = () => {
       <TradingModeSafetyIndicator />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -284,6 +326,28 @@ export const TradingDashboard = () => {
               </div>
             </div>
             <Activity className="h-8 w-8 text-primary" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Lucro do Dia</p>
+              <p className={`text-2xl font-bold ${dailyProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {dailyProfit >= 0 ? '+' : ''}${dailyProfit.toFixed(2)}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                {dailyProfit >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-success" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-destructive" />
+                )}
+                <span className={`text-xs font-semibold ${dailyProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {dailyProfit >= 0 ? 'Lucro' : 'Perda'}
+                </span>
+              </div>
+            </div>
+            <BarChart3 className="h-8 w-8 text-primary" />
           </div>
         </Card>
 
