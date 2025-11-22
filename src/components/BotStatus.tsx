@@ -6,21 +6,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
 
 export const BotStatus = () => {
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState<boolean | null>(null);
   const { user } = useAuthContext();
 
   useEffect(() => {
     if (!user) return;
 
     const loadStatus = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('auto_trading_config')
         .select('is_active')
         .eq('user_id', user.id)
         .maybeSingle();
 
+      if (error) {
+        console.error('Error loading bot status:', error);
+        return;
+      }
+
       if (data) {
-        setActive(data.is_active || false);
+        setActive(data.is_active === true);
+      } else {
+        setActive(false);
       }
     };
 
@@ -38,7 +45,8 @@ export const BotStatus = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          setActive(payload.new.is_active || false);
+          console.log('🔄 Bot status updated via realtime:', payload.new.is_active);
+          setActive(payload.new.is_active === true);
         }
       )
       .subscribe();
@@ -47,6 +55,16 @@ export const BotStatus = () => {
       supabase.removeChannel(channel);
     };
   }, [user]);
+  if (active === null) {
+    return (
+      <Card className="p-6 bg-gradient-card border-border shadow-card">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card className="p-6 bg-gradient-card border-border shadow-card">
       <div className="flex items-center justify-between mb-6">
