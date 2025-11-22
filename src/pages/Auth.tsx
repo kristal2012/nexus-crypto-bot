@@ -29,6 +29,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [signUpData, setSignUpData] = useState({ email: "", password: "", username: "" });
   const [signInData, setSignInData] = useState({ email: "", password: "" });
+  const [resetPasswordMode, setResetPasswordMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   // Verificação local simples sem dependência do AuthContext
   useEffect(() => {
@@ -117,6 +119,36 @@ export default function Auth() {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const emailSchema = z.string().email("Email inválido");
+      const validated = emailSchema.parse(resetEmail);
+      setLoading(true);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(validated, {
+        redirectTo: `${window.location.origin}/`,
+      });
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
+        setResetPasswordMode(false);
+        setResetEmail("");
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.issues[0].message);
+      } else {
+        toast.error("Erro ao enviar email de recuperação");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -136,48 +168,103 @@ export default function Auth() {
             </TabsList>
 
             <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div>
-                  <Label htmlFor="signin-email" className="text-foreground">Email</Label>
-                  <Input
-                    id="signin-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={signInData.email}
-                    onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                    className="bg-secondary border-border text-foreground"
+              {resetPasswordMode ? (
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div>
+                    <Label htmlFor="reset-email" className="text-foreground">Email</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="bg-secondary border-border text-foreground"
+                      disabled={loading}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Digite seu email para receber o link de recuperação
+                    </p>
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-primary shadow-glow hover:shadow-glow/50"
                     disabled={loading}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="signin-password" className="text-foreground">Senha</Label>
-                  <Input
-                    id="signin-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={signInData.password}
-                    onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                    className="bg-secondary border-border text-foreground"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      "Enviar Email de Recuperação"
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setResetPasswordMode(false);
+                      setResetEmail("");
+                    }}
                     disabled={loading}
-                    required
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full bg-gradient-primary shadow-glow hover:shadow-glow/50"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Entrando...
-                    </>
-                  ) : (
-                    "Entrar"
-                  )}
-                </Button>
-              </form>
+                  >
+                    Voltar ao Login
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div>
+                    <Label htmlFor="signin-email" className="text-foreground">Email</Label>
+                    <Input
+                      id="signin-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={signInData.email}
+                      onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
+                      className="bg-secondary border-border text-foreground"
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="signin-password" className="text-foreground">Senha</Label>
+                    <Input
+                      id="signin-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={signInData.password}
+                      onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
+                      className="bg-secondary border-border text-foreground"
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setResetPasswordMode(true)}
+                    className="text-sm text-primary hover:underline"
+                    disabled={loading}
+                  >
+                    Esqueceu a senha?
+                  </button>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-primary shadow-glow hover:shadow-glow/50"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Entrando...
+                      </>
+                    ) : (
+                      "Entrar"
+                    )}
+                  </Button>
+                </form>
+              )}
             </TabsContent>
 
             <TabsContent value="signup">
