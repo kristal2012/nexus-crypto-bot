@@ -1,12 +1,52 @@
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Cpu, Zap } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
 
-interface BotStatusProps {
-  active: boolean;
-}
+export const BotStatus = () => {
+  const [active, setActive] = useState(false);
+  const { user } = useAuthContext();
 
-export const BotStatus = ({ active }: BotStatusProps) => {
+  useEffect(() => {
+    if (!user) return;
+
+    const loadStatus = async () => {
+      const { data } = await supabase
+        .from('auto_trading_config')
+        .select('is_active')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (data) {
+        setActive(data.is_active || false);
+      }
+    };
+
+    loadStatus();
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('bot-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'auto_trading_config',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          setActive(payload.new.is_active || false);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
   return (
     <Card className="p-6 bg-gradient-card border-border shadow-card">
       <div className="flex items-center justify-between mb-6">
