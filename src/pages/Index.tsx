@@ -54,7 +54,7 @@ const Index = () => {
         {isAdmin && <AdminEmergencyControl />}
         
         <TradingDashboard />
-        <BotStatus active={true} />
+        <BotStatus />
         <SystemHealthMonitor />
         <TradingModeDebugger />
         <AutoTradingControl />
