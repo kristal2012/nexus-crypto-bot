@@ -93,8 +93,33 @@ export const getDailyProfit = async (userId: string) => {
 
 /**
  * Calcula o lucro mensal
+ * Em DEMO: usa demo_balance - initial_capital (SSOT)
+ * Em REAL: usa bot_daily_stats
  */
 export const getMonthlyProfit = async (userId: string) => {
+  // Verifica o modo de trading
+  const { data: settings } = await supabase
+    .from('trading_settings')
+    .select('trading_mode, demo_balance, initial_capital')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!settings) return 0;
+
+  // Em modo DEMO, calcula baseado no saldo demo atual vs capital inicial
+  if (settings.trading_mode === 'DEMO') {
+    const demoBalance = typeof settings.demo_balance === 'string' 
+      ? parseFloat(settings.demo_balance) 
+      : settings.demo_balance;
+    const initialCapital = typeof settings.initial_capital === 'string'
+      ? parseFloat(settings.initial_capital)
+      : settings.initial_capital;
+    
+    console.log(`💰 [LUCRO MENSAL DEMO] demo_balance: ${demoBalance}, initial_capital: ${initialCapital}`);
+    return demoBalance - initialCapital;
+  }
+
+  // Em modo REAL, usa bot_daily_stats
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
