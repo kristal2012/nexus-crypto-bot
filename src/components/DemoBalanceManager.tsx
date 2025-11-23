@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import { useTradingSettings } from "@/hooks/useTradingSettings";
 import { useToast } from "@/hooks/use-toast";
 import { DollarSign, RotateCcw } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { resetDemoAccount, updateDemoBalance as updateDemoBalanceService } from "@/services/demoAccountService";
 
 interface DemoBalanceManagerProps {
   onBalanceUpdate?: () => void;
@@ -22,7 +22,7 @@ interface DemoBalanceManagerProps {
 
 export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps) => {
   const { user } = useAuthContext();
-  const { settings, updateDemoBalance, loading } = useTradingSettings();
+  const { settings, refetch, loading } = useTradingSettings();
   const { toast } = useToast();
   const [newBalance, setNewBalance] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -32,6 +32,8 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
   }
 
   const handleUpdateBalance = async () => {
+    if (!user?.id) return;
+    
     const value = parseFloat(newBalance);
     
     if (isNaN(value) || value <= 0) {
@@ -45,9 +47,8 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
 
     setUpdating(true);
     try {
-      await updateDemoBalance(value);
-      
-      // Dispara atualização das estatísticas do dashboard
+      await updateDemoBalanceService(user.id, value);
+      await refetch();
       onBalanceUpdate?.();
       
       toast({
@@ -71,32 +72,19 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
     
     setUpdating(true);
     try {
-      // Atualiza o saldo para 10000
-      await updateDemoBalance(10000);
-      
-      // Limpa todas as posições abertas em modo DEMO
-      const { error: deleteError } = await supabase
-        .from("positions")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("is_demo", true);
-      
-      if (deleteError) {
-        console.error("Erro ao limpar posições:", deleteError);
-      }
-      
-      // Dispara atualização das estatísticas do dashboard
+      await resetDemoAccount(user.id, 10000);
+      await refetch();
       onBalanceUpdate?.();
       
       toast({
-        title: "Saldo resetado",
-        description: "Saldo demo resetado para $10,000 e posições limpas",
+        title: "Conta demo resetada",
+        description: "Saldo, lucro mensal e histórico foram zerados",
       });
       setNewBalance("");
     } catch (error) {
       toast({
-        title: "Erro ao resetar saldo",
-        description: "Não foi possível resetar o saldo demo",
+        title: "Erro ao resetar conta",
+        description: "Não foi possível resetar a conta demo",
         variant: "destructive",
       });
     } finally {
