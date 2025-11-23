@@ -13,8 +13,15 @@ import { Label } from "@/components/ui/label";
 import { useTradingSettings } from "@/hooks/useTradingSettings";
 import { useToast } from "@/hooks/use-toast";
 import { DollarSign, RotateCcw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
 
-export const DemoBalanceManager = () => {
+interface DemoBalanceManagerProps {
+  onBalanceUpdate?: () => void;
+}
+
+export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps) => {
+  const { user } = useAuthContext();
   const { settings, updateDemoBalance, loading } = useTradingSettings();
   const { toast } = useToast();
   const [newBalance, setNewBalance] = useState("");
@@ -39,6 +46,10 @@ export const DemoBalanceManager = () => {
     setUpdating(true);
     try {
       await updateDemoBalance(value);
+      
+      // Dispara atualização das estatísticas do dashboard
+      onBalanceUpdate?.();
+      
       toast({
         title: "Saldo atualizado",
         description: `Novo saldo demo: $${value.toLocaleString()}`,
@@ -56,12 +67,30 @@ export const DemoBalanceManager = () => {
   };
 
   const handleReset = async () => {
+    if (!user?.id) return;
+    
     setUpdating(true);
     try {
+      // Atualiza o saldo para 10000
       await updateDemoBalance(10000);
+      
+      // Limpa todas as posições abertas em modo DEMO
+      const { error: deleteError } = await supabase
+        .from("positions")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("is_demo", true);
+      
+      if (deleteError) {
+        console.error("Erro ao limpar posições:", deleteError);
+      }
+      
+      // Dispara atualização das estatísticas do dashboard
+      onBalanceUpdate?.();
+      
       toast({
         title: "Saldo resetado",
-        description: "Saldo demo resetado para $10,000",
+        description: "Saldo demo resetado para $10,000 e posições limpas",
       });
       setNewBalance("");
     } catch (error) {
