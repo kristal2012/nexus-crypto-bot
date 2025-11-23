@@ -12,11 +12,13 @@ import { UserIdDisplay } from "@/components/UserIdDisplay";
 import { AdminEmergencyControl } from "@/components/AdminEmergencyControl";
 import { BotStatus } from "@/components/BotStatus";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuthContext();
   const { isAdmin } = useIsAdmin();
+  const { refetch: refetchStats } = useDashboardStats();
 
   // Se não autenticado, redireciona para login
   useEffect(() => {
@@ -48,7 +50,7 @@ const Index = () => {
         {/* Circuit Breaker & Strategy Alerts */}
         <CircuitBreakerAlert />
         <StrategyAdjustmentSuggestions />
-        <DemoBalanceManager />
+        <DemoBalanceManager onBalanceUpdate={refetchStats} />
         
         <UserIdDisplay />
         {isAdmin && <AdminEmergencyControl />}
