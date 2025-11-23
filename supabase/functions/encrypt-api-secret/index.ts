@@ -64,8 +64,9 @@ serve(async (req) => {
     console.log('🔐 [encrypt-api-secret] Starting encryption process...');
 
     // Encrypt the API secret with new PBKDF2 method
-    console.log('🔒 [encrypt-api-secret] Encrypting API secret...');
-    const { encrypted, salt } = await encryptSecret(api_secret);
+  console.log('🔒 [encrypt-api-secret] Encrypting API secret...');
+  // 🔧 CRITICAL: Trim secret to remove whitespace before encryption
+  const { encrypted, salt } = await encryptSecret(api_secret.trim());
     console.log('✅ [encrypt-api-secret] API secret encrypted successfully');
 
     // Store encrypted secret in database with salt
