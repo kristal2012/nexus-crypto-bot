@@ -3,11 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { Eye, EyeOff, Save } from "lucide-react";
+import { Eye, EyeOff, Save, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { clearBinanceValidationCache } from "@/services/binanceService";
+import { BinanceApiKeysTroubleshooting } from "./BinanceApiKeysTroubleshooting";
 
 export const BinanceApiSettings = () => {
   const { user } = useAuthContext();
@@ -16,12 +19,42 @@ export const BinanceApiSettings = () => {
   const [showSecret, setShowSecret] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hasKeys, setHasKeys] = useState(false);
+  const [isSessionValid, setIsSessionValid] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (user) {
       loadApiKeys();
+      checkSession();
     }
   }, [user]);
+
+  // Teste de localStorage
+  useEffect(() => {
+    try {
+      const test = '__localStorage_test__';
+      localStorage.setItem(test, test);
+      localStorage.removeItem(test);
+      console.log('✅ localStorage disponível');
+    } catch (e) {
+      console.error('❌ localStorage bloqueado:', e);
+      toast.error(
+        "⚠️ Armazenamento local bloqueado no seu navegador.\n" +
+        "Habilite cookies e armazenamento local para usar o bot."
+      );
+    }
+  }, []);
+
+  const checkSession = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    const isValid = !!session && !error;
+    setIsSessionValid(isValid);
+    
+    if (!isValid) {
+      console.error('❌ Sessão inválida:', error);
+    } else {
+      console.log('✅ Sessão válida, expires at:', new Date(session.expires_at! * 1000));
+    }
+  };
 
   const loadApiKeys = async () => {
     try {
@@ -44,10 +77,27 @@ export const BinanceApiSettings = () => {
   };
 
   const saveApiKeys = async () => {
+    // 1. Verificar se user existe
     if (!user) {
-      toast.error("Você precisa estar logado");
+      toast.error("❌ Você precisa estar logado para configurar as chaves da API");
       return;
     }
+
+    // 2. Verificar se a sessão é válida
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error('❌ Sessão inválida ao tentar salvar:', sessionError);
+      toast.error("❌ Sua sessão expirou. Faça login novamente.");
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 1500);
+      return;
+    }
+
+    console.log('✅ Sessão válida, procedendo com salvamento...');
+    console.log('User ID:', user.id);
+    console.log('Session expires at:', new Date(session.expires_at! * 1000));
 
     if (!apiKey.trim() || !apiSecret.trim()) {
       toast.error("Por favor, preencha ambas as chaves");
@@ -56,17 +106,14 @@ export const BinanceApiSettings = () => {
 
     setLoading(true);
     
-    // 🔧 FASE 1: Limpa cache ANTES de salvar novas chaves
+    // Limpa cache ANTES de salvar novas chaves
     clearBinanceValidationCache();
-    
-    // Marca que usuário tentou configurar chaves (para Fase 2)
     localStorage.setItem('binance_config_attempted', 'true');
     
-    console.log("Salvando chaves da Binance...", { user_id: user.id });
+    console.log("🔐 Salvando chaves da Binance...", { user_id: user.id });
 
     try {
-      // Call edge function to encrypt and save
-      console.log("Chamando edge function encrypt-api-secret...");
+      console.log("📡 Chamando edge function encrypt-api-secret...");
       const { data, error } = await supabase.functions.invoke('encrypt-api-secret', {
         body: {
           api_key: apiKey.trim(),
@@ -74,16 +121,26 @@ export const BinanceApiSettings = () => {
         }
       });
 
-      console.log("Resposta da edge function:", { data, error });
+      console.log("📥 Resposta da edge function:", { data, error });
 
+      // Tratar erro 401 explicitamente
       if (error) {
-        console.error("Erro da edge function:", error);
+        console.error("❌ Erro da edge function:", error);
+        
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          toast.error("❌ Sessão expirada. Redirecionando para login...");
+          setTimeout(() => {
+            window.location.href = '/auth';
+          }, 1500);
+          return;
+        }
+        
         throw error;
       }
 
-      console.log("Chaves salvas com sucesso!");
+      console.log("✅ Chaves salvas com sucesso!");
       
-      // 🔧 FASE 1: Limpa cache APÓS sucesso para forçar revalidação
+      // Limpa cache APÓS sucesso para forçar revalidação
       clearBinanceValidationCache();
       
       toast.success("✓ Chaves da API salvas e criptografadas com sucesso! Você já pode usar o IA Trading.");
@@ -93,7 +150,7 @@ export const BinanceApiSettings = () => {
         window.location.reload();
       }, 1500);
     } catch (error: any) {
-      console.error("Error saving API keys:", error);
+      console.error("❌ Error saving API keys:", error);
       toast.error(error.message || "Erro ao salvar chaves da API");
     } finally {
       setLoading(false);
@@ -103,12 +160,35 @@ export const BinanceApiSettings = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Chaves da API Binance</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Chaves da API Binance</CardTitle>
+          {isSessionValid === true && (
+            <Badge variant="default" className="gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Autenticado
+            </Badge>
+          )}
+          {isSessionValid === false && (
+            <Badge variant="destructive" className="gap-1">
+              <XCircle className="h-3 w-3" />
+              Sessão Inválida
+            </Badge>
+          )}
+        </div>
         <CardDescription>
           Configure suas chaves da API da Binance para trading automatizado
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {isSessionValid === false && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              ⚠️ Sessão inválida. Faça login novamente para configurar suas chaves.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="space-y-2">
           <Label htmlFor="api-key">API Key</Label>
           <Input
@@ -156,6 +236,8 @@ export const BinanceApiSettings = () => {
           Nunca compartilhe suas chaves da API com terceiros.
         </p>
       </CardContent>
+      
+      <BinanceApiKeysTroubleshooting />
     </Card>
   );
 };

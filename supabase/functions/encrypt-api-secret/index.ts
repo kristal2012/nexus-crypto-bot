@@ -26,13 +26,25 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
-      console.error('🔐 [encrypt-api-secret] Auth error:', userError);
+      console.error('🔐 [encrypt-api-secret] Auth error:', {
+        error: userError,
+        hasAuthHeader: !!req.headers.get('Authorization'),
+        authHeaderPreview: req.headers.get('Authorization')?.substring(0, 30) + '...',
+        userAgent: req.headers.get('User-Agent'),
+        origin: req.headers.get('Origin')
+      });
+      
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ 
+          error: 'Unauthorized',
+          details: 'Sua sessão expirou ou é inválida. Faça login novamente.',
+          requiresReauth: true
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log(`✅ [encrypt-api-secret] User authenticated: ${user.id}`);
     console.log(`📝 [encrypt-api-secret] Processing request for user: ${user.id}`);
 
     const { api_key, api_secret } = await req.json();
