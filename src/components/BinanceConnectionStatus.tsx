@@ -23,7 +23,21 @@ export const BinanceConnectionStatus = () => {
   };
 
   useEffect(() => {
-    checkConnection();
+    // 🔧 FASE 2: Só valida se usuário já tentou configurar chaves
+    const hasAttemptedConfig = localStorage.getItem('binance_config_attempted');
+    
+    if (hasAttemptedConfig) {
+      checkConnection();
+    } else {
+      // Usuário novo - não valida ainda, apenas mostra mensagem informativa
+      setLoading(false);
+      setStatus({
+        isConfigured: false,
+        hasPermissions: false,
+        canTradeFutures: false,
+        error: '📝 Configure suas chaves da API Binance abaixo para começar a usar o bot de trading automático.'
+      });
+    }
   }, []);
 
   if (loading) {

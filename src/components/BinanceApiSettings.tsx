@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { Eye, EyeOff, Save } from "lucide-react";
+import { clearBinanceValidationCache } from "@/services/binanceService";
 
 export const BinanceApiSettings = () => {
   const { user } = useAuthContext();
@@ -54,6 +55,13 @@ export const BinanceApiSettings = () => {
     }
 
     setLoading(true);
+    
+    // 🔧 FASE 1: Limpa cache ANTES de salvar novas chaves
+    clearBinanceValidationCache();
+    
+    // Marca que usuário tentou configurar chaves (para Fase 2)
+    localStorage.setItem('binance_config_attempted', 'true');
+    
     console.log("Salvando chaves da Binance...", { user_id: user.id });
 
     try {
@@ -74,6 +82,10 @@ export const BinanceApiSettings = () => {
       }
 
       console.log("Chaves salvas com sucesso!");
+      
+      // 🔧 FASE 1: Limpa cache APÓS sucesso para forçar revalidação
+      clearBinanceValidationCache();
+      
       toast.success("✓ Chaves da API salvas e criptografadas com sucesso! Você já pode usar o IA Trading.");
       
       // Reload the page after 1.5 seconds to refresh all components and clear secret from memory

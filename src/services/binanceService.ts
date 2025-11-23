@@ -88,61 +88,95 @@ async function performValidation(): Promise<BinanceApiKeyStatus> {
     
     const { data, error } = await supabase.functions.invoke('binance-account');
 
+    // 🔧 FASE 3: Tratamento específico de erros com mensagens claras
     if (error) {
       console.error('Binance API validation error:', error);
       
-      // Se a resposta tem dados, é um erro estruturado da edge function
+      // Erro de autenticação (usuário não logado)
+      if (error.message && error.message.includes('401')) {
+        return {
+          isConfigured: false,
+          hasPermissions: false,
+          canTradeFutures: false,
+          error: '🔐 Você precisa estar logado para configurar as chaves da API.'
+        };
+      }
+      
+      // Se a resposta tem dados estruturados da edge function
       if (data?.error) {
         const errorMessage = data.error;
         const errorCode = data.errorCode;
         const requiresReconfiguration = data.requiresReconfiguration;
 
-        // Erro de rate limit (429) - não armazena no cache
-        if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
-          return {
-            isConfigured: true,
-            hasPermissions: false,
-            canTradeFutures: false,
-            error: '⏸️ Muitas requisições à Binance. Aguarde 1 minuto e recarregue a página.'
-          };
-        }
-
-        // Erro de descriptografia - credenciais corrompidas
-        if (errorCode === 'DECRYPTION_FAILED' || requiresReconfiguration) {
-          return {
-            isConfigured: true,
-            hasPermissions: false,
-            canTradeFutures: false,
-            error: '🔐 ' + errorMessage + '\n\n📝 Vá em "Configurações de API Binance" e reconfigure suas credenciais.'
-          };
-        }
-
-        // Credenciais não configuradas
+        // 1. Credenciais não configuradas
         if (errorCode === 'MISSING_CREDENTIALS') {
           return {
             isConfigured: false,
             hasPermissions: false,
             canTradeFutures: false,
-            error: errorMessage
+            error: '📝 Configure suas chaves da API Binance abaixo.\n\n' +
+                   '1. Acesse Binance API Management\n' +
+                   '2. Crie uma nova API Key\n' +
+                   '3. Marque "Enable Futures"\n' +
+                   '4. Cole as chaves aqui'
+          };
+        }
+        
+        // 2. Erro de descriptografia - chaves corrompidas
+        if (errorCode === 'DECRYPTION_FAILED' || requiresReconfiguration) {
+          return {
+            isConfigured: true,
+            hasPermissions: false,
+            canTradeFutures: false,
+            error: '🔐 Erro ao descriptografar credenciais.\n\n' +
+                   '⚠️ Suas chaves podem estar corrompidas.\n' +
+                   '📝 Reconfigure suas credenciais abaixo.'
+          };
+        }
+        
+        // 3. Formato inválido
+        if (errorCode === 'INVALID_FORMAT') {
+          return {
+            isConfigured: true,
+            hasPermissions: false,
+            canTradeFutures: false,
+            error: '❌ Formato de chave inválido.\n\n' +
+                   '📝 Verifique se você copiou as chaves corretamente da Binance.'
           };
         }
 
-        // Outros erros da Binance
+        // 4. Rate limit (429) - não armazena no cache
+        if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
+          return {
+            isConfigured: true,
+            hasPermissions: false,
+            canTradeFutures: false,
+            error: '⏸️ Muitas requisições à Binance.\n\nAguarde 1 minuto e recarregue a página.'
+          };
+        }
+
+        // 5. Erro da API Binance (ex: sem permissão Futures)
+        const binanceCodeInfo = data.binanceCode ? `\n(Código Binance: ${data.binanceCode})` : '';
         return {
           isConfigured: true,
           hasPermissions: false,
           canTradeFutures: false,
-          error: errorMessage
+          error: `⚠️ ${errorMessage}${binanceCodeInfo}\n\n` +
+                 '📝 Verifique se você habilitou "Enable Futures" nas configurações da API key na Binance.'
         };
       }
       
-      // Erro genérico
-      const errorMessage = error.message || '';
+      // Erro genérico com instruções de troubleshooting
+      const errorMessage = error.message || 'Erro desconhecido';
       return {
-        isConfigured: true,
+        isConfigured: false,
         hasPermissions: false,
         canTradeFutures: false,
-        error: `Erro ao validar API key: ${errorMessage}`
+        error: `❌ Erro ao validar chaves:\n${errorMessage}\n\n` +
+               '🔄 Tente:\n' +
+               '1. Verificar sua conexão com a internet\n' +
+               '2. Recarregar a página\n' +
+               '3. Reconfigurar as chaves da API'
       };
     }
 
