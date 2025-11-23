@@ -48,6 +48,16 @@ export const resetDemoAccount = async (
   if (tradesError) {
     console.error("Erro ao limpar trades demo:", tradesError);
   }
+
+  // Limpa estatísticas diárias para zerar lucro mensal
+  const { error: statsError } = await supabase
+    .from("bot_daily_stats")
+    .delete()
+    .eq("user_id", userId);
+
+  if (statsError) {
+    console.error("Erro ao limpar estatísticas:", statsError);
+  }
 };
 
 /**
