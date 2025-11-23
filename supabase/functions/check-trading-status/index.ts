@@ -51,24 +51,43 @@ serve(async (req) => {
 
     // If no stats exist for today, create them
     if (!stats) {
-      // Get account balance from Binance
-      const { data: apiKeys } = await supabase
-        .from('binance_api_keys')
-        .select('api_key')
+      // Get trading mode and demo balance
+      const { data: settings } = await supabase
+        .from('trading_settings')
+        .select('trading_mode, demo_balance')
         .eq('user_id', user.id)
         .maybeSingle();
 
+      const isDemo = settings?.trading_mode === 'DEMO';
       let initialBalance = 10000; // Default balance if can't fetch
 
-      if (apiKeys) {
-        try {
-          const accountResponse = await supabase.functions.invoke('binance-account');
-          if (accountResponse.data?.totalWalletBalance) {
-            initialBalance = parseFloat(accountResponse.data.totalWalletBalance);
+      if (isDemo) {
+        // In DEMO mode, use demo_balance from trading_settings
+        initialBalance = settings?.demo_balance 
+          ? (typeof settings.demo_balance === 'string' 
+              ? parseFloat(settings.demo_balance) 
+              : settings.demo_balance)
+          : 10000;
+        console.log(`[DEMO MODE] Using demo balance: ${initialBalance} USDT`);
+      } else {
+        // In REAL mode, fetch from Binance
+        const { data: apiKeys } = await supabase
+          .from('binance_api_keys')
+          .select('api_key')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (apiKeys) {
+          try {
+            const accountResponse = await supabase.functions.invoke('binance-account');
+            if (accountResponse.data?.totalWalletBalance) {
+              initialBalance = parseFloat(accountResponse.data.totalWalletBalance);
+            }
+          } catch (e) {
+            console.error('Failed to fetch balance:', e);
           }
-        } catch (e) {
-          console.error('Failed to fetch balance:', e);
         }
+        console.log(`[REAL MODE] Using Binance balance: ${initialBalance} USDT`);
       }
 
       const { data: newStats, error: insertError } = await supabase
