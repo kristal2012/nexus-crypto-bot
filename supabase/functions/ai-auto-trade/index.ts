@@ -542,6 +542,7 @@ serve(async (req) => {
         const stopLossAmount = (totalTradeAmount * stopLossPercent) / 100;
         
         console.log(`🛡️ ${analysis.symbol} - Stop Loss: ${stopLossPercent}% of ${totalTradeAmount.toFixed(2)} USDT = ${stopLossAmount.toFixed(4)} USDT`);
+        console.log(`💵 Enviando para auto-trade: ${totalTradeAmount.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT)`);
         
         // Execute the trade
         console.log(`🔄 Invoking auto-trade for ${analysis.symbol}...`);
@@ -549,7 +550,7 @@ serve(async (req) => {
           body: {
             symbol: analysis.symbol,
             side: 'BUY',
-            quoteOrderQty: quantityPerLayer.toFixed(8), // Limit to 8 decimal places
+            quoteOrderQty: totalTradeAmount.toFixed(8), // Send full amount (all DCA layers consolidated)
             takeProfitAmount,
             stopLossAmount: stopLossAmount
           }
