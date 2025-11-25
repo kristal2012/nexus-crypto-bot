@@ -393,8 +393,33 @@ serve(async (req) => {
     let availableBalance: number;
     
     if (isDemo) {
-      availableBalance = settings?.demo_balance || 10000;
-      console.log(`💰 [DEMO MODE] Using virtual balance: ${availableBalance} USDT (no Binance API called)`);
+      const today = new Date().toISOString().split('T')[0];
+      
+      // 1. Buscar saldo atual do bot_daily_stats
+      const { data: dailyStats } = await supabase
+        .from('bot_daily_stats')
+        .select('current_balance')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .eq('is_active', true)
+        .single();
+      
+      const currentBalance = dailyStats?.current_balance || 10000;
+      
+      // 2. Calcular capital já alocado em posições abertas
+      const { data: positions } = await supabase
+        .from('positions')
+        .select('quantity, entry_price')
+        .eq('user_id', user.id)
+        .eq('is_demo', true);
+      
+      const allocatedCapital = (positions || []).reduce((sum, p) => 
+        sum + (p.quantity * p.entry_price), 0);
+      
+      // 3. Saldo LIVRE = current_balance - capital alocado
+      availableBalance = currentBalance - allocatedCapital;
+      
+      console.log(`💰 [DEMO] Current: ${currentBalance.toFixed(2)} | Alocado: ${allocatedCapital.toFixed(2)} | Livre: ${availableBalance.toFixed(2)} USDT`);
     } else {
       console.log(`💰 [REAL MODE] Fetching actual balance from Binance...`);
       const { data: accountInfo, error: accountError } = await supabase.functions.invoke('binance-account');

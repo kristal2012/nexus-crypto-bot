@@ -390,9 +390,9 @@ serve(async (req) => {
       let newBalance = currentStats.current_balance;
       
       if (side === 'BUY') {
-        // AO COMPRAR: Deduz apenas comissão (capital vai para alocado)
-        newBalance -= commission;
-        console.log(`💳 Deduzindo comissão: ${commission.toFixed(4)} USDT`);
+        // AO COMPRAR: Deduz valor total do trade + comissão
+        newBalance -= (tradeValue + commission);
+        console.log(`💳 Deduzindo trade completo: ${tradeValue.toFixed(4)} USDT + comissão: ${commission.toFixed(4)} USDT`);
       } else {
         // AO VENDER: Adiciona P&L - comissão
         newBalance += (profitLoss || 0) - commission;
