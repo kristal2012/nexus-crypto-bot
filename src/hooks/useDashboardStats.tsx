@@ -48,6 +48,17 @@ export const useDashboardStats = () => {
         statsService.getWinRate(user.id),
       ]);
 
+      // Debug: Log dos valores recebidos para rastreamento
+      console.log('[Dashboard Stats] Valores atualizados:', {
+        initialBalance: initialBal,
+        currentBalance: currentBal,
+        dailyProfit: dailyProf,
+        dailyProfitPercent: dailyProfPercent,
+        monthlyProfit: monthlyProf,
+        activePositions: positions,
+        winRate: winRateValue
+      });
+
       setInitialBalance(initialBal);
       setCurrentBalance(currentBal);
       setDailyProfit(dailyProf);
@@ -69,12 +80,21 @@ export const useDashboardStats = () => {
     // Busca inicial
     fetchAllStats();
 
-    // Configurar intervalos de atualização
-    // Stats de posição/win rate atualizam menos frequentemente
-    const statsInterval = setInterval(fetchAllStats, 30000); // 30s
+    // Atualização mais frequente para dados mais frescos
+    const statsInterval = setInterval(fetchAllStats, 10000); // 10s (reduzido de 30s)
+
+    // Forçar re-fetch quando a janela voltar ao foco
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('[Dashboard Stats] Tab ganhou foco, atualizando dados...');
+        fetchAllStats();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       clearInterval(statsInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user?.id]);
 
