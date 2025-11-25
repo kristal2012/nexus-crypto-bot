@@ -3,14 +3,19 @@
  * 
  * Displays a clear, prominent indicator of the current trading mode
  * to prevent accidental real trades when in demo mode and vice versa.
+ * 
+ * SRP: Responsável APENAS por exibir o indicador de modo de trading
+ * SSOT: Usa dashboardStatsService para buscar saldo atual consistente
  */
 
 import { Shield, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useTradingSettings } from "@/hooks/useTradingSettings";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 export const TradingModeSafetyIndicator = () => {
   const { settings, loading } = useTradingSettings();
+  const { currentBalance } = useDashboardStats();
 
   if (loading || !settings) {
     return null;
@@ -41,7 +46,7 @@ export const TradingModeSafetyIndicator = () => {
             {isDemo ? (
               <>
                 Todas as operações são <strong>simuladas</strong>. Nenhuma ordem será executada na Binance.
-                Saldo demo: <strong>${settings.demo_balance.toLocaleString()}</strong>
+                Saldo demo: <strong>${currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
               </>
             ) : (
               <>
