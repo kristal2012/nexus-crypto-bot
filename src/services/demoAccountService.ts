@@ -33,7 +33,20 @@ export const resetDemoAccount = async (
   }
   console.log("✅ [RESET DEMO] trading_settings atualizado");
 
-  // Limpa posições demo abertas
+  // Verifica quantas posições demo existem antes de limpar
+  const { data: existingPositions, error: checkError } = await supabase
+    .from("positions")
+    .select("id, symbol, quantity")
+    .eq("user_id", userId)
+    .eq("is_demo", true);
+
+  if (checkError) {
+    console.error("❌ [RESET DEMO] Erro ao verificar posições demo:", checkError);
+  } else {
+    console.log(`📍 [RESET DEMO] Encontradas ${existingPositions?.length || 0} posições demo para limpar`);
+  }
+
+  // Limpa TODAS as posições demo abertas do usuário
   const { error: positionsError } = await supabase
     .from("positions")
     .delete()
@@ -42,8 +55,22 @@ export const resetDemoAccount = async (
 
   if (positionsError) {
     console.error("❌ [RESET DEMO] Erro ao limpar posições demo:", positionsError);
+    throw positionsError; // Lança erro para interromper o reset se falhar
   } else {
-    console.log("✅ [RESET DEMO] Posições demo limpas");
+    console.log("✅ [RESET DEMO] Todas as posições demo foram removidas");
+    
+    // Verifica se realmente foram deletadas
+    const { data: remainingPositions } = await supabase
+      .from("positions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("is_demo", true);
+    
+    if (remainingPositions && remainingPositions.length > 0) {
+      console.error(`⚠️ [RESET DEMO] ATENÇÃO: Ainda existem ${remainingPositions.length} posições demo após o delete!`);
+    } else {
+      console.log("✅ [RESET DEMO] Verificação confirmada: nenhuma posição demo restante");
+    }
   }
 
   // Limpa histórico de trades demo
