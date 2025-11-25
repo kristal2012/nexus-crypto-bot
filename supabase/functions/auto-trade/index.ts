@@ -448,106 +448,43 @@ serve(async (req) => {
       console.error('Error storing trade:', tradeError);
     }
 
-    // Update daily stats
+    // ====================================================================
+    // ATUALIZAÇÃO DE ESTATÍSTICAS FINANCEIRAS
+    // Agora usa o financialAccountingService como SSOT
+    // ====================================================================
     const today = new Date().toISOString().split('T')[0];
     
-    let currentBalance;
-    let usdtBalance;
-    
-    if (isDemo) {
-      const { data: updatedSettings } = await supabase
-        .from('trading_settings')
-        .select('demo_balance')
-        .eq('user_id', user.id)
-        .single();
-      
-      usdtBalance = updatedSettings 
-        ? (typeof updatedSettings.demo_balance === 'string' 
-          ? parseFloat(updatedSettings.demo_balance) 
-          : updatedSettings.demo_balance)
-        : stats.current_balance;
-      
-      // Calculate total value including open positions
-      const { data: positions } = await supabase
-        .from('positions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_demo', isDemo);
-      
-      let positionsValue = 0;
-      if (positions && positions.length > 0) {
-        for (const pos of positions) {
-          // Get current market price for each position
-          try {
-            const priceResponse = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${pos.symbol}`);
-            const priceData = await priceResponse.json();
-            const currentPrice = parseFloat(priceData.price);
-            const positionValue = currentPrice * parseFloat(pos.quantity);
-            positionsValue += positionValue;
-            
-            // Update position current price and unrealized P&L
-            const unrealizedPnl = (currentPrice - parseFloat(pos.entry_price)) * parseFloat(pos.quantity);
-            await supabase
-              .from('positions')
-              .update({
-                current_price: currentPrice,
-                unrealized_pnl: unrealizedPnl
-              })
-              .eq('id', pos.id);
-          } catch (error) {
-            console.error(`Error fetching price for ${pos.symbol}:`, error);
-          }
-        }
-      }
-      
-      currentBalance = usdtBalance + positionsValue;
-    } else {
-      // MODO REAL: Buscar saldo real da Binance
-      console.log("💰 [REAL MODE] Fetching balance from Binance...");
-      const accountResponse = await supabase.functions.invoke('binance-account');
-      if (accountResponse.error) {
-        console.error("❌ [REAL MODE] Error fetching Binance balance:", accountResponse.error);
-        currentBalance = stats.current_balance; // Fallback to previous balance
-      } else {
-        currentBalance = accountResponse.data?.totalWalletBalance 
-          ? parseFloat(accountResponse.data.totalWalletBalance) 
-          : stats.current_balance;
-        console.log(`💰 [REAL MODE] Binance balance: ${currentBalance} USDT`);
-      }
-    }
-
-    const profitLossPercent = ((currentBalance - stats.starting_balance) / stats.starting_balance) * 100;
-
+    // Incrementa contagem de trades
     await supabase
       .from('bot_daily_stats')
       .update({
-        current_balance: currentBalance,
-        profit_loss_percent: profitLossPercent,
         trades_count: stats.trades_count + 1,
+        updated_at: new Date().toISOString()
       })
       .eq('user_id', user.id)
       .eq('date', today);
+    
+    // NOTA: Os cálculos de saldo e lucro agora são feitos pelo
+    // financialAccountingService quando o dashboard solicita,
+    // garantindo consistência e eliminando duplicação de lógica
+    
+    console.log('✅ Trade contabilizado. Saldos serão calculados pelo financialAccountingService.');
 
-    console.log('Trade executed successfully:', {
+    console.log('✅ Trade executed successfully:', {
       symbol,
       side,
       quantity: executedQty,
       quoteOrderQty,
       value_usdt: (executedPrice * executedQty).toFixed(2),
       isDemo,
-      new_balance: currentBalance,
-      profit_loss: profitLossPercent.toFixed(2) + '%',
+      profit_loss: profitLoss?.toFixed(2) || 'N/A',
     });
 
     return new Response(
       JSON.stringify({
         success: true,
         trade: orderData,
-        stats: {
-          current_balance: currentBalance,
-          profit_loss_percent: profitLossPercent,
-          trades_count: stats.trades_count + 1,
-        }
+        message: 'Trade executado com sucesso. Use financialAccountingService para estatísticas atualizadas.'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
