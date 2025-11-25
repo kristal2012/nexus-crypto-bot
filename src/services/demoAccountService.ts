@@ -17,8 +17,22 @@ export const resetDemoAccount = async (
 ): Promise<void> => {
   console.log(`🔄 [RESET DEMO] Iniciando reset para userId: ${userId}, novo saldo: $${newBalance}`);
   
-  // PASSO 1 - CRÍTICO: Pausar o auto-trading ANTES de deletar posições
-  console.log("⏸️ [RESET DEMO] Pausando auto-trading para evitar novas posições...");
+  // PASSO 1 - Verificar estado atual do auto-trading
+  const { data: configBefore, error: configCheckError } = await supabase
+    .from("auto_trading_config")
+    .select("is_active")
+    .eq("user_id", userId)
+    .single();
+
+  if (configCheckError) {
+    console.error("❌ [RESET DEMO] Erro ao verificar config:", configCheckError);
+  }
+  
+  const wasActive = configBefore?.is_active || false;
+  console.log(`📊 [RESET DEMO] Bot estava ${wasActive ? 'ATIVO' : 'INATIVO'} antes do reset`);
+  
+  // PASSO 2 - CRÍTICO: Pausar o auto-trading temporariamente
+  console.log("⏸️ [RESET DEMO] Pausando auto-trading temporariamente...");
   const { error: pauseError } = await supabase
     .from("auto_trading_config")
     .update({ is_active: false })
@@ -26,12 +40,11 @@ export const resetDemoAccount = async (
 
   if (pauseError) {
     console.error("❌ [RESET DEMO] Erro ao pausar auto-trading:", pauseError);
-    // Continua mesmo se falhar, mas registra o erro
   } else {
-    console.log("✅ [RESET DEMO] Auto-trading pausado com sucesso");
+    console.log("✅ [RESET DEMO] Auto-trading pausado");
   }
   
-  // PASSO 2: Atualiza demo_balance e initial_capital simultaneamente
+  // PASSO 3: Atualiza demo_balance e initial_capital simultaneamente
   const { error: settingsError } = await supabase
     .from("trading_settings")
     .update({
@@ -135,6 +148,24 @@ export const resetDemoAccount = async (
     console.error("❌ [RESET DEMO] Erro ao limpar estatísticas antigas:", deleteError);
   } else {
     console.log("✅ [RESET DEMO] Estatísticas antigas limpas");
+  }
+  
+  // PASSO FINAL - Reativar o bot se estava ativo antes
+  if (wasActive) {
+    console.log("🔄 [RESET DEMO] Reativando auto-trading...");
+    const { error: reactivateError } = await supabase
+      .from("auto_trading_config")
+      .update({ is_active: true })
+      .eq("user_id", userId);
+    
+    if (reactivateError) {
+      console.error("❌ [RESET DEMO] Erro ao reativar auto-trading:", reactivateError);
+      throw new Error("Falha ao reativar o bot após reset. Por favor, reative manualmente.");
+    } else {
+      console.log("✅ [RESET DEMO] Auto-trading reativado com sucesso");
+    }
+  } else {
+    console.log("ℹ️ [RESET DEMO] Bot permanece inativo (estava inativo antes do reset)");
   }
   
   console.log("🎉 [RESET DEMO] Reset concluído com sucesso!");
