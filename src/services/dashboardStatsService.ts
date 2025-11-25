@@ -8,65 +8,86 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Busca o saldo inicial correto baseado no modo de trading
- * Em DEMO: retorna demo_balance (mutável)
- * Em REAL: retorna initial_capital (imutável)
+ * Busca o saldo inicial do dia atual (SSOT: bot_daily_stats)
+ * IMPORTANTE: Este é o saldo que estava na conta ANTES das operações do dia
  */
 export const getInitialBalance = async (userId: string) => {
+  const today = new Date().toISOString().split('T')[0];
+  
   const { data, error } = await supabase
-    .from('trading_settings')
-    .select('initial_capital, demo_balance, trading_mode')
+    .from('bot_daily_stats')
+    .select('starting_balance')
     .eq('user_id', userId)
+    .eq('date', today)
     .maybeSingle();
 
   if (error) throw error;
-  if (!data) return 0;
-
-  // Em modo DEMO, o "saldo inicial" é na verdade o demo_balance atual
-  // que pode ser alterado pelo DemoBalanceManager
-  const isDemo = data.trading_mode === 'DEMO';
-  const balance = isDemo 
-    ? (typeof data.demo_balance === 'string' ? parseFloat(data.demo_balance) : data.demo_balance)
-    : (typeof data.initial_capital === 'string' ? parseFloat(data.initial_capital) : data.initial_capital);
-
-  return balance;
+  
+  // Se há registro do dia, retorna o starting_balance
+  if (data?.starting_balance) {
+    return data.starting_balance;
+  }
+  
+  // FALLBACK: Se não há registro do dia (ainda não houve trades hoje),
+  // busca o demo_balance ou initial_capital como referência inicial
+  const { data: settings } = await supabase
+    .from('trading_settings')
+    .select('trading_mode, demo_balance, initial_capital')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  if (!settings) return 0;
+  
+  const isDemo = settings.trading_mode === 'DEMO';
+  const fallbackBalance = isDemo 
+    ? (typeof settings.demo_balance === 'string' ? parseFloat(settings.demo_balance) : settings.demo_balance)
+    : (typeof settings.initial_capital === 'string' ? parseFloat(settings.initial_capital) : settings.initial_capital);
+  
+  return fallbackBalance;
 };
 
 /**
- * Busca o saldo atual baseado no modo de trading
- * Em DEMO: usa demo_balance
- * Em REAL: usa bot_daily_stats.current_balance
+ * Busca o saldo atual após todas as operações do dia (SSOT: bot_daily_stats)
+ * IMPORTANTE: Este é o resultado do que tem na conta APÓS cada operação consolidada
  */
 export const getCurrentBalance = async (userId: string) => {
-  // Primeiro, verifica o modo
-  const { data: settings } = await supabase
-    .from('trading_settings')
-    .select('trading_mode, demo_balance')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (!settings) return 0;
-
-  // Em modo DEMO, o saldo atual É o demo_balance
-  if (settings.trading_mode === 'DEMO') {
-    return typeof settings.demo_balance === 'string' 
-      ? parseFloat(settings.demo_balance) 
-      : settings.demo_balance;
-  }
-
-  // Em modo REAL, busca das estatísticas diárias
-  const { data: dailyStats } = await supabase
+  const today = new Date().toISOString().split('T')[0];
+  
+  const { data, error } = await supabase
     .from('bot_daily_stats')
     .select('current_balance')
     .eq('user_id', userId)
-    .eq('date', new Date().toISOString().split('T')[0])
+    .eq('date', today)
     .maybeSingle();
 
-  return dailyStats?.current_balance || 0;
+  if (error) throw error;
+  
+  // Se há registro do dia, retorna o current_balance
+  if (data?.current_balance) {
+    return data.current_balance;
+  }
+  
+  // FALLBACK: Se não há registro do dia (ainda não houve trades hoje),
+  // busca o demo_balance ou initial_capital como referência inicial
+  const { data: settings } = await supabase
+    .from('trading_settings')
+    .select('trading_mode, demo_balance, initial_capital')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  if (!settings) return 0;
+  
+  const isDemo = settings.trading_mode === 'DEMO';
+  const fallbackBalance = isDemo 
+    ? (typeof settings.demo_balance === 'string' ? parseFloat(settings.demo_balance) : settings.demo_balance)
+    : (typeof settings.initial_capital === 'string' ? parseFloat(settings.initial_capital) : settings.initial_capital);
+  
+  return fallbackBalance;
 };
 
 /**
- * Calcula o lucro do dia atual
+ * Calcula o lucro do dia atual (SSOT: soma de profit_loss dos trades FILLED)
+ * IMPORTANTE: Este é o resultado do lucro de cada operação trade consolidada no dia
  */
 export const getDailyProfit = async (userId: string) => {
   const today = new Date().toISOString().split('T')[0];
