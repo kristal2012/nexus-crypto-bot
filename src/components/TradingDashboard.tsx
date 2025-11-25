@@ -147,7 +147,7 @@ export const TradingDashboard = () => {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Lucro do Dia</p>
+              <p className="text-sm text-muted-foreground">Resultados do Dia</p>
               <p className={`text-2xl font-bold ${dailyProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {dailyProfit >= 0 ? '+' : ''}${dailyProfit.toFixed(2)}
               </p>
@@ -169,7 +169,7 @@ export const TradingDashboard = () => {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Lucro Mensal</p>
+              <p className="text-sm text-muted-foreground">Resultados do Mês</p>
               <p className="text-2xl font-bold">
                 ${Math.abs(monthlyProfit).toFixed(2)}
               </p>
