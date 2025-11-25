@@ -17,7 +17,21 @@ export const resetDemoAccount = async (
 ): Promise<void> => {
   console.log(`🔄 [RESET DEMO] Iniciando reset para userId: ${userId}, novo saldo: $${newBalance}`);
   
-  // Atualiza demo_balance e initial_capital simultaneamente
+  // PASSO 1 - CRÍTICO: Pausar o auto-trading ANTES de deletar posições
+  console.log("⏸️ [RESET DEMO] Pausando auto-trading para evitar novas posições...");
+  const { error: pauseError } = await supabase
+    .from("auto_trading_config")
+    .update({ is_active: false })
+    .eq("user_id", userId);
+
+  if (pauseError) {
+    console.error("❌ [RESET DEMO] Erro ao pausar auto-trading:", pauseError);
+    // Continua mesmo se falhar, mas registra o erro
+  } else {
+    console.log("✅ [RESET DEMO] Auto-trading pausado com sucesso");
+  }
+  
+  // PASSO 2: Atualiza demo_balance e initial_capital simultaneamente
   const { error: settingsError } = await supabase
     .from("trading_settings")
     .update({

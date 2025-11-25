@@ -10,9 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTradingSettings } from "@/hooks/useTradingSettings";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, RotateCcw } from "lucide-react";
+import { DollarSign, RotateCcw, AlertTriangle } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { resetDemoAccount, updateDemoBalance as updateDemoBalanceService } from "@/services/demoAccountService";
 
@@ -78,7 +79,7 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
       
       toast({
         title: "Conta demo resetada",
-        description: "Saldo, lucro mensal e histórico foram zerados",
+        description: "Saldo resetado e auto-trading pausado. Reative manualmente se necessário.",
       });
       setNewBalance("");
     } catch (error) {
@@ -130,6 +131,13 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
             </Button>
           </div>
         </div>
+
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            <strong>Resetar</strong> irá pausar o auto-trading, fechar todas as posições abertas e zerar o histórico. Você precisará reativar o bot manualmente.
+          </AlertDescription>
+        </Alert>
 
         <Button
           variant="outline"
