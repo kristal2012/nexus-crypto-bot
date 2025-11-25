@@ -188,3 +188,84 @@ export const updateDemoBalance = async (
 
   if (error) throw error;
 };
+
+/**
+ * Fecha todas as posições abertas da conta demo
+ * APENAS funciona em modo DEMO - não afeta contas reais
+ */
+export const closeAllDemoPositions = async (userId: string): Promise<void> => {
+  console.log(`🔒 [CLOSE POSITIONS] Iniciando fechamento de posições demo para userId: ${userId}`);
+  
+  // Verificar se está em modo demo
+  const { data: settings, error: settingsError } = await supabase
+    .from("trading_settings")
+    .select("trading_mode")
+    .eq("user_id", userId)
+    .single();
+
+  if (settingsError) {
+    console.error("❌ [CLOSE POSITIONS] Erro ao verificar modo de trading:", settingsError);
+    throw new Error("Não foi possível verificar o modo de trading");
+  }
+
+  if (settings.trading_mode !== "DEMO") {
+    console.error("❌ [CLOSE POSITIONS] Tentativa de fechar posições em modo REAL bloqueada!");
+    throw new Error("Esta ação só está disponível em modo DEMO");
+  }
+
+  // Buscar posições abertas
+  const { data: positions, error: fetchError } = await supabase
+    .from("positions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_demo", true);
+
+  if (fetchError) {
+    console.error("❌ [CLOSE POSITIONS] Erro ao buscar posições:", fetchError);
+    throw fetchError;
+  }
+
+  if (!positions || positions.length === 0) {
+    console.log("ℹ️ [CLOSE POSITIONS] Nenhuma posição aberta para fechar");
+    return;
+  }
+
+  console.log(`📍 [CLOSE POSITIONS] Encontradas ${positions.length} posições para fechar`);
+
+  // Deletar todas as posições demo
+  const { error: deleteError } = await supabase
+    .from("positions")
+    .delete()
+    .eq("user_id", userId)
+    .eq("is_demo", true);
+
+  if (deleteError) {
+    console.error("❌ [CLOSE POSITIONS] Erro ao deletar posições:", deleteError);
+    throw deleteError;
+  }
+
+  console.log("✅ [CLOSE POSITIONS] Todas as posições demo foram fechadas");
+
+  // Atualizar saldo atual no bot_daily_stats
+  const today = new Date().toISOString().split('T')[0];
+  const { data: dailyStats, error: statsError } = await supabase
+    .from("bot_daily_stats")
+    .select("starting_balance")
+    .eq("user_id", userId)
+    .eq("date", today)
+    .single();
+
+  if (!statsError && dailyStats) {
+    const { error: updateError } = await supabase
+      .from("bot_daily_stats")
+      .update({ current_balance: dailyStats.starting_balance })
+      .eq("user_id", userId)
+      .eq("date", today);
+
+    if (updateError) {
+      console.error("❌ [CLOSE POSITIONS] Erro ao atualizar saldo:", updateError);
+    } else {
+      console.log("✅ [CLOSE POSITIONS] Saldo atualizado para o valor inicial do dia");
+    }
+  }
+};

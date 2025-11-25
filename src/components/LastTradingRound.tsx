@@ -23,6 +23,9 @@ import {
   getLastTradingRound,
   type TradingRoundMetrics 
 } from "@/services/lastTradingRoundService";
+import { closeAllDemoPositions } from "@/services/demoAccountService";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { useTradingSettings } from "@/hooks/useTradingSettings";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -30,6 +33,9 @@ import { ptBR } from "date-fns/locale";
 export const LastTradingRound = () => {
   const [metrics, setMetrics] = useState<TradingRoundMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [closing, setClosing] = useState(false);
+  const { user } = useAuthContext();
+  const { settings } = useTradingSettings();
   const { toast } = useToast();
 
   const loadData = async () => {
@@ -46,6 +52,30 @@ export const LastTradingRound = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClosePositions = async () => {
+    if (!user?.id) return;
+    
+    setClosing(true);
+    try {
+      await closeAllDemoPositions(user.id);
+      await loadData(); // Recarregar dados após fechar posições
+      
+      toast({
+        title: "Posições fechadas",
+        description: "Todas as posições demo foram fechadas com sucesso",
+      });
+    } catch (error) {
+      console.error('Error closing positions:', error);
+      toast({
+        title: "Erro ao fechar posições",
+        description: error instanceof Error ? error.message : "Não foi possível fechar as posições",
+        variant: "destructive"
+      });
+    } finally {
+      setClosing(false);
     }
   };
 
@@ -82,6 +112,7 @@ export const LastTradingRound = () => {
   const winRate = (metrics.winningTrades / metrics.totalTrades) * 100;
   const isHealthy = winRate >= 50 && isProfitable;
   const hasOpenPositions = metrics.trades.some(t => t.is_open_position);
+  const isDemoMode = settings?.trading_mode === "DEMO";
 
   return (
     <Card className="p-6 space-y-6">
@@ -105,15 +136,17 @@ export const LastTradingRound = () => {
             )}
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={loadData}
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        {hasOpenPositions && isDemoMode && (
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={handleClosePositions}
+            disabled={closing}
+          >
+            <AlertCircle className={`h-4 w-4 mr-2 ${closing ? 'animate-spin' : ''}`} />
+            Fechar Posições Abertas
+          </Button>
+        )}
       </div>
 
       {/* Status Geral */}
