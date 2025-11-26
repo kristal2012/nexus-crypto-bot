@@ -72,30 +72,53 @@ serve(async (req) => {
 
     if (lockError) {
       console.error('Lock acquisition error:', lockError);
+      console.error('Error details:', JSON.stringify(lockError, null, 2));
       
       // Check if it's a rate limit error
-      // CRITICAL: Return 200 status (not 429) to prevent error reporting
-      // The rate_limited flag tells the frontend to handle this gracefully
-      if (lockError.message?.includes('Rate limit')) {
-        const match = lockError.message.match(/(\d+) seconds remaining/);
-        const remainingSeconds = match ? parseInt(match[1]) : 900;
+      // Check both message and details for "Rate limit" or "not active"
+      const errorStr = JSON.stringify(lockError).toLowerCase();
+      const isRateLimit = errorStr.includes('rate limit') || 
+                         (lockError.message && lockError.message.toLowerCase().includes('rate limit'));
+      const isNotActive = errorStr.includes('not active') ||
+                         (lockError.message && lockError.message.toLowerCase().includes('not active'));
+      
+      if (isRateLimit) {
+        // Extract remaining seconds from error message
+        const match = lockError.message?.match(/(\d+) seconds remaining/) || 
+                     lockError.details?.match(/(\d+) seconds remaining/) ||
+                     errorStr.match(/(\d+) seconds remaining/);
+        const remainingSeconds = match ? parseInt(match[1]) : 120;
         
         console.log(`⏳ Rate limit active: ${remainingSeconds}s remaining (returning 200 with rate_limited flag)`);
         
         return new Response(JSON.stringify({ 
           success: false,
           rate_limited: true,
-          message: `Please wait before running another analysis`,
+          message: `Por favor, aguarde antes de executar outra análise`,
           remaining_seconds: remainingSeconds
         }), {
-          status: 200, // Changed from 429 to prevent error reporting
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      if (isNotActive) {
+        console.log(`🔴 Bot is not active`);
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Bot não está ativo',
+          message: 'O trading automático está pausado. Ative-o para continuar.'
+        }), {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       
       // Generic error for other issues
+      console.error('Unhandled lock error, returning 503');
       return new Response(JSON.stringify({ 
-        error: 'Service temporarily unavailable'
+        error: 'Service temporarily unavailable',
+        details: lockError.message || 'Unknown error'
       }), {
         status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
