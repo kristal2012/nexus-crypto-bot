@@ -68,7 +68,7 @@ serve(async (req) => {
     const closedPositions = [];
 
     for (const position of positions) {
-      const { symbol, entry_price, quantity, highest_price, tp_price, sl_price, trailing_activation } = position;
+      const { symbol, entry_price, quantity, highest_price, tp_price, sl_price, trailing_activation, created_at } = position;
 
       // Buscar preço atual da Binance
       const priceResponse = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`);
@@ -81,7 +81,7 @@ serve(async (req) => {
       let closeReason = '';
       let profitLoss = 0;
 
-      // 1. Verificar Stop Loss (-1.00%)
+      // 1. Verificar Stop Loss (-0.50%)
       if (sl_price && currentPrice <= sl_price) {
         shouldClose = true;
         closeReason = 'Stop Loss atingido';
@@ -89,7 +89,7 @@ serve(async (req) => {
         console.log(`  🛑 ${symbol}: SL ATINGIDO ${currentPrice} <= ${sl_price}`);
       }
 
-      // 2. Verificar Take Profit fixo (+0.30%)
+      // 2. Verificar Take Profit fixo (+0.20%)
       else if (tp_price && currentPrice >= tp_price) {
         shouldClose = true;
         closeReason = 'Take Profit atingido';
@@ -97,7 +97,7 @@ serve(async (req) => {
         console.log(`  ✅ ${symbol}: TP ATINGIDO ${currentPrice} >= ${tp_price}`);
       }
 
-      // 3. Verificar Trailing Stop
+      // 3. Verificar Trailing Stop (ativa em +0.10%, callback 0.15%)
       else if (trailing_activation && currentPrice >= trailing_activation) {
         // Trailing ativado - atualizar highest_price se necessário
         const newHighest = Math.max(highest_price || currentPrice, currentPrice);
@@ -110,13 +110,27 @@ serve(async (req) => {
           console.log(`  📈 ${symbol}: Novo pico ${newHighest}`);
         }
 
-        // Verificar callback de 0.5% abaixo do pico
-        const trailingStopPrice = newHighest * 0.995;
+        // ✅ Callback de 0.15% abaixo do pico (mais agressivo)
+        const trailingStopPrice = newHighest * 0.9985;
         if (currentPrice <= trailingStopPrice) {
           shouldClose = true;
           closeReason = 'Trailing Stop acionado';
           profitLoss = (currentPrice - entry_price) * quantity;
           console.log(`  🔻 ${symbol}: TRAILING ACIONADO ${currentPrice} <= ${trailingStopPrice}`);
+        }
+      }
+
+      // 4. ✅ TIMEOUT: Fechar após 10 minutos se P&L > -0.10%
+      if (!shouldClose) {
+        const positionAgeMinutes = (Date.now() - new Date(created_at).getTime()) / (1000 * 60);
+        if (positionAgeMinutes >= 10) {
+          const pnlPercent = ((currentPrice - entry_price) / entry_price) * 100;
+          if (pnlPercent > -0.10) {
+            shouldClose = true;
+            closeReason = 'Timeout (10 min)';
+            profitLoss = (currentPrice - entry_price) * quantity;
+            console.log(`  ⏱️ ${symbol}: TIMEOUT ${positionAgeMinutes.toFixed(1)} min | P&L ${pnlPercent.toFixed(2)}%`);
+          }
         }
       }
 
