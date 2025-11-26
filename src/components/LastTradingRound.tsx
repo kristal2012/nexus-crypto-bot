@@ -68,8 +68,9 @@ export const LastTradingRound = () => {
       await loadData(); // Recarregar dados após fechar posições
       
       toast({
-        title: "Posições fechadas",
-        description: "Todas as posições demo foram fechadas com sucesso",
+        title: "Posições fechadas com sucesso",
+        description: "Todas as posições foram fechadas. O bot foi PAUSADO. Clique em 'Ativar IA Trading' para retomar as operações.",
+        duration: 6000,
       });
     } catch (error) {
       console.error('Error closing positions:', error);
