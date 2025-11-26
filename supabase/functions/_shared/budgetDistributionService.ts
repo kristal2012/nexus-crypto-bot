@@ -25,9 +25,10 @@ export interface BudgetDistribution {
  * Constantes de configuração centralizadas (SSOT)
  */
 export const BUDGET_CONFIG = {
-  MAX_BUDGET_PERCENT: 0.10, // Usar 10% do saldo disponível (conforme solicitado)
-  MIN_AMOUNT_PER_PAIR: 10,  // Mínimo 10 USDT por par (será adaptado ao minNotional)
-  MIN_LAYERS: 1,            // Entrada única (sem DCA)
+  MAX_BUDGET_PERCENT: 0.10,     // Usar 10% do saldo disponível (conforme solicitado)
+  MIN_AMOUNT_PER_PAIR: 10,      // Mínimo 10 USDT por par (será adaptado ao minNotional)
+  MAX_AMOUNT_PER_PAIR: 150,     // Máximo 150 USDT por par (reduz risco de concentração)
+  MIN_LAYERS: 1,                // Entrada única (sem DCA)
 } as const;
 
 /**
@@ -89,10 +90,15 @@ export function distributeBudget(
   
   // Iterar até encontrar uma distribuição viável
   while (pairsToInclude > 0) {
-    amountPerPair = availableBudget / pairsToInclude;
+    // Calcular valor por par COM LIMITE MÁXIMO para evitar concentração
+    const calculatedAmount = availableBudget / pairsToInclude;
+    amountPerPair = Math.min(calculatedAmount, BUDGET_CONFIG.MAX_AMOUNT_PER_PAIR);
     executablePairs = [];
     
     console.log(`\n🔄 Tentativa: ${amountPerPair.toFixed(2)} USDT por par × ${pairsToInclude} pares`);
+    if (calculatedAmount > BUDGET_CONFIG.MAX_AMOUNT_PER_PAIR) {
+      console.log(`   ⚠️ Valor limitado de ${calculatedAmount.toFixed(2)} para ${BUDGET_CONFIG.MAX_AMOUNT_PER_PAIR} USDT (cap de segurança)`);
+    }
     
     // Verificar quais pares são executáveis com esse valor
     for (let i = 0; i < pairsToInclude; i++) {
