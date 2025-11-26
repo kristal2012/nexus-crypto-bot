@@ -401,7 +401,7 @@ serve(async (req) => {
     // 1. Buscar saldo atual
     const { data: currentStats } = await supabase
       .from('bot_daily_stats')
-      .select('current_balance, starting_balance, trades_count')
+      .select('current_balance, starting_balance, trades_count, profit_loss_percent')
       .eq('user_id', user.id)
       .eq('date', today)
       .eq('is_active', true)
@@ -409,24 +409,26 @@ serve(async (req) => {
     
     if (currentStats) {
       let newBalance = currentStats.current_balance;
+      let newProfitLossPercent = currentStats.profit_loss_percent || 0;
       
-      if (side === 'BUY') {
-        // AO COMPRAR: Deduz valor total do trade + comissão
-        newBalance -= (tradeValue + commission);
-        console.log(`💳 Deduzindo trade completo: ${tradeValue.toFixed(4)} USDT + comissão: ${commission.toFixed(4)} USDT`);
-      } else {
-        // AO VENDER: Adiciona P&L - comissão
-        newBalance += (profitLoss || 0) - commission;
-        console.log(`💰 Adicionando P&L: ${((profitLoss || 0) - commission).toFixed(4)} USDT`);
+      if (side === 'SELL' && profitLoss !== null) {
+        // AO FECHAR POSIÇÃO: Adicionar P&L REALIZADO ao saldo
+        newBalance += profitLoss;
+        newProfitLossPercent = ((newBalance - currentStats.starting_balance) / currentStats.starting_balance) * 100;
+        console.log(`💰 P&L REALIZADO: ${profitLoss.toFixed(4)} USDT (após comissão)`);
+        console.log(`📊 P&L Diário: ${newProfitLossPercent.toFixed(2)}%`);
+      } else if (side === 'BUY') {
+        // AO ABRIR POSIÇÃO: Capital apenas alocado, não conta como perda
+        console.log(`🔒 Capital alocado: ${tradeValue.toFixed(4)} USDT (não afeta P&L até fechar)`);
       }
       
-      // Atualizar saldo
+      // Atualizar estatísticas
       await supabase
         .from('bot_daily_stats')
         .update({
           current_balance: newBalance,
           trades_count: currentStats.trades_count + 1,
-          profit_loss_percent: ((newBalance - currentStats.starting_balance) / currentStats.starting_balance) * 100,
+          profit_loss_percent: newProfitLossPercent,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id)
