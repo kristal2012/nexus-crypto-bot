@@ -151,8 +151,8 @@ export const AutoTradingControl = () => {
     console.log(`⏰ [AutoTradingControl] Scheduling first analysis in ${initialDelay/1000}s`);
     timeoutId = setTimeout(executeAutoAnalysis, initialDelay);
 
-    // Then execute every 15 minutes (900000 ms)
-    intervalId = setInterval(executeAutoAnalysis, 900000);
+    // Then execute every 5 minutes (300000 ms)
+    intervalId = setInterval(executeAutoAnalysis, 300000);
 
     return () => {
       clearTimeout(timeoutId);
@@ -236,7 +236,7 @@ export const AutoTradingControl = () => {
       toast({
         title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
         description: checked 
-          ? `A IA executará análises a cada 15min, operando ${qty} USDT por trade em pares com ≥${minConf}% de confiança` 
+          ? `A IA executará análises a cada 5min, operando ${qty} USDT por trade em pares com ≥${minConf}% de confiança` 
           : "A análise automática foi pausada",
       });
     } catch (error) {
@@ -336,7 +336,7 @@ export const AutoTradingControl = () => {
               <Clock className="w-3 h-3 mt-0.5 text-success" />
               <div>
                 <p className="font-medium text-foreground mb-1">✓ IA Ativa - Análises Automáticas</p>
-                <p>A IA executa análises a cada 15min operando <strong>{config.quantityUsdt} USDT</strong> por trade com alavancagem <strong>{config.leverage}x</strong>. Take Profit: <strong className="text-success">{config.takeProfit}%</strong> | Stop Loss: <strong className="text-destructive">{config.stopLoss}%</strong> | Confiança mínima: <strong>{config.minConfidence}%</strong></p>
+                <p>A IA executa análises a cada 5min operando <strong>{config.quantityUsdt} USDT</strong> por trade com alavancagem <strong>{config.leverage}x</strong>. Take Profit: <strong className="text-success">{config.takeProfit}%</strong> | Stop Loss: <strong className="text-destructive">{config.stopLoss}%</strong> | Confiança mínima: <strong>{config.minConfidence}%</strong></p>
               </div>
             </div>
           </div>
