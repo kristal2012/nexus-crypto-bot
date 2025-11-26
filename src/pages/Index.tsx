@@ -13,12 +13,20 @@ import { AdminEmergencyControl } from "@/components/AdminEmergencyControl";
 import { BotStatus } from "@/components/BotStatus";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useDemoPositionMonitor } from "@/hooks/useDemoPositionMonitor";
+import { useTradingMode } from "@/hooks/useTradingMode";
+import { useBotActive } from "@/hooks/useBotActive";
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuthContext();
   const { isAdmin } = useIsAdmin();
   const { refetch: refetchStats } = useDashboardStats();
+  const { isDemoMode } = useTradingMode();
+  const { isActive } = useBotActive();
+  
+  // Monitor DEMO positions for TP/SL/Trailing
+  useDemoPositionMonitor(isActive, isDemoMode);
 
   // Se não autenticado, redireciona para login
   useEffect(() => {

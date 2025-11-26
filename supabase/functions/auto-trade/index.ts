@@ -278,12 +278,20 @@ serve(async (req) => {
         const totalCost = (parseFloat(existingPosition.entry_price) * parseFloat(existingPosition.quantity)) + (executedPrice * executedQty) + commission;
         const avgEntryPrice = totalCost / totalQty;
 
+        // Calcular TP/SL/Trailing para DEMO
+        const tpPrice = isDemo ? avgEntryPrice * 1.003 : null;
+        const slPrice = isDemo ? avgEntryPrice * 0.99 : null;
+        const trailingActivation = isDemo ? avgEntryPrice * 1.003 : null;
+
         await supabase
           .from('positions')
           .update({
             quantity: totalQty,
             entry_price: avgEntryPrice,
             current_price: executedPrice,
+            tp_price: tpPrice,
+            sl_price: slPrice,
+            trailing_activation: trailingActivation,
             updated_at: new Date().toISOString()
           })
           .eq('id', existingPosition.id);
@@ -293,7 +301,12 @@ serve(async (req) => {
         // Nova posição
         const entryPriceWithCommission = (executedPrice * executedQty + commission) / executedQty;
         
-        await supabase
+        // Calcular TP/SL/Trailing para DEMO
+        const tpPrice = isDemo ? entryPriceWithCommission * 1.003 : null;
+        const slPrice = isDemo ? entryPriceWithCommission * 0.99 : null;
+        const trailingActivation = isDemo ? entryPriceWithCommission * 1.003 : null;
+        
+        const { data: newPosition } = await supabase
           .from('positions')
           .insert({
             user_id: user.id,
@@ -302,10 +315,18 @@ serve(async (req) => {
             quantity: executedQty,
             entry_price: entryPriceWithCommission,
             current_price: executedPrice,
+            tp_price: tpPrice,
+            sl_price: slPrice,
+            trailing_activation: trailingActivation,
             is_demo: isDemo
-          });
+          })
+          .select('id')
+          .single();
           
         console.log(`📍 Nova posição: ${symbol} ${executedQty.toFixed(4)} @ ${entryPriceWithCommission.toFixed(4)}`);
+        
+        // Retornar position_id para que ai-auto-trade possa salvar os order IDs
+        orderData.position_id = newPosition?.id;
       }
     } else {
       // FECHAMENTO DE POSIÇÃO
@@ -419,6 +440,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         order: orderData,
+        position_id: orderData.position_id,
         mode: isDemo ? 'DEMO' : 'REAL'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
