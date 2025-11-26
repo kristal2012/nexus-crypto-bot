@@ -118,12 +118,12 @@ export const BotStatus = () => {
               <Zap className="w-5 h-5 text-warning" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">Estratégia DCA</p>
-              <p className="text-xs text-muted-foreground">3 camadas ativas</p>
+              <p className="text-sm font-medium text-foreground">Estratégia Scalping</p>
+              <p className="text-xs text-muted-foreground">Entrada única com TP/SL/Trailing</p>
             </div>
           </div>
           <Badge variant="outline" className="border-warning text-warning text-xs">
-            Pronto
+            Ativo
           </Badge>
         </div>
       </div>
