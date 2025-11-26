@@ -670,7 +670,34 @@ serve(async (req) => {
               console.error(`   ❌ Exceção ao criar SL:`, slErr);
             }
             
-            console.log(`🎯 Ordens condicionais configuradas! Binance monitora automaticamente.\n`);
+            // TRAILING STOP: Ativa após 0.30% de lucro, callback 0.5%
+            const tsActivationPrice = (entryPrice * 1.003).toFixed(8); // +0.30% (mesmo do TP)
+            const tsCallbackRate = 0.5; // 0.5% de trailing
+            console.log(`   TS: ativa em ${tsActivationPrice} (+0.30%), callback ${tsCallbackRate}%`);
+            
+            try {
+              const { data: tsOrder, error: tsError } = await supabase.functions.invoke('binance-create-order', {
+                body: {
+                  symbol: analysis.symbol,
+                  side: 'SELL',
+                  type: 'TRAILING_STOP_MARKET',
+                  quantity: executedQty,
+                  activationPrice: parseFloat(tsActivationPrice),
+                  callbackRate: tsCallbackRate,
+                  reduceOnly: true
+                }
+              });
+              
+              if (tsError) {
+                console.error(`   ❌ Erro ao criar Trailing Stop: ${tsError.message}`);
+              } else {
+                console.log(`   ✅ Trailing Stop criado: order ${tsOrder?.orderId} (callback ${tsCallbackRate}%)`);
+              }
+            } catch (tsErr) {
+              console.error(`   ❌ Exceção ao criar Trailing Stop:`, tsErr);
+            }
+            
+            console.log(`🎯 Ordens condicionais TP/SL/Trailing Stop configuradas! Binance monitora automaticamente.\n`);
           }
           
           executedTrades.push({
