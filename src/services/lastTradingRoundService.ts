@@ -20,6 +20,9 @@ export interface TradeDetail {
   entry_price?: number;
   current_price?: number;
   unrealized_pnl?: number;
+  tp_order_id?: string | null;
+  sl_order_id?: string | null;
+  highest_price?: number | null;
 }
 
 export interface TradingRoundMetrics {
@@ -74,7 +77,10 @@ export const getLastTradingRound = async (): Promise<TradingRoundMetrics | null>
         is_open_position: true,
         entry_price: pos.entry_price,
         current_price: pos.current_price,
-        unrealized_pnl: pos.unrealized_pnl || 0
+        unrealized_pnl: pos.unrealized_pnl || 0,
+        tp_order_id: pos.tp_order_id,
+        sl_order_id: pos.sl_order_id,
+        highest_price: pos.highest_price
       }));
 
       const totalPnL = positionTrades.reduce((sum, t) => sum + (t.unrealized_pnl || 0), 0);

@@ -17,8 +17,12 @@ import {
   CheckCircle,
   RefreshCw,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Target,
+  ShieldAlert,
+  TrendingUpDown
 } from "lucide-react";
+import { PositionProgressBar } from "@/components/ui/PositionProgressBar";
 import { 
   getLastTradingRound,
   type TradingRoundMetrics 
@@ -249,7 +253,7 @@ export const LastTradingRound = () => {
             {hasOpenPositions ? 'Posições Abertas' : 'Detalhes das Operações'}
           </span>
         </div>
-        <div className="space-y-2 max-h-60 overflow-y-auto">
+        <div className="space-y-3 max-h-[500px] overflow-y-auto">
           {metrics.trades.map((trade) => {
             const pnl = trade.is_open_position ? (trade.unrealized_pnl || 0) : (trade.profit_loss || 0);
             const isProfitableTrade = pnl >= 0;
@@ -257,46 +261,135 @@ export const LastTradingRound = () => {
               ? ((trade.current_price - trade.entry_price) / trade.entry_price) * 100
               : 0;
             
+            // Calcular preços de TP/SL/Trailing
+            const entryPrice = trade.entry_price || trade.price;
+            const tpPrice = entryPrice * 1.003; // +0.30%
+            const slPrice = entryPrice * 0.99; // -1.00%
+            const trailingActivationPrice = entryPrice * 1.003; // +0.30%
+            const currentPrice = trade.current_price || entryPrice;
+            
+            // Status do Trailing Stop
+            const trailingActivated = currentPrice >= trailingActivationPrice;
+            const highestPrice = trade.highest_price || currentPrice;
+            const trailingStopPrice = highestPrice * 0.995; // 0.5% callback
+            
             return (
               <div 
                 key={trade.id} 
-                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg text-sm border-l-4"
+                className="p-4 bg-muted/30 rounded-lg border-l-4 space-y-3"
                 style={{ borderColor: isProfitableTrade ? 'rgb(34 197 94)' : 'rgb(239 68 68)' }}
               >
-                <div className="flex items-center gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant={trade.side === "BUY" ? "default" : "secondary"}>
-                        {trade.side}
-                      </Badge>
-                      <p className="font-medium">{trade.symbol}</p>
-                      {trade.is_open_position && (
-                        <Badge variant="outline" className="text-xs border-amber-500 text-amber-500">
-                          ABERTA
+                {/* Header da Posição */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant={trade.side === "BUY" ? "default" : "secondary"}>
+                          {trade.side}
+                        </Badge>
+                        <p className="font-medium text-base">{trade.symbol}</p>
+                        {trade.is_open_position && (
+                          <Badge variant="outline" className="text-xs border-amber-500 text-amber-500">
+                            ● ABERTA
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {trade.quantity.toFixed(4)} @ ${entryPrice.toFixed(4)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-bold text-lg ${isProfitableTrade ? 'text-green-500' : 'text-red-500'}`}>
+                      {isProfitableTrade ? '+' : ''}{pnl.toFixed(2)} USDT
+                    </p>
+                    <p className={`text-sm font-medium ${pnlPercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      ({pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%)
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {format(new Date(trade.executed_at || trade.created_at), "HH:mm:ss")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Barra de Progresso Visual (apenas para posições abertas) */}
+                {trade.is_open_position && trade.current_price && (
+                  <PositionProgressBar
+                    slPrice={slPrice}
+                    currentPrice={currentPrice}
+                    tpPrice={tpPrice}
+                    entryPrice={entryPrice}
+                  />
+                )}
+
+                {/* Status das Ordens Condicionais */}
+                {trade.is_open_position && (
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/50">
+                    {/* Take Profit */}
+                    <div className="text-center p-2 bg-green-500/10 rounded">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Target className="h-3 w-3 text-green-500" />
+                        <span className="text-xs font-medium text-green-500">TP</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        ${tpPrice.toFixed(4)}
+                      </div>
+                      {trade.tp_order_id && (
+                        <Badge variant="outline" className="text-[9px] mt-1 border-green-500/50">
+                          ✓ Ativo
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {trade.quantity.toFixed(4)} @ ${(trade.entry_price || trade.price).toFixed(4)}
-                    </p>
-                    {trade.is_open_position && trade.current_price && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Preço atual: ${trade.current_price.toFixed(4)}
-                        <span className={`ml-2 font-medium ${pnlPercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          ({pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%)
+
+                    {/* Stop Loss */}
+                    <div className="text-center p-2 bg-red-500/10 rounded">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <ShieldAlert className="h-3 w-3 text-red-500" />
+                        <span className="text-xs font-medium text-red-500">SL</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        ${slPrice.toFixed(4)}
+                      </div>
+                      {trade.sl_order_id && (
+                        <Badge variant="outline" className="text-[9px] mt-1 border-red-500/50">
+                          ✓ Ativo
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Trailing Stop */}
+                    <div className={`text-center p-2 rounded ${trailingActivated ? 'bg-blue-500/10' : 'bg-muted/50'}`}>
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <TrendingUpDown className={`h-3 w-3 ${trailingActivated ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                        <span className={`text-xs font-medium ${trailingActivated ? 'text-blue-500' : 'text-muted-foreground'}`}>
+                          Trailing
                         </span>
-                      </p>
-                    )}
+                      </div>
+                      {trailingActivated ? (
+                        <>
+                          <div className="text-[10px] text-muted-foreground">
+                            Stop: ${trailingStopPrice.toFixed(4)}
+                          </div>
+                          <Badge variant="outline" className="text-[9px] mt-1 border-blue-500/50">
+                            ✓ Ativo
+                          </Badge>
+                          <div className="text-[9px] text-blue-500 mt-1">
+                            Pico: ${highestPrice.toFixed(4)}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-[10px] text-muted-foreground">
+                            Ativa em: ${trailingActivationPrice.toFixed(4)}
+                          </div>
+                          <Badge variant="outline" className="text-[9px] mt-1 border-muted">
+                            Aguardando
+                          </Badge>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className={`font-semibold ${isProfitableTrade ? 'text-green-500' : 'text-red-500'}`}>
-                    {isProfitableTrade ? '+' : ''}{pnl.toFixed(2)} USDT
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(trade.executed_at || trade.created_at), "HH:mm:ss")}
-                  </p>
-                </div>
+                )}
               </div>
             );
           })}
