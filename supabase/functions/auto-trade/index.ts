@@ -273,30 +273,16 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingPosition) {
-        // Atualizar posição existente
-        const totalQty = parseFloat(existingPosition.quantity) + executedQty;
-        const totalCost = (parseFloat(existingPosition.entry_price) * parseFloat(existingPosition.quantity)) + (executedPrice * executedQty) + commission;
-        const avgEntryPrice = totalCost / totalQty;
-
-        // Calcular TP/SL/Trailing para DEMO
-        const tpPrice = isDemo ? avgEntryPrice * 1.003 : null;
-        const slPrice = isDemo ? avgEntryPrice * 0.99 : null;
-        const trailingActivation = isDemo ? avgEntryPrice * 1.003 : null;
-
-        await supabase
-          .from('positions')
-          .update({
-            quantity: totalQty,
-            entry_price: avgEntryPrice,
-            current_price: executedPrice,
-            tp_price: tpPrice,
-            sl_price: slPrice,
-            trailing_activation: trailingActivation,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingPosition.id);
-          
-        console.log(`📍 Posição atualizada: ${symbol} ${totalQty.toFixed(4)} @ ${avgEntryPrice.toFixed(4)}`);
+        // REJEITAR compra duplicada - Estratégia de entrada única (sem DCA)
+        console.log(`⚠️ Rejeitando BUY ${symbol}: já existe posição aberta`);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: 'Posição já existe para este par',
+            details: `${symbol} já tem uma posição aberta. Estratégia: entrada única por par.`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       } else {
         // Nova posição
         const entryPriceWithCommission = (executedPrice * executedQty + commission) / executedQty;
