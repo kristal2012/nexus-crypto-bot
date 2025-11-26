@@ -105,9 +105,9 @@ export const LastTradingRound = () => {
     return (
       <Card className="p-6">
         <div className="text-center py-8 text-muted-foreground">
-          <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="text-sm">Nenhum trade executado ainda</p>
-          <p className="text-xs mt-1">Execute uma análise para ver os resultados aqui</p>
+          <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50 text-green-500" />
+          <p className="text-sm font-medium">Nenhuma posição aberta</p>
+          <p className="text-xs mt-1">Dashboard limpa e pronta para novas operações</p>
         </div>
       </Card>
     );

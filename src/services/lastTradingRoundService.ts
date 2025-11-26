@@ -121,61 +121,8 @@ export const getLastTradingRound = async (): Promise<TradingRoundMetrics | null>
       };
     }
 
-    // Se não há posições abertas, buscar última rodada de trades finalizados
-    const { data: allTrades, error } = await supabase
-      .from('trades')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_demo', isDemo)
-      .eq('status', 'FILLED')
-      .not('profit_loss', 'is', null) // Apenas trades com P&L (vendas)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error || !allTrades || allTrades.length === 0) {
-      return null;
-    }
-
-    // Pegar o timestamp do trade mais recente
-    const latestTradeTime = new Date(allTrades[0].created_at);
-    
-    // Agrupar trades que foram criados em até 2 minutos do mais recente
-    const ROUND_WINDOW_MS = 2 * 60 * 1000; // 2 minutos
-    const roundTrades = allTrades.filter(trade => {
-      const tradeTime = new Date(trade.created_at);
-      const diff = latestTradeTime.getTime() - tradeTime.getTime();
-      return diff >= 0 && diff <= ROUND_WINDOW_MS;
-    });
-
-    if (roundTrades.length === 0) return null;
-
-    // Calcular métricas
-    const totalPnL = roundTrades.reduce((sum, t) => sum + (t.profit_loss || 0), 0);
-    const winningTrades = roundTrades.filter(t => (t.profit_loss || 0) > 0).length;
-    const losingTrades = roundTrades.filter(t => (t.profit_loss || 0) < 0).length;
-    const avgPnL = totalPnL / roundTrades.length;
-    
-    const profits = roundTrades
-      .map(t => t.profit_loss || 0)
-      .filter(p => p > 0);
-    const losses = roundTrades
-      .map(t => t.profit_loss || 0)
-      .filter(p => p < 0);
-
-    const largestWin = profits.length > 0 ? Math.max(...profits) : 0;
-    const largestLoss = losses.length > 0 ? Math.abs(Math.min(...losses)) : 0;
-
-    return {
-      timestamp: allTrades[0].created_at,
-      trades: roundTrades as TradeDetail[],
-      totalTrades: roundTrades.length,
-      totalPnL,
-      winningTrades,
-      losingTrades,
-      avgPnL,
-      largestWin,
-      largestLoss,
-    };
+    // Se não há posições abertas, retornar null para dashboard limpa
+    return null;
   } catch (error) {
     console.error('Error fetching last trading round:', error);
     return null;
