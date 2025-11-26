@@ -15,6 +15,8 @@ const createOrderSchema = z.object({
   quantity: z.number().positive().max(1000000).or(z.string().regex(/^\d+(\.\d{1,8})?$/)),
   price: z.number().positive().optional().or(z.string().regex(/^\d+(\.\d+)?$/).optional()),
   stopPrice: z.number().positive().optional().or(z.string().regex(/^\d+(\.\d+)?$/).optional()),
+  activationPrice: z.number().positive().optional().or(z.string().regex(/^\d+(\.\d+)?$/).optional()),
+  callbackRate: z.number().min(0.1).max(5).optional(),
   reduceOnly: z.boolean().optional(),
   closePosition: z.boolean().optional()
 });
@@ -74,12 +76,13 @@ serve(async (req) => {
       );
     }
     
-    const { symbol, side, type, quantity, price, stopPrice, reduceOnly, closePosition } = validation.data;
+    const { symbol, side, type, quantity, price, stopPrice, activationPrice, callbackRate, reduceOnly, closePosition } = validation.data;
     
     // Convert to string for consistency
     const quantityStr = typeof quantity === 'number' ? quantity.toString() : quantity;
     const priceStr = price ? (typeof price === 'number' ? price.toString() : price) : undefined;
     const stopPriceStr = stopPrice ? (typeof stopPrice === 'number' ? stopPrice.toString() : stopPrice) : undefined;
+    const activationPriceStr = activationPrice ? (typeof activationPrice === 'number' ? activationPrice.toString() : activationPrice) : undefined;
 
     // Check if trading is enabled system-wide
     const { data: systemSettings } = await supabase
@@ -129,6 +132,16 @@ serve(async (req) => {
       queryString += `&stopPrice=${stopPriceStr}`;
     }
 
+    // Trailing Stop parameters
+    if (type === 'TRAILING_STOP_MARKET') {
+      if (activationPriceStr) {
+        queryString += `&activationPrice=${activationPriceStr}`;
+      }
+      if (callbackRate !== undefined) {
+        queryString += `&callbackRate=${callbackRate}`;
+      }
+    }
+
     // Adicionar flags para ordens condicionais
     if (reduceOnly === true) {
       queryString += `&reduceOnly=true`;
@@ -141,7 +154,7 @@ serve(async (req) => {
     const signature = await signRequest(queryString, apiSecret);
     const binanceUrl = `https://fapi.binance.com/fapi/v1/order?${queryString}&signature=${signature}`;
 
-    console.log('Creating order:', { symbol, side, type, quantity: quantityStr, price: priceStr, stopPrice: stopPriceStr, reduceOnly, closePosition });
+    console.log('Creating order:', { symbol, side, type, quantity: quantityStr, price: priceStr, stopPrice: stopPriceStr, activationPrice: activationPriceStr, callbackRate, reduceOnly, closePosition });
 
     const response = await fetch(binanceUrl, {
       method: 'POST',
