@@ -515,7 +515,7 @@ serve(async (req) => {
     console.log(`💵 Saldo inicial dia: ${startingBalance} USDT`);
     console.log(`🎯 Take Profit: ${takeProfitPercent}% = ${takeProfitAmount} USDT (from auto_trading_config)`);
     console.log(`🛑 Stop Loss: ${stopLossPercent}% por trade (from auto_trading_config)`);
-    console.log(`📊 Executando ${tradesToExecute.length} trades × ${amountPerPair.toFixed(2)} USDT (${BUDGET_CONFIG.MIN_LAYERS} layers mínimo)`);
+    console.log(`📊 Executando ${tradesToExecute.length} trades × ${amountPerPair.toFixed(2)} USDT (entrada única, sem DCA)`);
 
     const executedTrades = [];
 
@@ -543,34 +543,25 @@ serve(async (req) => {
         
         console.log(`Trading status OK for ${analysis.symbol}`);
 
-        // Usar o valor calculado por par
+        // Usar o valor calculado por par (entrada única, sem DCA)
         const amountForThisTrade = amountPerPair;
         
-        // Use recommended layers but ensure at least MIN_LAYERS
-        let dcaLayers = Math.max(BUDGET_CONFIG.MIN_LAYERS, analysis.recommendedDcaLayers);
-        let quantityPerLayer: number = amountForThisTrade / dcaLayers;
+        // Entrada única simplificada
+        const totalTradeAmount = amountForThisTrade;
         
-        // Ensure each layer meets minimum notional
-        if (quantityPerLayer < analysis.minNotional) {
-          // Adjust layers to meet minimum notional
-          dcaLayers = Math.max(1, Math.floor(amountForThisTrade / analysis.minNotional));
-          
-          if (dcaLayers === 0 || amountForThisTrade < analysis.minNotional) {
-            console.log(`⚠️ Skipping ${analysis.symbol}: amount ${amountForThisTrade.toFixed(2)} USDT below minimum notional ${analysis.minNotional} USDT`);
-            continue;
-          }
-          
-          quantityPerLayer = Math.max(analysis.minNotional, amountForThisTrade / dcaLayers);
+        // Validar contra minNotional
+        if (totalTradeAmount < analysis.minNotional) {
+          console.log(`⚠️ Skipping ${analysis.symbol}: amount ${totalTradeAmount.toFixed(2)} USDT below minimum notional ${analysis.minNotional} USDT`);
+          continue;
         }
         
-        console.log(`📊 ${analysis.symbol}: ${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT = ${(dcaLayers * quantityPerLayer).toFixed(2)} USDT (confidence: ${analysis.confidence}%)`);
+        console.log(`📊 ${analysis.symbol}: Entrada única de ${totalTradeAmount.toFixed(2)} USDT (confidence: ${analysis.confidence}%)`);
         
-        // SSOT: Usar stopLossPercent já definido acima (linha 340)
-        const totalTradeAmount = dcaLayers * quantityPerLayer;
+        // SSOT: Usar stopLossPercent já definido acima
         const stopLossAmount = (totalTradeAmount * stopLossPercent) / 100;
         
         console.log(`🛡️ ${analysis.symbol} - Stop Loss: ${stopLossPercent}% of ${totalTradeAmount.toFixed(2)} USDT = ${stopLossAmount.toFixed(4)} USDT`);
-        console.log(`💵 Enviando para auto-trade: ${totalTradeAmount.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT)`);
+        console.log(`💵 Enviando para auto-trade: ${totalTradeAmount.toFixed(2)} USDT (entrada única)`);
         
         // Execute the trade
         console.log(`🔄 Invoking auto-trade for ${analysis.symbol}...`);
@@ -578,7 +569,7 @@ serve(async (req) => {
           body: {
             symbol: analysis.symbol,
             side: 'BUY',
-            quoteOrderQty: totalTradeAmount.toFixed(8), // Send full amount (all DCA layers consolidated)
+            quoteOrderQty: totalTradeAmount.toFixed(8), // Entrada única
             takeProfitAmount,
             stopLossAmount: stopLossAmount
           }
@@ -703,7 +694,7 @@ serve(async (req) => {
           executedTrades.push({
             symbol: analysis.symbol,
             confidence: analysis.confidence,
-            dcaLayers: dcaLayers,
+            dcaLayers: 1, // Entrada única
             predictedPrice: analysis.predictedPrice,
             amountUsed: totalTradeAmount,
             takeProfitAmount,
@@ -713,7 +704,7 @@ serve(async (req) => {
             tpPrice: entryPrice * 1.003,
             slPrice: entryPrice * 0.99
           });
-          console.log(`✅ Successfully executed trade for ${analysis.symbol}: ${totalTradeAmount.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), Entry: ${entryPrice}, TP: +0.30%, SL: -1.00%`);
+          console.log(`✅ Successfully executed trade for ${analysis.symbol}: ${totalTradeAmount.toFixed(2)} USDT (entrada única), Entry: ${entryPrice}, TP: +0.30%, SL: -1.00%`);
         } else {
           console.error(`❌ Trade failed for ${analysis.symbol}: ${tradeResult?.message || 'Unknown reason'}`);
           console.log('Continuing to next opportunity...');

@@ -21,35 +21,35 @@ export interface TradingStrategy {
 export const TRADING_STRATEGIES: Record<string, TradingStrategy> = {
   conservative: {
     name: "Conservadora",
-    description: "Baixo risco, retornos moderados",
+    description: "Baixo risco, entrada única com TP/SL/Trailing",
     minBalance: 1000,
     quantityPerLayer: 20,
-    numLayers: 2,
+    numLayers: 1,         // Entrada única (sem DCA)
     leverage: 3,
-    stopLoss: 4.0,        // SL mais largo - dá margem para volatilidade
-    takeProfit: 3.0,      // TP realista - mais fácil de atingir
+    stopLoss: 1.0,        // 1% SL fixo
+    takeProfit: 0.30,     // 0.30% TP fixo
     minConfidence: 85,
   },
   moderate: {
     name: "Moderada",
-    description: "Equilíbrio entre risco e retorno",
+    description: "Equilíbrio entre risco e retorno, entrada única com TP/SL/Trailing",
     minBalance: 5000,
     quantityPerLayer: 25,
-    numLayers: 2,
+    numLayers: 1,         // Entrada única (sem DCA)
     leverage: 5,
-    stopLoss: 4.0,        // SL mais largo - dá margem para volatilidade
-    takeProfit: 3.0,      // TP realista - mais fácil de atingir
+    stopLoss: 1.0,        // 1% SL fixo
+    takeProfit: 0.30,     // 0.30% TP fixo
     minConfidence: 80,
   },
   aggressive: {
     name: "Agressiva",
-    description: "Alto risco, altos retornos",
+    description: "Alto risco, entrada única com TP/SL/Trailing",
     minBalance: 10000,
     quantityPerLayer: 50,
-    numLayers: 3,
+    numLayers: 1,         // Entrada única (sem DCA)
     leverage: 10,
-    stopLoss: 5.0,        // SL ainda mais largo para estratégia agressiva
-    takeProfit: 4.0,      // TP mais alto mas ainda realista
+    stopLoss: 1.0,        // 1% SL fixo
+    takeProfit: 0.30,     // 0.30% TP fixo
     minConfidence: 75,
   },
 };
