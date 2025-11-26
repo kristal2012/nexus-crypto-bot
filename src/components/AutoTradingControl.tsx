@@ -9,17 +9,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { executeAutoTradeAnalysis, AutoTradeError } from "@/services/autoTradeService";
 import { useTradingConfig } from "@/hooks/useTradingConfig";
+import { useBotActive } from "@/hooks/useBotActive";
 
 export const AutoTradingControl = () => {
-  const [isActive, setIsActive] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<any>(null);
   const { toast } = useToast();
   const { user } = useAuthContext();
   const { config } = useTradingConfig();
+  const { isActive, toggleBotActive } = useBotActive();
 
   useEffect(() => {
     if (user) {
-      loadStatus();
       loadLastAnalysis();
       checkCredentials();
       
@@ -93,7 +93,7 @@ export const AutoTradingControl = () => {
         // Handle circuit breaker (stop trading)
         if (response.circuit_breaker) {
           console.error(`🛑 [AutoTradingControl] Circuit breaker activated - stopping automatic trading`);
-          setIsActive(false);
+          await toggleBotActive(false);
           toast({
             title: "🛑 Trading Pausado Automaticamente",
             description: response.message || "Performance crítica detectada. Revise a estratégia.",
@@ -160,25 +160,6 @@ export const AutoTradingControl = () => {
     };
   }, [user, isActive]);
 
-  // Analysis runs automatically on the backend every 15 minutes when active
-  // This component just displays the results
-
-  const loadStatus = async () => {
-    try {
-      const { data } = await supabase
-        .from('auto_trading_config')
-        .select('is_active, min_confidence')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (data) {
-        setIsActive(data.is_active);
-      }
-    } catch (error) {
-      console.error('Error loading status:', error);
-    }
-  };
-
   const loadLastAnalysis = async () => {
     try {
       const { data } = await supabase
@@ -208,27 +189,7 @@ export const AutoTradingControl = () => {
     if (!user) return;
 
     try {
-      const { data: existing } = await supabase
-        .from('auto_trading_config')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (existing) {
-        await supabase
-          .from('auto_trading_config')
-          .update({ is_active: checked })
-          .eq('user_id', user.id);
-      } else {
-        await supabase
-          .from('auto_trading_config')
-          .insert({
-            user_id: user.id,
-            is_active: checked
-          });
-      }
-
-      setIsActive(checked);
+      await toggleBotActive(checked);
 
       const minConf = config?.minConfidence || 60;
       const qty = config?.quantityUsdt || 10;
