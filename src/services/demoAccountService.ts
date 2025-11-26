@@ -213,6 +213,19 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
     throw new Error("Esta ação só está disponível em modo DEMO");
   }
 
+  // CRÍTICO: Pausar o auto-trading ANTES de deletar posições
+  console.log("⏸️ [CLOSE POSITIONS] Pausando auto-trading para evitar novas posições...");
+  const { error: pauseError } = await supabase
+    .from("auto_trading_config")
+    .update({ is_active: false })
+    .eq("user_id", userId);
+
+  if (pauseError) {
+    console.error("❌ [CLOSE POSITIONS] Erro ao pausar auto-trading:", pauseError);
+    throw new Error("Não foi possível pausar o bot antes de fechar posições");
+  }
+  console.log("✅ [CLOSE POSITIONS] Auto-trading pausado com sucesso");
+
   // Buscar posições abertas
   const { data: positions, error: fetchError } = await supabase
     .from("positions")
@@ -246,6 +259,25 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
 
   console.log("✅ [CLOSE POSITIONS] Todas as posições demo foram fechadas");
 
+  // Verificação dupla: confirmar que nenhuma posição restou
+  const { data: remainingPositions } = await supabase
+    .from("positions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_demo", true);
+  
+  if (remainingPositions && remainingPositions.length > 0) {
+    console.error(`⚠️ [CLOSE POSITIONS] ATENÇÃO: Ainda existem ${remainingPositions.length} posições demo após o delete!`);
+    // Tentar deletar novamente
+    await supabase
+      .from("positions")
+      .delete()
+      .eq("user_id", userId)
+      .eq("is_demo", true);
+  } else {
+    console.log("✅ [CLOSE POSITIONS] Verificação confirmada: nenhuma posição demo restante");
+  }
+
   // Atualizar saldo atual no bot_daily_stats
   const today = new Date().toISOString().split('T')[0];
   const { data: dailyStats, error: statsError } = await supabase
@@ -274,4 +306,6 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
       console.log("✅ [CLOSE POSITIONS] Saldo atualizado para o valor inicial do dia");
     }
   }
+
+  console.log("ℹ️ [CLOSE POSITIONS] Bot permanece PAUSADO. Reative manualmente quando desejar.");
 };
