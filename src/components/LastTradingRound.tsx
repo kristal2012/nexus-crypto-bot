@@ -132,7 +132,10 @@ export const LastTradingRound = () => {
               {format(new Date(metrics.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </span>
             <Badge variant="outline" className="ml-2">
-              {metrics.totalTrades} {metrics.totalTrades === 1 ? 'posição' : 'posições'}
+              {metrics.totalTrades} {hasOpenPositions 
+                ? (metrics.totalTrades === 1 ? 'posição aberta' : 'posições abertas')
+                : (metrics.totalTrades === 1 ? 'trade fechado' : 'trades fechados')
+              }
             </Badge>
             {hasOpenPositions && (
               <Badge variant="outline" className="border-amber-500 text-amber-500">
@@ -154,12 +157,26 @@ export const LastTradingRound = () => {
         )}
       </div>
 
+      {/* Alerta quando não há posições abertas mas há trades fechados */}
+      {!hasOpenPositions && metrics.totalTrades > 0 && (
+        <div className="p-4 bg-gray-500/10 border border-gray-500/30 rounded-lg flex items-start gap-3">
+          <CheckCircle className="h-5 w-5 text-gray-500 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-gray-500">Nenhuma posição aberta no momento</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Abaixo você pode ver o histórico dos últimos trades finalizados
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Status Geral */}
-      <div className={`p-4 rounded-lg border-2 ${
-        isHealthy 
-          ? 'bg-green-500/10 border-green-500/50' 
-          : 'bg-amber-500/10 border-amber-500/50'
-      }`}>
+      {hasOpenPositions && (
+        <div className={`p-4 rounded-lg border-2 ${
+          isHealthy 
+            ? 'bg-green-500/10 border-green-500/50' 
+            : 'bg-amber-500/10 border-amber-500/50'
+        }`}>
         <div className="flex items-center gap-3">
           {isHealthy ? (
             <TrendingUp className="h-6 w-6 text-green-500" />
@@ -178,7 +195,8 @@ export const LastTradingRound = () => {
             </p>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Métricas Principais */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -289,9 +307,13 @@ export const LastTradingRound = () => {
                           {trade.side}
                         </Badge>
                         <p className="font-medium text-base">{trade.symbol}</p>
-                        {trade.is_open_position && (
+                        {trade.is_open_position ? (
                           <Badge variant="outline" className="text-xs border-amber-500 text-amber-500">
                             ● ABERTA
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs border-gray-500 text-gray-500">
+                            ✓ FECHADO
                           </Badge>
                         )}
                       </div>

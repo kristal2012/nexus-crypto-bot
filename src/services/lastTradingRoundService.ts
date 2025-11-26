@@ -56,11 +56,21 @@ export const getLastTradingRound = async (): Promise<TradingRoundMetrics | null>
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
+    // Obter modo de trading atual do usuário
+    const { data: tradingSettings } = await supabase
+      .from('trading_settings')
+      .select('trading_mode')
+      .eq('user_id', user.id)
+      .single();
+    
+    const isDemo = tradingSettings?.trading_mode === 'DEMO';
+
     // Buscar posições abertas (mais relevante para análise atual)
     const { data: openPositions, error: posError } = await supabase
       .from('positions')
       .select('*')
       .eq('user_id', user.id)
+      .eq('is_demo', isDemo)
       .order('created_at', { ascending: false });
 
     // Se há posições abertas, mostrar elas
@@ -116,6 +126,7 @@ export const getLastTradingRound = async (): Promise<TradingRoundMetrics | null>
       .from('trades')
       .select('*')
       .eq('user_id', user.id)
+      .eq('is_demo', isDemo)
       .eq('status', 'FILLED')
       .not('profit_loss', 'is', null) // Apenas trades com P&L (vendas)
       .order('created_at', { ascending: false })
