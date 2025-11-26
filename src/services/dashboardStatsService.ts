@@ -94,3 +94,19 @@ export const getWinRate = async (userId: string): Promise<number> => {
   const winningTrades = trades.filter(t => (t.profit_loss || 0) > 0).length;
   return (winningTrades / trades.length) * 100;
 };
+
+/**
+ * Capital alocado em posições abertas
+ */
+export const getAllocatedCapital = async (userId: string): Promise<number> => {
+  const snapshot = await getFinancialSnapshot(userId);
+  return snapshot.allocatedCapital;
+};
+
+/**
+ * Saldo livre (disponível para trading)
+ */
+export const getFreeBalance = async (userId: string): Promise<number> => {
+  const snapshot = await getFinancialSnapshot(userId);
+  return snapshot.freeBalance;
+};

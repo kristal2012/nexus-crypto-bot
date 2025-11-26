@@ -17,7 +17,9 @@ import {
   BarChart3,
   Settings,
   Play,
-  Pause
+  Pause,
+  Wallet,
+  Lock
 } from "lucide-react";
 import cryptumLogo from "@/assets/cryptum-logo.png";
 import { BinanceApiSettings } from "./BinanceApiSettings";
@@ -46,6 +48,8 @@ export const TradingDashboard = () => {
     monthlyProfit,
     activePositions,
     winRate,
+    allocatedCapital,
+    freeBalance,
     loading: statsLoading,
   } = useDashboardStats();
 
@@ -110,7 +114,7 @@ export const TradingDashboard = () => {
       <TradingModeSafetyIndicator />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -200,6 +204,28 @@ export const TradingDashboard = () => {
               <p className="text-xs text-muted-foreground mt-1">Taxa de acerto</p>
             </div>
             <Target className="h-8 w-8 text-primary" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Capital Alocado</p>
+              <p className="text-2xl font-bold text-warning">${allocatedCapital.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground mt-1">Em posições abertas</p>
+            </div>
+            <Lock className="h-8 w-8 text-warning" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Saldo Disponível</p>
+              <p className="text-2xl font-bold text-success">${freeBalance.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground mt-1">Livre para trading</p>
+            </div>
+            <Wallet className="h-8 w-8 text-success" />
           </div>
         </Card>
       </div>

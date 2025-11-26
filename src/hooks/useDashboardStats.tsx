@@ -21,6 +21,8 @@ export const useDashboardStats = () => {
   const [monthlyProfit, setMonthlyProfit] = useState<number>(0);
   const [activePositions, setActivePositions] = useState<number>(0);
   const [winRate, setWinRate] = useState<number>(0);
+  const [allocatedCapital, setAllocatedCapital] = useState<number>(0);
+  const [freeBalance, setFreeBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   // Função para buscar todas as estatísticas
@@ -38,6 +40,8 @@ export const useDashboardStats = () => {
         monthlyProf,
         positions,
         winRateValue,
+        allocatedCap,
+        freeBal,
       ] = await Promise.all([
         statsService.getInitialBalance(user.id),
         statsService.getCurrentBalance(user.id),
@@ -46,6 +50,8 @@ export const useDashboardStats = () => {
         statsService.getMonthlyProfit(user.id),
         statsService.getActivePositionsCount(user.id),
         statsService.getWinRate(user.id),
+        statsService.getAllocatedCapital(user.id),
+        statsService.getFreeBalance(user.id),
       ]);
 
       // Debug: Log dos valores recebidos para rastreamento
@@ -56,7 +62,9 @@ export const useDashboardStats = () => {
         dailyProfitPercent: dailyProfPercent,
         monthlyProfit: monthlyProf,
         activePositions: positions,
-        winRate: winRateValue
+        winRate: winRateValue,
+        allocatedCapital: allocatedCap,
+        freeBalance: freeBal
       });
 
       setInitialBalance(initialBal);
@@ -66,6 +74,8 @@ export const useDashboardStats = () => {
       setMonthlyProfit(monthlyProf);
       setActivePositions(positions);
       setWinRate(winRateValue);
+      setAllocatedCapital(allocatedCap);
+      setFreeBalance(freeBal);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
     } finally {
@@ -106,6 +116,8 @@ export const useDashboardStats = () => {
     monthlyProfit,
     activePositions,
     winRate,
+    allocatedCapital,
+    freeBalance,
     loading,
     refetch: fetchAllStats,
   };
