@@ -258,7 +258,13 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
   if (!statsError && dailyStats) {
     const { error: updateError } = await supabase
       .from("bot_daily_stats")
-      .update({ current_balance: dailyStats.starting_balance })
+      .update({ 
+        current_balance: dailyStats.starting_balance,
+        profit_loss_percent: 0,        // Resetar P&L% (anular perdas)
+        trades_count: 0,               // Resetar contagem de trades
+        can_trade: true,               // Reativar trading
+        stop_reason: null              // Limpar motivo do stop
+      })
       .eq("user_id", userId)
       .eq("date", today);
 
