@@ -105,11 +105,8 @@ serve(async (req) => {
     console.log('🤖 AI Auto-Trade Function Started');
 
     // ============================================================
-    // ETAPA 1: MONITORAR POSIÇÕES ABERTAS ANTES DE ABRIR NOVAS
+    // BUSCAR CONFIGURAÇÃO DO USUÁRIO
     // ============================================================
-    console.log('\n🔍 Verificando posições abertas para TP/SL...');
-
-    // Buscar configuração primeiro (necessário para monitoramento e ajuste adaptativo)
     const { data: configData, error: configError } = await supabase
       .from('auto_trading_config')
       .select('*')
@@ -127,102 +124,7 @@ serve(async (req) => {
     }
 
     const config = configData;
-
-    // Determinar modo de trading
-    const { data: monitorSettings } = await supabase
-      .from('trading_settings')
-      .select('trading_mode')
-      .eq('user_id', user.id)
-      .single();
-    
-    const monitorIsDemo = monitorSettings?.trading_mode !== 'REAL';
-
-    // Buscar posições abertas
-    const { data: openPositions } = await supabase
-      .from('positions')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_demo', monitorIsDemo);
-
-    const monitorTpPercent = config.take_profit || 2;
-    const monitorSlPercent = config.stop_loss || 1;
-
-    console.log(`⚙️ Config: TP ${monitorTpPercent}% | SL ${monitorSlPercent}%`);
-    console.log(`📊 Posições abertas encontradas: ${(openPositions || []).length}`);
-
-    let closedPositions = 0;
-
-    // Avaliar cada posição
-    for (const position of openPositions || []) {
-      try {
-        // Buscar preço atual
-        const priceResponse = await fetch(
-          `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${position.symbol}`,
-          { signal: AbortSignal.timeout(5000) }
-        );
-        
-        if (!priceResponse.ok) {
-          console.error(`❌ Erro ao buscar preço para ${position.symbol}`);
-          continue;
-        }
-
-        const priceData = await priceResponse.json();
-        const currentPrice = parseFloat(priceData.price);
-        
-        const entryPrice = parseFloat(position.entry_price);
-        const quantity = parseFloat(position.quantity);
-        const pnl = (currentPrice - entryPrice) * quantity;
-        const pnlPercent = ((currentPrice - entryPrice) / entryPrice) * 100;
-        
-        console.log(`  ${position.symbol}: ${pnlPercent > 0 ? '+' : ''}${pnlPercent.toFixed(2)}% (${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} USDT) | Entry: ${entryPrice} | Current: ${currentPrice}`);
-        
-        let shouldClose = false;
-        let closeReason = '';
-
-        // Verificar TAKE PROFIT
-        if (pnlPercent >= monitorTpPercent) {
-          shouldClose = true;
-          closeReason = `TP atingido (${pnlPercent.toFixed(2)}% ≥ ${monitorTpPercent}%)`;
-          console.log(`  🎯 ${closeReason} para ${position.symbol}! Fechando...`);
-        }
-        // Verificar STOP LOSS
-        else if (pnlPercent <= -monitorSlPercent) {
-          shouldClose = true;
-          closeReason = `SL atingido (${pnlPercent.toFixed(2)}% ≤ -${monitorSlPercent}%)`;
-          console.log(`  🛑 ${closeReason} para ${position.symbol}! Fechando...`);
-        }
-
-        if (shouldClose) {
-          // Fechar posição via auto-trade
-          const { data: closeResult, error: closeError } = await supabase.functions.invoke('auto-trade', {
-            body: { 
-              symbol: position.symbol, 
-              side: 'SELL', 
-              quantity: quantity.toString()
-            }
-          });
-
-          if (closeError) {
-            console.error(`  ❌ Erro ao fechar ${position.symbol}:`, closeError);
-          } else if (closeResult?.success) {
-            console.log(`  ✅ ${position.symbol} fechada! ${closeReason}`);
-            closedPositions++;
-          } else {
-            console.log(`  ⚠️ ${position.symbol} não fechada: ${closeResult?.message || 'Erro desconhecido'}`);
-          }
-        } else {
-          // Atualizar preço atual na posição
-          await supabase.from('positions').update({
-            current_price: currentPrice,
-            unrealized_pnl: pnl
-          }).eq('id', position.id);
-        }
-      } catch (error) {
-        console.error(`  ❌ Erro ao processar ${position.symbol}:`, error);
-      }
-    }
-
-    console.log(`✅ Monitoramento concluído: ${(openPositions || []).length} posições verificadas, ${closedPositions} fechadas\n`);
+    console.log(`⚙️ Config: TP Diário ${config.take_profit}% | SL Diário ${config.stop_loss}%`);
 
     // ===== SISTEMA ADAPTATIVO: Detectar e ajustar perdas consecutivas =====
     console.log(`\n🔄 Verificando necessidade de ajuste adaptativo...`);
@@ -693,6 +595,84 @@ serve(async (req) => {
         if (tradeResult?.success) {
           console.log(`✅ Trade executed successfully for ${analysis.symbol}`);
           
+          // ============================================================
+          // CRIAR ORDENS CONDICIONAIS TP/SL AUTOMATICAMENTE
+          // ============================================================
+          const buyOrderData = tradeResult.order;
+          const entryPrice = parseFloat(buyOrderData?.avgPrice || buyOrderData?.price || '0');
+          const executedQty = parseFloat(buyOrderData?.executedQty || buyOrderData?.origQty || '0');
+          
+          if (entryPrice > 0 && executedQty > 0) {
+            console.log(`\n🎯 Criando ordens condicionais para ${analysis.symbol}:`);
+            console.log(`   Entry: ${entryPrice} | Qty: ${executedQty}`);
+            
+            // TAKE PROFIT: 0.30% acima do preço de entrada
+            const tpPrice = (entryPrice * 1.003).toFixed(8);
+            console.log(`   TP: ${tpPrice} (+0.30%)`);
+            
+            try {
+              const { data: tpOrder, error: tpError } = await supabase.functions.invoke('binance-create-order', {
+                body: {
+                  symbol: analysis.symbol,
+                  side: 'SELL',
+                  type: 'TAKE_PROFIT_MARKET',
+                  quantity: executedQty,
+                  stopPrice: parseFloat(tpPrice),
+                  reduceOnly: true
+                }
+              });
+              
+              if (tpError) {
+                console.error(`   ❌ Erro ao criar TP: ${tpError.message}`);
+              } else {
+                console.log(`   ✅ TP criado: order ${tpOrder?.orderId}`);
+                
+                // Salvar TP order ID na posição
+                if (tradeResult.position_id) {
+                  await supabase.from('positions').update({
+                    tp_order_id: tpOrder?.orderId?.toString()
+                  }).eq('id', tradeResult.position_id);
+                }
+              }
+            } catch (tpErr) {
+              console.error(`   ❌ Exceção ao criar TP:`, tpErr);
+            }
+            
+            // STOP LOSS: 1.00% abaixo do preço de entrada
+            const slPrice = (entryPrice * 0.99).toFixed(8);
+            console.log(`   SL: ${slPrice} (-1.00%)`);
+            
+            try {
+              const { data: slOrder, error: slError } = await supabase.functions.invoke('binance-create-order', {
+                body: {
+                  symbol: analysis.symbol,
+                  side: 'SELL',
+                  type: 'STOP_MARKET',
+                  quantity: executedQty,
+                  stopPrice: parseFloat(slPrice),
+                  reduceOnly: true
+                }
+              });
+              
+              if (slError) {
+                console.error(`   ❌ Erro ao criar SL: ${slError.message}`);
+              } else {
+                console.log(`   ✅ SL criado: order ${slOrder?.orderId}`);
+                
+                // Salvar SL order ID na posição
+                if (tradeResult.position_id) {
+                  await supabase.from('positions').update({
+                    sl_order_id: slOrder?.orderId?.toString()
+                  }).eq('id', tradeResult.position_id);
+                }
+              }
+            } catch (slErr) {
+              console.error(`   ❌ Exceção ao criar SL:`, slErr);
+            }
+            
+            console.log(`🎯 Ordens condicionais configuradas! Binance monitora automaticamente.\n`);
+          }
+          
           executedTrades.push({
             symbol: analysis.symbol,
             confidence: analysis.confidence,
@@ -701,9 +681,12 @@ serve(async (req) => {
             amountUsed: totalTradeAmount,
             takeProfitAmount,
             stopLossAmount: stopLossAmount,
-            stopLossPercent: stopLossPercent
+            stopLossPercent: stopLossPercent,
+            entryPrice,
+            tpPrice: entryPrice * 1.003,
+            slPrice: entryPrice * 0.99
           });
-          console.log(`✅ Successfully executed trade for ${analysis.symbol}: ${totalTradeAmount.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), SL: ${stopLossPercent}% (${stopLossAmount.toFixed(4)} USDT)`);
+          console.log(`✅ Successfully executed trade for ${analysis.symbol}: ${totalTradeAmount.toFixed(2)} USDT (${dcaLayers} layers × ${quantityPerLayer.toFixed(2)} USDT), Entry: ${entryPrice}, TP: +0.30%, SL: -1.00%`);
         } else {
           console.error(`❌ Trade failed for ${analysis.symbol}: ${tradeResult?.message || 'Unknown reason'}`);
           console.log('Continuing to next opportunity...');

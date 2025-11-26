@@ -14,7 +14,9 @@ const createOrderSchema = z.object({
   type: z.string().min(1).max(50),
   quantity: z.number().positive().max(1000000).or(z.string().regex(/^\d+(\.\d{1,8})?$/)),
   price: z.number().positive().optional().or(z.string().regex(/^\d+(\.\d+)?$/).optional()),
-  stopPrice: z.number().positive().optional().or(z.string().regex(/^\d+(\.\d+)?$/).optional())
+  stopPrice: z.number().positive().optional().or(z.string().regex(/^\d+(\.\d+)?$/).optional()),
+  reduceOnly: z.boolean().optional(),
+  closePosition: z.boolean().optional()
 });
 
 async function signRequest(queryString: string, apiSecret: string): Promise<string> {
@@ -72,7 +74,7 @@ serve(async (req) => {
       );
     }
     
-    const { symbol, side, type, quantity, price, stopPrice } = validation.data;
+    const { symbol, side, type, quantity, price, stopPrice, reduceOnly, closePosition } = validation.data;
     
     // Convert to string for consistency
     const quantityStr = typeof quantity === 'number' ? quantity.toString() : quantity;
@@ -127,10 +129,19 @@ serve(async (req) => {
       queryString += `&stopPrice=${stopPriceStr}`;
     }
 
+    // Adicionar flags para ordens condicionais
+    if (reduceOnly === true) {
+      queryString += `&reduceOnly=true`;
+    }
+    
+    if (closePosition === true) {
+      queryString += `&closePosition=true`;
+    }
+
     const signature = await signRequest(queryString, apiSecret);
     const binanceUrl = `https://fapi.binance.com/fapi/v1/order?${queryString}&signature=${signature}`;
 
-    console.log('Creating order:', { symbol, side, type, quantity: quantityStr, price: priceStr, stopPrice: stopPriceStr });
+    console.log('Creating order:', { symbol, side, type, quantity: quantityStr, price: priceStr, stopPrice: stopPriceStr, reduceOnly, closePosition });
 
     const response = await fetch(binanceUrl, {
       method: 'POST',

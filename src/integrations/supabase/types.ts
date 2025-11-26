@@ -270,7 +270,9 @@ export type Database = {
           is_demo: boolean | null
           quantity: number
           side: string
+          sl_order_id: string | null
           symbol: string
+          tp_order_id: string | null
           unrealized_pnl: number | null
           updated_at: string | null
           user_id: string
@@ -284,7 +286,9 @@ export type Database = {
           is_demo?: boolean | null
           quantity: number
           side: string
+          sl_order_id?: string | null
           symbol: string
+          tp_order_id?: string | null
           unrealized_pnl?: number | null
           updated_at?: string | null
           user_id: string
@@ -298,7 +302,9 @@ export type Database = {
           is_demo?: boolean | null
           quantity?: number
           side?: string
+          sl_order_id?: string | null
           symbol?: string
+          tp_order_id?: string | null
           unrealized_pnl?: number | null
           updated_at?: string | null
           user_id?: string
