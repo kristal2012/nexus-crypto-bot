@@ -119,12 +119,12 @@ serve(async (req) => {
     // Get user's trading limits from config
     const { data: config } = await supabase
       .from('auto_trading_config')
-      .select('take_profit')
+      .select('take_profit, stop_loss')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    const takeProfit = config?.take_profit || 10; // Default 10%
-    const dailyStopLoss = -10; // Fixed daily stop loss at -10%
+    const takeProfit = config?.take_profit || 3.5; // Default 3.5%
+    const dailyStopLoss = -(config?.stop_loss || 3); // Use config, default -3%
 
     let canTrade = stats.can_trade && stats.is_active;
     let stopReason = stats.stop_reason;

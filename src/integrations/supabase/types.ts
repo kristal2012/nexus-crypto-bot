@@ -271,8 +271,11 @@ export type Database = {
           quantity: number
           side: string
           sl_order_id: string | null
+          sl_price: number | null
           symbol: string
           tp_order_id: string | null
+          tp_price: number | null
+          trailing_activation: number | null
           unrealized_pnl: number | null
           updated_at: string | null
           user_id: string
@@ -287,8 +290,11 @@ export type Database = {
           quantity: number
           side: string
           sl_order_id?: string | null
+          sl_price?: number | null
           symbol: string
           tp_order_id?: string | null
+          tp_price?: number | null
+          trailing_activation?: number | null
           unrealized_pnl?: number | null
           updated_at?: string | null
           user_id: string
@@ -303,8 +309,11 @@ export type Database = {
           quantity?: number
           side?: string
           sl_order_id?: string | null
+          sl_price?: number | null
           symbol?: string
           tp_order_id?: string | null
+          tp_price?: number | null
+          trailing_activation?: number | null
           unrealized_pnl?: number | null
           updated_at?: string | null
           user_id?: string
