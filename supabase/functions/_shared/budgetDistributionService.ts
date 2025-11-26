@@ -27,7 +27,7 @@ export interface BudgetDistribution {
 export const BUDGET_CONFIG = {
   MAX_BUDGET_PERCENT: 0.10, // Usar 10% do saldo disponível (conforme solicitado)
   MIN_AMOUNT_PER_PAIR: 10,  // Mínimo 10 USDT por par (será adaptado ao minNotional)
-  MIN_LAYERS: 3,            // Mínimo 3 layers por trade
+  MIN_LAYERS: 1,            // Entrada única (sem DCA)
 } as const;
 
 /**
@@ -97,16 +97,16 @@ export function distributeBudget(
     // Verificar quais pares são executáveis com esse valor
     for (let i = 0; i < pairsToInclude; i++) {
       const opp = sorted[i];
-      const minRequired = opp.minNotional * BUDGET_CONFIG.MIN_LAYERS; // Precisa de 3 layers no mínimo
+      const minRequired = opp.minNotional * BUDGET_CONFIG.MIN_LAYERS; // Entrada única
       
       if (amountPerPair >= minRequired) {
         executablePairs.push(opp);
-        console.log(`  ✅ ${opp.symbol}: minNotional ${opp.minNotional} USDT × ${BUDGET_CONFIG.MIN_LAYERS} layers = ${minRequired.toFixed(2)} USDT (OK)`);
+        console.log(`  ✅ ${opp.symbol}: minNotional ${opp.minNotional} USDT (entrada única, OK)`);
       } else {
         console.log(`  ⚠️ ${opp.symbol}: precisa ${minRequired.toFixed(2)} USDT, disponível ${amountPerPair.toFixed(2)} USDT`);
         result.skippedPairs.push({
           symbol: opp.symbol,
-          reason: `Requer ${minRequired.toFixed(2)} USDT (${opp.minNotional} × ${BUDGET_CONFIG.MIN_LAYERS} layers), disponível ${amountPerPair.toFixed(2)} USDT`
+          reason: `Requer ${minRequired.toFixed(2)} USDT (mínimo notional ${opp.minNotional}), disponível ${amountPerPair.toFixed(2)} USDT`
         });
       }
     }
