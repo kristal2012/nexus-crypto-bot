@@ -62,8 +62,40 @@ export const useBotActive = () => {
     };
   }, [user]);
 
+  const toggleBotActive = async (newValue: boolean) => {
+    if (!user) return;
+    
+    try {
+      const { data: existing } = await supabase
+        .from('auto_trading_config')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from('auto_trading_config')
+          .update({ is_active: newValue })
+          .eq('user_id', user.id);
+      } else {
+        await supabase
+          .from('auto_trading_config')
+          .insert({
+            user_id: user.id,
+            is_active: newValue
+          });
+      }
+
+      // Optimistic update
+      setIsActive(newValue);
+    } catch (err) {
+      console.error('Error toggling bot active:', err);
+    }
+  };
+
   return {
     isActive,
-    loading
+    loading,
+    toggleBotActive
   };
 };
