@@ -190,6 +190,28 @@ export const updateDemoBalance = async (
 };
 
 /**
+ * Busca o preço atual de um símbolo da Binance
+ */
+const fetchCurrentPrice = async (symbol: string): Promise<number> => {
+  try {
+    const response = await fetch(
+      `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`
+    );
+    
+    if (!response.ok) {
+      console.error(`❌ Erro ao buscar preço para ${symbol}: ${response.status}`);
+      throw new Error(`Failed to fetch price for ${symbol}`);
+    }
+    
+    const data = await response.json();
+    return parseFloat(data.price);
+  } catch (error) {
+    console.error(`❌ Exceção ao buscar preço para ${symbol}:`, error);
+    throw error;
+  }
+};
+
+/**
  * Fecha todas as posições abertas da conta demo
  * APENAS funciona em modo DEMO - não afeta contas reais
  */
@@ -244,6 +266,47 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
   }
 
   console.log(`📍 [CLOSE POSITIONS] Encontradas ${positions.length} posições para fechar`);
+
+  // Para cada posição, criar um trade de SELL antes de deletar
+  for (const position of positions) {
+    try {
+      console.log(`💰 [CLOSE POSITIONS] Criando trade de SELL para ${position.symbol}...`);
+      
+      // Buscar preço atual da Binance
+      const currentPrice = await fetchCurrentPrice(position.symbol);
+      console.log(`📊 [CLOSE POSITIONS] Preço atual de ${position.symbol}: $${currentPrice}`);
+      
+      // Calcular P&L
+      const pnl = (currentPrice - position.entry_price) * position.quantity;
+      const commission = (currentPrice * position.quantity) * 0.001; // 0.1% de comissão
+      console.log(`💵 [CLOSE POSITIONS] P&L: ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} USDT`);
+      
+      // Criar trade de SELL
+      const { error: tradeError } = await supabase
+        .from("trades")
+        .insert({
+          user_id: userId,
+          symbol: position.symbol,
+          side: "SELL",
+          quantity: position.quantity,
+          price: currentPrice,
+          profit_loss: pnl,
+          commission: commission,
+          status: "FILLED",
+          is_demo: true,
+          executed_at: new Date().toISOString(),
+          type: "MARKET"
+        });
+
+      if (tradeError) {
+        console.error(`❌ [CLOSE POSITIONS] Erro ao criar trade de SELL para ${position.symbol}:`, tradeError);
+      } else {
+        console.log(`✅ [CLOSE POSITIONS] Trade de SELL criado para ${position.symbol}`);
+      }
+    } catch (error) {
+      console.error(`❌ [CLOSE POSITIONS] Erro ao processar posição ${position.symbol}:`, error);
+    }
+  }
 
   // Deletar todas as posições demo
   const { error: deleteError } = await supabase
