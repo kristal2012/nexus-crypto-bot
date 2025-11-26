@@ -496,15 +496,55 @@ serve(async (req) => {
     // BUDGET DISTRIBUTION: Using centralized service (SRP, SSOT principles)
     // ====================================================================
     const { 
-      calculateAvailableBudget, 
       distributeBudget, 
       validateDistribution,
       BUDGET_CONFIG 
     } = await import('../_shared/budgetDistributionService.ts');
 
-    const availableBudgetForAnalysis = calculateAvailableBudget(availableBalance);
-    console.log(`💰 Saldo: ${availableBalance} USDT | Orçamento análise: ${availableBudgetForAnalysis} USDT`);
+    // ✅ REGRA CRÍTICA: Usar apenas 10% do capital TOTAL
+    // O orçamento máximo é 10% do saldo total (não do saldo livre)
+    // Só alocar mais capital quando posições fecharem e liberarem capital
+    const currentBalance = isDemo 
+      ? (await supabase.from('bot_daily_stats').select('current_balance').eq('user_id', user.id).eq('date', new Date().toISOString().split('T')[0]).eq('is_active', true).single()).data?.current_balance || 10000
+      : availableBalance;
+    
+    const maxBudget = currentBalance * 0.10; // 10% do total
+    const { data: positions } = await supabase
+      .from('positions')
+      .select('quantity, entry_price')
+      .eq('user_id', user.id)
+      .eq('is_demo', isDemo);
+    
+    const allocatedCapital = (positions || []).reduce((sum, p) => 
+      sum + (p.quantity * p.entry_price), 0);
+    
+    const availableBudgetForAnalysis = maxBudget - allocatedCapital;
+    
+    console.log(`💰 REGRA DE ORÇAMENTO (10% do total):`);
+    console.log(`   📊 Saldo Total: ${currentBalance.toFixed(2)} USDT`);
+    console.log(`   🎯 Orçamento Máximo: ${maxBudget.toFixed(2)} USDT (10%)`);
+    console.log(`   🔒 Capital Alocado: ${allocatedCapital.toFixed(2)} USDT`);
+    console.log(`   ✅ Disponível p/ Trades: ${availableBudgetForAnalysis.toFixed(2)} USDT`);
     console.log(`🔍 Oportunidades encontradas: ${filteredAnalyses.length} (após filtrar posições abertas, confiança ≥${config.min_confidence}%)`);
+
+    // Verificar se há orçamento disponível
+    if (availableBudgetForAnalysis <= 0) {
+      console.log(`⚠️ Sem orçamento disponível. Aguardando fechamento de posições para liberar capital.`);
+      return new Response(JSON.stringify({ 
+        success: true,
+        executed_trades: [],
+        message: 'Limite de 10% do capital já alocado. Aguardando fechamento de posições.',
+        budget_info: {
+          total_balance: currentBalance,
+          max_budget: maxBudget,
+          allocated: allocatedCapital,
+          available: availableBudgetForAnalysis
+        }
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // Preparar dados para distribuição (usando análises filtradas)
     const opportunities = filteredAnalyses.map(a => ({
