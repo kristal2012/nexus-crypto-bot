@@ -414,6 +414,34 @@ serve(async (req) => {
       console.log('✅ Real mode confirmation valid - AI will execute REAL trades');
     }
 
+    // ====================================================================
+    // FILTRAR PARES COM POSIÇÕES ABERTAS (Evitar compras duplicadas)
+    // ====================================================================
+    const { data: openPositions } = await supabase
+      .from('positions')
+      .select('symbol')
+      .eq('user_id', user.id)
+      .eq('is_demo', isDemo);
+
+    const symbolsWithPosition = new Set(openPositions?.map(p => p.symbol) || []);
+    
+    console.log(`🔍 Verificando posições abertas: ${symbolsWithPosition.size} pares já têm posição`);
+    if (symbolsWithPosition.size > 0) {
+      console.log(`   Pares com posição: ${Array.from(symbolsWithPosition).join(', ')}`);
+    }
+
+    // Filtrar análises removendo pares que já têm posição aberta
+    const filteredAnalyses = analyses.filter(analysis => {
+      if (symbolsWithPosition.has(analysis.symbol)) {
+        console.log(`   ⏭️ Pulando ${analysis.symbol}: já existe posição aberta (${analysis.confidence.toFixed(1)}% confiança)`);
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`✅ ${filteredAnalyses.length} oportunidades disponíveis (após filtrar posições existentes)`);
+
+
     // Get current balance to calculate per analysis
     // CRÍTICO: NUNCA chamar Binance em modo DEMO
     let availableBalance: number;
@@ -476,10 +504,10 @@ serve(async (req) => {
 
     const availableBudgetForAnalysis = calculateAvailableBudget(availableBalance);
     console.log(`💰 Saldo: ${availableBalance} USDT | Orçamento análise: ${availableBudgetForAnalysis} USDT`);
-    console.log(`🔍 Oportunidades encontradas: ${analyses.length} (confiança ≥${config.min_confidence}%)`);
+    console.log(`🔍 Oportunidades encontradas: ${filteredAnalyses.length} (após filtrar posições abertas, confiança ≥${config.min_confidence}%)`);
 
-    // Preparar dados para distribuição
-    const opportunities = analyses.map(a => ({
+    // Preparar dados para distribuição (usando análises filtradas)
+    const opportunities = filteredAnalyses.map(a => ({
       symbol: a.symbol,
       minNotional: a.minNotional,
       confidence: a.confidence,
