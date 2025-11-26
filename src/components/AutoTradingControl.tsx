@@ -318,9 +318,9 @@ export const AutoTradingControl = () => {
                     </Badge>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>DCA recomendado:</span>
+                    <span>Estratégia:</span>
                     <span className="text-foreground font-medium">
-                      {lastAnalysis.bestOpportunity.recommended_dca_layers} camadas
+                      Entrada única (TP: 0.30% | SL: 1.00%)
                     </span>
                   </div>
                 </div>
