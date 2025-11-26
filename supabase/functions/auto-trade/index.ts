@@ -287,10 +287,11 @@ serve(async (req) => {
         // Nova posição
         const entryPriceWithCommission = (executedPrice * executedQty + commission) / executedQty;
         
-        // Calcular TP/SL/Trailing para DEMO
-        const tpPrice = isDemo ? entryPriceWithCommission * 1.003 : null;
-        const slPrice = isDemo ? entryPriceWithCommission * 0.99 : null;
-        const trailingActivation = isDemo ? entryPriceWithCommission * 1.003 : null;
+        // ✅ ESTRATÉGIA HÍBRIDA (Scalping + Trailing + Timeout)
+        // TP: 0.20% (mais realista), SL: 0.50% (proteção apertada), Trailing: ativa em 0.10%
+        const tpPrice = isDemo ? entryPriceWithCommission * 1.002 : null;  // +0.20%
+        const slPrice = isDemo ? entryPriceWithCommission * 0.995 : null;   // -0.50%
+        const trailingActivation = isDemo ? entryPriceWithCommission * 1.001 : null; // +0.10%
         
         const { data: newPosition } = await supabase
           .from('positions')
