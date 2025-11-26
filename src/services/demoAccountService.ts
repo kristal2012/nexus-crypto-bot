@@ -348,6 +348,20 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
     console.log("✅ [CLOSE POSITIONS] Verificação confirmada: nenhuma posição demo restante");
   }
 
+  // ✅ LIMPAR HISTÓRICO DE TRADES PARA RESETAR WIN RATE
+  console.log("🗑️ [CLOSE POSITIONS] Limpando histórico de trades demo para resetar win rate...");
+  const { error: tradesDeleteError } = await supabase
+    .from("trades")
+    .delete()
+    .eq("user_id", userId)
+    .eq("is_demo", true);
+
+  if (tradesDeleteError) {
+    console.error("❌ [CLOSE POSITIONS] Erro ao limpar trades:", tradesDeleteError);
+  } else {
+    console.log("✅ [CLOSE POSITIONS] Histórico de trades limpo - win rate resetado");
+  }
+
   // Atualizar saldo atual no bot_daily_stats
   const today = new Date().toISOString().split('T')[0];
   const { data: dailyStats, error: statsError } = await supabase
