@@ -406,6 +406,7 @@ export type Database = {
       }
       trades: {
         Row: {
+          close_reason: string | null
           commission: number | null
           created_at: string
           executed_at: string | null
@@ -423,6 +424,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          close_reason?: string | null
           commission?: number | null
           created_at?: string
           executed_at?: string | null
@@ -440,6 +442,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          close_reason?: string | null
           commission?: number | null
           created_at?: string
           executed_at?: string | null

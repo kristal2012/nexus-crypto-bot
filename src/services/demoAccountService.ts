@@ -295,11 +295,18 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
           status: "FILLED",
           is_demo: true,
           executed_at: new Date().toISOString(),
-          type: "MARKET"
+          type: "MARKET",
+          close_reason: "MANUAL_CLOSE"
         });
 
       if (tradeError) {
-        console.error(`❌ [CLOSE POSITIONS] Erro ao criar trade de SELL para ${position.symbol}:`, tradeError);
+        console.error(`❌ ERRO CRÍTICO ao criar trade SELL para ${position.symbol}:`, {
+          error: tradeError,
+          message: tradeError.message,
+          details: tradeError.details,
+          hint: tradeError.hint,
+          code: tradeError.code
+        });
       } else {
         console.log(`✅ [CLOSE POSITIONS] Trade de SELL criado para ${position.symbol}`);
       }
