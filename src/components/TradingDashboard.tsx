@@ -29,13 +29,9 @@ import { TradingModeSafetyIndicator } from "./TradingModeSafetyIndicator";
 import { CircuitBreakerReset } from "./CircuitBreakerReset";
 import { getCircuitBreakerStatus } from "@/services/tradeValidationService";
 import { LastTradingRound } from "./LastTradingRound";
-import { useAuthContext } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 export const TradingDashboard = () => {
-  const { user } = useAuthContext();
-  const navigate = useNavigate();
   const [botActive, setBotActive] = useState(false);
   const [circuitBreakerStatus, setCircuitBreakerStatus] = useState<any>(null);
   
@@ -53,16 +49,8 @@ export const TradingDashboard = () => {
     loading: statsLoading,
   } = useDashboardStats();
 
-  // Redirect to auth if not logged in
-  useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-    }
-  }, [user, navigate]);
-
   // Circuit breaker check
   useEffect(() => {
-    if (!user?.id) return;
 
     const checkCircuitBreaker = async () => {
       const status = await getCircuitBreakerStatus();
@@ -73,7 +61,7 @@ export const TradingDashboard = () => {
     const cbInterval = setInterval(checkCircuitBreaker, 10000); // 10s
 
     return () => clearInterval(cbInterval);
-  }, [user?.id]);
+  }, []);
 
   const isPositive = dailyProfitPercent >= 0;
 
