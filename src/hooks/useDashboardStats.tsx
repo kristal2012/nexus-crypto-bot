@@ -7,11 +7,10 @@
  */
 
 import { useState, useEffect } from "react";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { FIXED_USER_ID } from "@/config/userConfig";
 import * as statsService from "@/services/dashboardStatsService";
 
 export const useDashboardStats = () => {
-  const { user } = useAuthContext();
   
   // Estados para cada estatística
   const [initialBalance, setInitialBalance] = useState<number>(0);
@@ -27,7 +26,7 @@ export const useDashboardStats = () => {
 
   // Função para buscar todas as estatísticas
   const fetchAllStats = async () => {
-    if (!user?.id) return;
+    
     
     setLoading(true);
     try {
@@ -43,15 +42,15 @@ export const useDashboardStats = () => {
         allocatedCap,
         freeBal,
       ] = await Promise.all([
-        statsService.getInitialBalance(user.id),
-        statsService.getCurrentBalance(user.id),
-        statsService.getDailyProfit(user.id),
-        statsService.getDailyProfitPercent(user.id),
-        statsService.getMonthlyProfit(user.id),
-        statsService.getActivePositionsCount(user.id),
-        statsService.getWinRate(user.id),
-        statsService.getAllocatedCapital(user.id),
-        statsService.getFreeBalance(user.id),
+        statsService.getInitialBalance(FIXED_USER_ID),
+        statsService.getCurrentBalance(FIXED_USER_ID),
+        statsService.getDailyProfit(FIXED_USER_ID),
+        statsService.getDailyProfitPercent(FIXED_USER_ID),
+        statsService.getMonthlyProfit(FIXED_USER_ID),
+        statsService.getActivePositionsCount(FIXED_USER_ID),
+        statsService.getWinRate(FIXED_USER_ID),
+        statsService.getAllocatedCapital(FIXED_USER_ID),
+        statsService.getFreeBalance(FIXED_USER_ID),
       ]);
 
       // Debug: Log dos valores recebidos para rastreamento
@@ -85,7 +84,6 @@ export const useDashboardStats = () => {
 
   // Carrega estatísticas na montagem e configura atualizações periódicas
   useEffect(() => {
-    if (!user?.id) return;
 
     // Busca inicial
     fetchAllStats();
@@ -106,7 +104,7 @@ export const useDashboardStats = () => {
       clearInterval(statsInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user?.id]);
+  }, []);
 
   return {
     initialBalance,

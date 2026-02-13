@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { FIXED_USER_ID } from "@/config/userConfig";
 
 interface TradingSettings {
   trading_mode: "REAL" | "DEMO";
@@ -9,20 +9,18 @@ interface TradingSettings {
 }
 
 export const useTradingSettings = () => {
-  const { user } = useAuthContext();
   const [settings, setSettings] = useState<TradingSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchSettings = async () => {
-    if (!user?.id) return;
     
     try {
 
       let { data, error } = await supabase
         .from("trading_settings")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", FIXED_USER_ID)
         .maybeSingle();
 
       if (error) throw error;
@@ -32,7 +30,7 @@ export const useTradingSettings = () => {
         const { data: newSettings, error: insertError } = await supabase
           .from("trading_settings")
           .insert({
-            user_id: user.id,
+            user_id: FIXED_USER_ID,
             trading_mode: "DEMO",
             demo_balance: 10000,
           })
@@ -61,11 +59,9 @@ export const useTradingSettings = () => {
 
   useEffect(() => {
     fetchSettings();
-  }, [user?.id]);
+  }, []);
 
   const updateTradingMode = async (mode: "REAL" | "DEMO") => {
-    if (!user?.id) return;
-    
     try {
 
       // If switching to REAL mode, set confirmation timestamp
@@ -77,7 +73,7 @@ export const useTradingSettings = () => {
       const { error } = await supabase
         .from("trading_settings")
         .update(updateData)
-        .eq("user_id", user.id);
+        .eq("user_id", FIXED_USER_ID);
 
       if (error) throw error;
 
@@ -98,13 +94,11 @@ export const useTradingSettings = () => {
   };
 
   const updateDemoBalance = async (amount: number) => {
-    if (!user?.id) return;
-    
     try {
       const { error } = await supabase
         .from("trading_settings")
         .update({ demo_balance: amount })
-        .eq("user_id", user.id);
+        .eq("user_id", FIXED_USER_ID);
 
       if (error) throw error;
 

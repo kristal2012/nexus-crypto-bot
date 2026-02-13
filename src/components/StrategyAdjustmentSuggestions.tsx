@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Settings, Info } from "lucide-react";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { FIXED_USER_ID } from "@/config/userConfig";
 import { 
   getCurrentStrategyName, 
   hasStrategyChangedSinceLastRound 
@@ -24,13 +24,12 @@ export const StrategyAdjustmentSuggestions = () => {
     changeDate?: string;
   } | null>(null);
   const { config } = useTradingConfig();
-  const { user } = useAuthContext();
 
   useEffect(() => {
     const fetchStrategyInfo = async () => {
-      if (!user || !config) return;
+      if (!config) return;
 
-      const strategyCheck = await hasStrategyChangedSinceLastRound(user.id);
+      const strategyCheck = await hasStrategyChangedSinceLastRound(FIXED_USER_ID);
       const currentStrategy = getCurrentStrategyName({
         leverage: config.leverage,
         stopLoss: config.stopLoss,
@@ -55,7 +54,7 @@ export const StrategyAdjustmentSuggestions = () => {
     
     const interval = setInterval(fetchStrategyInfo, 60000);
     return () => clearInterval(interval);
-  }, [config, user]);
+  }, [config]);
 
   if (!strategyInfo) {
     return null;

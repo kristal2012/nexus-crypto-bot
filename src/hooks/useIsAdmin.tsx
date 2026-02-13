@@ -1,19 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { FIXED_USER_ID } from "@/config/userConfig";
 
 export const useIsAdmin = () => {
-  const { user } = useAuthContext();
-
   const { data: isAdmin, isLoading } = useQuery({
-    queryKey: ['is-admin', user?.id],
+    queryKey: ['is-admin', FIXED_USER_ID],
     queryFn: async () => {
-      if (!user?.id) return false;
-      
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
+        .eq('user_id', FIXED_USER_ID)
         .eq('role', 'admin')
         .maybeSingle();
 
@@ -24,7 +20,6 @@ export const useIsAdmin = () => {
 
       return !!data;
     },
-    enabled: !!user?.id,
   });
 
   return { isAdmin: isAdmin ?? false, isLoading };

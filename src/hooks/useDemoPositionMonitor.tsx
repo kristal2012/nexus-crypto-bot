@@ -7,15 +7,14 @@
 
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { FIXED_USER_ID } from '@/config/userConfig';
 
 export const useDemoPositionMonitor = (isActive: boolean, isDemoMode: boolean) => {
-  const { user } = useAuthContext();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Só monitora se estiver em modo DEMO e o bot estiver ativo
-    if (!user || !isActive || !isDemoMode) {
+    if (!isActive || !isDemoMode) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -55,7 +54,7 @@ export const useDemoPositionMonitor = (isActive: boolean, isDemoMode: boolean) =
         intervalRef.current = null;
       }
     };
-  }, [user, isActive, isDemoMode]);
+  }, [isActive, isDemoMode]);
 
   return null;
 };

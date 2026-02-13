@@ -7,25 +7,19 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { FIXED_USER_ID } from '@/config/userConfig';
 
 export const useTradingMode = () => {
-  const { user } = useAuthContext();
   const [tradingMode, setTradingMode] = useState<'DEMO' | 'REAL'>('DEMO');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
     const fetchTradingMode = async () => {
       try {
         const { data, error } = await supabase
           .from('trading_settings')
           .select('trading_mode')
-          .eq('user_id', user.id)
+          .eq('user_id', FIXED_USER_ID)
           .maybeSingle();
 
         if (!error && data) {
@@ -49,7 +43,7 @@ export const useTradingMode = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'trading_settings',
-          filter: `user_id=eq.${user.id}`
+          filter: `user_id=eq.${FIXED_USER_ID}`
         },
         (payload) => {
           setTradingMode((payload.new as any).trading_mode);
@@ -60,7 +54,7 @@ export const useTradingMode = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, []);
 
   return {
     tradingMode,

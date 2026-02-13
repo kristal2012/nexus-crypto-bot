@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTradingSettings } from "@/hooks/useTradingSettings";
 import { useToast } from "@/hooks/use-toast";
 import { DollarSign, RotateCcw, AlertTriangle } from "lucide-react";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { FIXED_USER_ID } from "@/config/userConfig";
 import { resetDemoAccount, updateDemoBalance as updateDemoBalanceService } from "@/services/demoAccountService";
 
 interface DemoBalanceManagerProps {
@@ -22,7 +22,6 @@ interface DemoBalanceManagerProps {
 }
 
 export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps) => {
-  const { user } = useAuthContext();
   const { settings, refetch, loading } = useTradingSettings();
   const { toast } = useToast();
   const [newBalance, setNewBalance] = useState("");
@@ -33,7 +32,6 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
   }
 
   const handleUpdateBalance = async () => {
-    if (!user?.id) return;
     
     const value = parseFloat(newBalance);
     
@@ -48,7 +46,7 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
 
     setUpdating(true);
     try {
-      await updateDemoBalanceService(user.id, value);
+      await updateDemoBalanceService(FIXED_USER_ID, value);
       await refetch();
       onBalanceUpdate?.();
       
@@ -69,11 +67,9 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
   };
 
   const handleReset = async () => {
-    if (!user?.id) return;
-    
     setUpdating(true);
     try {
-      await resetDemoAccount(user.id, 10000);
+      await resetDemoAccount(FIXED_USER_ID, 10000);
       await refetch();
       onBalanceUpdate?.();
       
