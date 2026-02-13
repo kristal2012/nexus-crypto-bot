@@ -7,25 +7,19 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { FIXED_USER_ID } from '@/config/userConfig';
 
 export const useBotActive = () => {
-  const { user } = useAuthContext();
   const [isActive, setIsActive] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
     const fetchBotStatus = async () => {
       try {
         const { data, error } = await supabase
           .from('auto_trading_config')
           .select('is_active')
-          .eq('user_id', user.id)
+          .eq('user_id', FIXED_USER_ID)
           .maybeSingle();
 
         if (!error && data) {
@@ -49,7 +43,7 @@ export const useBotActive = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'auto_trading_config',
-          filter: `user_id=eq.${user.id}`
+          filter: `user_id=eq.${FIXED_USER_ID}`
         },
         (payload) => {
           setIsActive((payload.new as any).is_active || false);
@@ -60,28 +54,26 @@ export const useBotActive = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, []);
 
   const toggleBotActive = async (newValue: boolean) => {
-    if (!user) return;
-    
     try {
       const { data: existing } = await supabase
         .from('auto_trading_config')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', FIXED_USER_ID)
         .maybeSingle();
 
       if (existing) {
         await supabase
           .from('auto_trading_config')
           .update({ is_active: newValue })
-          .eq('user_id', user.id);
+          .eq('user_id', FIXED_USER_ID);
       } else {
         await supabase
           .from('auto_trading_config')
           .insert({
-            user_id: user.id,
+            user_id: FIXED_USER_ID,
             is_active: newValue
           });
       }

@@ -28,7 +28,7 @@ import {
   type TradingRoundMetrics 
 } from "@/services/lastTradingRoundService";
 import { closeAllDemoPositions } from "@/services/demoAccountService";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { FIXED_USER_ID } from "@/config/userConfig";
 import { useTradingSettings } from "@/hooks/useTradingSettings";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -38,7 +38,6 @@ export const LastTradingRound = () => {
   const [metrics, setMetrics] = useState<TradingRoundMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [closing, setClosing] = useState(false);
-  const { user } = useAuthContext();
   const { settings } = useTradingSettings();
   const { toast } = useToast();
 
@@ -60,11 +59,9 @@ export const LastTradingRound = () => {
   };
 
   const handleClosePositions = async () => {
-    if (!user?.id) return;
-    
     setClosing(true);
     try {
-      await closeAllDemoPositions(user.id);
+      await closeAllDemoPositions(FIXED_USER_ID);
       await loadData(); // Recarregar dados após fechar posições
       
       toast({

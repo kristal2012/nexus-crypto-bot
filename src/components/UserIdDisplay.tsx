@@ -1,4 +1,4 @@
-import { useAuthContext } from "@/contexts/AuthContext";
+import { FIXED_USER_ID } from "@/config/userConfig";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Copy, Check } from "lucide-react";
@@ -6,19 +6,14 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export const UserIdDisplay = () => {
-  const { user } = useAuthContext();
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = () => {
-    if (user?.id) {
-      navigator.clipboard.writeText(user.id);
-      setCopied(true);
-      toast.success("UUID copiado!");
-      setTimeout(() => setCopied(false), 2000);
-    }
+    navigator.clipboard.writeText(FIXED_USER_ID);
+    setCopied(true);
+    toast.success("UUID copiado!");
+    setTimeout(() => setCopied(false), 2000);
   };
-
-  if (!user) return null;
 
   return (
     <Card className="p-4 mb-4">
@@ -26,7 +21,7 @@ export const UserIdDisplay = () => {
         <h3 className="text-sm font-semibold">Seu User ID (UUID)</h3>
         <div className="flex items-center gap-2">
           <code className="flex-1 p-2 bg-muted rounded text-xs break-all">
-            {user.id}
+            {FIXED_USER_ID}
           </code>
           <Button
             variant="outline"

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bot, Sparkles, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { FIXED_USER_ID } from "@/config/userConfig";
 import { executeAutoTradeAnalysis, AutoTradeError } from "@/services/autoTradeService";
 import { useTradingConfig } from "@/hooks/useTradingConfig";
 import { useBotActive } from "@/hooks/useBotActive";
@@ -14,30 +14,27 @@ import { useBotActive } from "@/hooks/useBotActive";
 export const AutoTradingControl = () => {
   const [lastAnalysis, setLastAnalysis] = useState<any>(null);
   const { toast } = useToast();
-  const { user } = useAuthContext();
   const { config } = useTradingConfig();
   const { isActive, toggleBotActive } = useBotActive();
 
   useEffect(() => {
-    if (user) {
+    loadLastAnalysis();
+    checkCredentials();
+    
+    // Update analysis display every 60 seconds
+    const displayInterval = setInterval(() => {
       loadLastAnalysis();
-      checkCredentials();
-      
-      // Update analysis display every 60 seconds
-      const displayInterval = setInterval(() => {
-        loadLastAnalysis();
-      }, 60000);
-      
-      return () => clearInterval(displayInterval);
-    }
-  }, [user]);
+    }, 60000);
+    
+    return () => clearInterval(displayInterval);
+  }, []);
 
   const checkCredentials = async () => {
     try {
       const { data } = await supabase
         .from('binance_api_keys')
         .select('api_key, api_secret_encrypted')
-        .eq('user_id', user.id)
+        .eq('user_id', FIXED_USER_ID)
         .maybeSingle();
 
       if (!data?.api_key || !data?.api_secret_encrypted) {
@@ -54,7 +51,7 @@ export const AutoTradingControl = () => {
 
   // Automatic analysis execution every 15 minutes when active
   useEffect(() => {
-    if (!user || !isActive) return;
+    if (!isActive) return;
 
     let timeoutId: NodeJS.Timeout;
     let intervalId: NodeJS.Timeout;
@@ -158,14 +155,14 @@ export const AutoTradingControl = () => {
       clearTimeout(timeoutId);
       clearInterval(intervalId);
     };
-  }, [user, isActive]);
+  }, [isActive]);
 
   const loadLastAnalysis = async () => {
     try {
       const { data } = await supabase
         .from('ai_analysis_results')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', FIXED_USER_ID)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -186,8 +183,6 @@ export const AutoTradingControl = () => {
   };
 
   const handleToggle = async (checked: boolean) => {
-    if (!user) return;
-
     try {
       await toggleBotActive(checked);
 

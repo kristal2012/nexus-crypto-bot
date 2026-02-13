@@ -7,13 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { FIXED_USER_ID } from "@/config/userConfig";
 import { Eye, EyeOff, Save, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { clearBinanceValidationCache } from "@/services/binanceService";
 import { BinanceApiKeysTroubleshooting } from "./BinanceApiKeysTroubleshooting";
 
 export const BinanceApiSettings = () => {
-  const { user } = useAuthContext();
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
@@ -22,11 +21,9 @@ export const BinanceApiSettings = () => {
   const [isSessionValid, setIsSessionValid] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (user) {
-      loadApiKeys();
-      checkSession();
-    }
-  }, [user]);
+    loadApiKeys();
+    checkSession();
+  }, []);
 
   // Teste de localStorage
   useEffect(() => {
@@ -61,7 +58,7 @@ export const BinanceApiSettings = () => {
       const { data, error } = await supabase
         .from("binance_api_keys")
         .select("api_key, api_secret_encrypted")
-        .eq("user_id", user?.id)
+        .eq("user_id", FIXED_USER_ID)
         .maybeSingle();
 
       if (error) throw error;
@@ -77,26 +74,17 @@ export const BinanceApiSettings = () => {
   };
 
   const saveApiKeys = async () => {
-    // 1. Verificar se user existe
-    if (!user) {
-      toast.error("❌ Você precisa estar logado para configurar as chaves da API");
-      return;
-    }
-
-    // 2. Verificar se a sessão é válida
+    // Verificar se a sessão é válida
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session) {
       console.error('❌ Sessão inválida ao tentar salvar:', sessionError);
-      toast.error("❌ Sua sessão expirou. Faça login novamente.");
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 1500);
+      toast.error("❌ Sua sessão expirou. Recarregue a página.");
       return;
     }
 
     console.log('✅ Sessão válida, procedendo com salvamento...');
-    console.log('User ID:', user.id);
+    console.log('User ID:', FIXED_USER_ID);
     console.log('Session expires at:', new Date(session.expires_at! * 1000));
 
     if (!apiKey.trim() || !apiSecret.trim()) {
@@ -110,7 +98,7 @@ export const BinanceApiSettings = () => {
     clearBinanceValidationCache();
     localStorage.setItem('binance_config_attempted', 'true');
     
-    console.log("🔐 Salvando chaves da Binance...", { user_id: user.id });
+    console.log("🔐 Salvando chaves da Binance...", { user_id: FIXED_USER_ID });
 
     try {
       console.log("📡 Chamando edge function encrypt-api-secret...");
