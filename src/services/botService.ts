@@ -148,10 +148,9 @@ export const tradeService = {
 
     console.log(`[TradeService] Executando ordem LOCAL: ${finalSide} ${finalQuantity} ${finalSymbol}`);
 
-    // Obter preço atual para registro (VIA PROXY)
-    const proxyPathPrice = `/api/v3/ticker/price?symbol=${finalSymbol}`;
+    // Obter preço atual para registro (VIA PROXY - FUTURES)
     const proxyUrlPrice = new URL(VERCEL_PROXY);
-    proxyUrlPrice.searchParams.append('path', '/api/v3/ticker/price');
+    proxyUrlPrice.searchParams.append('path', '/fapi/v1/ticker/price');
     proxyUrlPrice.searchParams.append('symbol', finalSymbol);
 
     console.log(`[TradeService] Buscando preço via Proxy: ${proxyUrlPrice.toString()}`);
@@ -213,9 +212,9 @@ export const tradeService = {
     const signature = generateBinanceSignature(queryString, apiSecret);
     const signedQuery = `${queryString}&signature=${signature}`;
 
-    // USAR PROXY PARA ORDEM REAL
+    // USAR PROXY PARA ORDEM REAL (FUTURES)
     const proxyUrlOrder = new URL(VERCEL_PROXY);
-    proxyUrlOrder.searchParams.append('path', '/api/v3/order');
+    proxyUrlOrder.searchParams.append('path', '/fapi/v1/order');
 
     // Append all signed query params to proxy URL
     const queryParams = new URLSearchParams(signedQuery);

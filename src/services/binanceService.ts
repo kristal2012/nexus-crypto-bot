@@ -22,20 +22,19 @@ export interface Candle {
   timestamp: number;
 }
 
+// 🚀 Prioridade para Futures Mirrors e Regionais (Seguro para Geoblocks)
 const BINANCE_BASE_URLS = [
-  'https://api.binance.me',
-  'https://api1.binance.me',
+  'https://fapi.binance.com', // Futures Principal
+  'https://fapi.binance.me',  // Futures Proxy Me
   'https://api.binance.com',
   'https://api1.binance.com',
-  'https://api2.binance.com',
-  'https://api3.binance.com'
 ];
 
 // Vercel Proxy Bridge (Bypass Geoblock)
 const VERCEL_PROXY = process.env.VITE_BINANCE_PROXY_URL || 'https://nexus-crypto-bot.vercel.app/api/binance-proxy';
 
 const isBrowser = typeof window !== 'undefined';
-const API_BASE_URL = isBrowser ? '' : 'https://api.binance.com';
+const API_BASE_URL = isBrowser ? '' : 'https://fapi.binance.com';
 
 // Serviço para interação com a Binance API
 export const binanceService = {
@@ -85,42 +84,44 @@ export const binanceService = {
 
   async getPrice(symbol: string): Promise<PriceData | null> {
     try {
-      const data = await this.fetchWithRetry(`/api/v3/ticker/price?symbol=${symbol}`);
+      // Usando FAPI (Futures) para ticker de preço
+      const data = await this.fetchWithRetry(`/fapi/v1/ticker/price?symbol=${symbol}`);
       return {
         symbol: data.symbol,
         price: parseFloat(data.price),
         timestamp: Date.now()
       };
     } catch (error) {
-      console.error('Exception in getPrice:', error);
+      console.error('Exception in getPrice (Futures):', error);
       return null;
     }
   },
 
   async getMarketData(symbol: string): Promise<MarketData | null> {
     try {
-      // Usar API pública da Binance para dados de 24h
-      const data = await this.fetchWithRetry(`/api/v3/ticker/24hr?symbol=${symbol}`);
+      // Usar FAPI (Futures) para dados de 24h
+      const data = await this.fetchWithRetry(`/fapi/v1/ticker/24hr?symbol=${symbol}`);
 
       return {
         symbol: data.symbol,
         price: parseFloat(data.lastPrice),
         priceChange: parseFloat(data.priceChange),
         priceChangePercent: parseFloat(data.priceChangePercent),
-        volume: parseFloat(data.volume),
+        volume: parseFloat(data.quoteVolume), // Em Futures, costuma-se usar quoteVolume para volume em USDT
         high: parseFloat(data.highPrice),
         low: parseFloat(data.lowPrice)
       };
     } catch (error) {
-      console.error('Exception in getMarketData:', error);
+      console.error('Exception in getMarketData (Futures):', error);
       return null;
     }
   },
 
   async getCandles(symbol: string, interval: string = '1m', limit: number = 20): Promise<Candle[]> {
     try {
+      // Usar FAPI (Futures) para klines
       const data = await this.fetchWithRetry(
-        `/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+        `/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
       );
 
       return data.map((candle: any) => ({
@@ -131,14 +132,15 @@ export const binanceService = {
         close: parseFloat(candle[4])
       }));
     } catch (error) {
-      console.error('Exception in getCandles:', error);
+      console.error('Exception in getCandles (Futures):', error);
       return [];
     }
   },
 
   async subscribeToPrice(symbol: string, callback: (price: number) => void): Promise<WebSocket | null> {
     try {
-      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@trade`);
+      // Usar fstream para Futures
+      const ws = new WebSocket(`wss://fstream.binance.com/ws/${symbol.toLowerCase()}@aggTrade`);
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);

@@ -26,7 +26,10 @@ export default async function handler(req, res) {
         }
 
         // Construir URL da Binance (Utilizando .me para evitar geoblocks regionais no Vercel/VPS)
-        const baseUrl = 'https://api.binance.me';
+        // Detectar se é Futures ou Spot
+        const isFutures = path.startsWith('/fapi');
+        const baseUrl = isFutures ? 'https://fapi.binance.me' : 'https://api.binance.me';
+
         const queryStr = Object.entries(params)
             .map(([key, val]) => `${key}=${val}`)
             .join('&');
