@@ -14,566 +14,250 @@ export type Database = {
   }
   public: {
     Tables: {
-      ai_analysis_results: {
+      bot_configurations: {
         Row: {
-          analysis_data: Json | null
-          confidence: number
+          api_key_encrypted: string | null
+          api_secret_encrypted: string | null
           created_at: string | null
+          daily_profit_goal: number | null
           id: string
-          predicted_price: number
-          recommended_dca_layers: number
-          symbol: string
-          trend: string
+          is_powered_on: boolean | null
+          is_running: boolean | null
+          quantity: number | null
+          stop_loss_percent: number | null
+          take_profit_percent: number | null
+          test_balance: number | null
+          test_mode: boolean | null
+          trading_pair: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          analysis_data?: Json | null
-          confidence: number
+          api_key_encrypted?: string | null
+          api_secret_encrypted?: string | null
           created_at?: string | null
+          daily_profit_goal?: number | null
           id?: string
-          predicted_price: number
-          recommended_dca_layers: number
-          symbol: string
-          trend: string
+          is_powered_on?: boolean | null
+          is_running?: boolean | null
+          quantity?: number | null
+          stop_loss_percent?: number | null
+          take_profit_percent?: number | null
+          test_balance?: number | null
+          test_mode?: boolean | null
+          trading_pair?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          analysis_data?: Json | null
-          confidence?: number
+          api_key_encrypted?: string | null
+          api_secret_encrypted?: string | null
           created_at?: string | null
+          daily_profit_goal?: number | null
           id?: string
-          predicted_price?: number
-          recommended_dca_layers?: number
-          symbol?: string
-          trend?: string
+          is_powered_on?: boolean | null
+          is_running?: boolean | null
+          quantity?: number | null
+          stop_loss_percent?: number | null
+          take_profit_percent?: number | null
+          test_balance?: number | null
+          test_mode?: boolean | null
+          trading_pair?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
       }
-      auto_trading_config: {
+      bot_logs: {
         Row: {
-          created_at: string | null
+          bot_config_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          level: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          bot_config_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          level: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          bot_config_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          level?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_logs_bot_config_id_fkey"
+            columns: ["bot_config_id"]
+            isOneToOne: false
+            referencedRelation: "bot_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_alerts: {
+        Row: {
+          bot_config_id: string | null
+          condition: string
+          created_at: string
           id: string
           is_active: boolean | null
-          last_analysis_at: string | null
-          leverage: number
-          min_confidence: number
-          quantity_usdt: number
-          stop_loss: number
-          strategy_adjusted_at: string | null
-          take_profit: number
-          updated_at: string | null
+          symbol: string
+          target_price: number
+          triggered_at: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          bot_config_id?: string | null
+          condition: string
+          created_at?: string
           id?: string
           is_active?: boolean | null
-          last_analysis_at?: string | null
-          leverage?: number
-          min_confidence?: number
-          quantity_usdt?: number
-          stop_loss?: number
-          strategy_adjusted_at?: string | null
-          take_profit?: number
-          updated_at?: string | null
+          symbol: string
+          target_price: number
+          triggered_at?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          bot_config_id?: string | null
+          condition?: string
+          created_at?: string
           id?: string
           is_active?: boolean | null
-          last_analysis_at?: string | null
-          leverage?: number
-          min_confidence?: number
-          quantity_usdt?: number
-          stop_loss?: number
-          strategy_adjusted_at?: string | null
-          take_profit?: number
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      binance_api_keys: {
-        Row: {
-          api_key: string
-          api_secret_encrypted: string
-          created_at: string
-          encryption_salt: string | null
-          id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          api_key: string
-          api_secret_encrypted: string
-          created_at?: string
-          encryption_salt?: string | null
-          id?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          api_key?: string
-          api_secret_encrypted?: string
-          created_at?: string
-          encryption_salt?: string | null
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      bot_daily_stats: {
-        Row: {
-          can_trade: boolean
-          created_at: string
-          current_balance: number
-          date: string
-          id: string
-          is_active: boolean
-          profit_loss_percent: number
-          starting_balance: number
-          stop_reason: string | null
-          trades_count: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          can_trade?: boolean
-          created_at?: string
-          current_balance?: number
-          date?: string
-          id?: string
-          is_active?: boolean
-          profit_loss_percent?: number
-          starting_balance?: number
-          stop_reason?: string | null
-          trades_count?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          can_trade?: boolean
-          created_at?: string
-          current_balance?: number
-          date?: string
-          id?: string
-          is_active?: boolean
-          profit_loss_percent?: number
-          starting_balance?: number
-          stop_reason?: string | null
-          trades_count?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      emergency_stop_audit: {
-        Row: {
-          action: string
-          created_at: string
-          emergency_message: string | null
-          id: string
-          trading_enabled: boolean
-          triggered_by: string
-        }
-        Insert: {
-          action: string
-          created_at?: string
-          emergency_message?: string | null
-          id?: string
-          trading_enabled: boolean
-          triggered_by: string
-        }
-        Update: {
-          action?: string
-          created_at?: string
-          emergency_message?: string | null
-          id?: string
-          trading_enabled?: boolean
-          triggered_by?: string
-        }
-        Relationships: []
-      }
-      performance_stats: {
-        Row: {
-          average_loss: number | null
-          average_profit: number | null
-          created_at: string
-          id: string
-          largest_loss: number | null
-          largest_win: number | null
-          losing_trades: number
-          max_drawdown: number | null
-          period: Database["public"]["Enums"]["performance_period"]
-          period_date: string
-          sharpe_ratio: number | null
-          total_profit_loss: number
-          total_trades: number
-          total_volume: number
-          updated_at: string
-          user_id: string
-          win_rate: number | null
-          winning_trades: number
-        }
-        Insert: {
-          average_loss?: number | null
-          average_profit?: number | null
-          created_at?: string
-          id?: string
-          largest_loss?: number | null
-          largest_win?: number | null
-          losing_trades?: number
-          max_drawdown?: number | null
-          period: Database["public"]["Enums"]["performance_period"]
-          period_date: string
-          sharpe_ratio?: number | null
-          total_profit_loss?: number
-          total_trades?: number
-          total_volume?: number
-          updated_at?: string
-          user_id: string
-          win_rate?: number | null
-          winning_trades?: number
-        }
-        Update: {
-          average_loss?: number | null
-          average_profit?: number | null
-          created_at?: string
-          id?: string
-          largest_loss?: number | null
-          largest_win?: number | null
-          losing_trades?: number
-          max_drawdown?: number | null
-          period?: Database["public"]["Enums"]["performance_period"]
-          period_date?: string
-          sharpe_ratio?: number | null
-          total_profit_loss?: number
-          total_trades?: number
-          total_volume?: number
-          updated_at?: string
-          user_id?: string
-          win_rate?: number | null
-          winning_trades?: number
-        }
-        Relationships: []
-      }
-      positions: {
-        Row: {
-          created_at: string | null
-          current_price: number | null
-          entry_price: number
-          highest_price: number | null
-          id: string
-          is_demo: boolean | null
-          quantity: number
-          side: string
-          sl_order_id: string | null
-          sl_price: number | null
-          symbol: string
-          tp_order_id: string | null
-          tp_price: number | null
-          trailing_activation: number | null
-          unrealized_pnl: number | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          current_price?: number | null
-          entry_price: number
-          highest_price?: number | null
-          id?: string
-          is_demo?: boolean | null
-          quantity: number
-          side: string
-          sl_order_id?: string | null
-          sl_price?: number | null
-          symbol: string
-          tp_order_id?: string | null
-          tp_price?: number | null
-          trailing_activation?: number | null
-          unrealized_pnl?: number | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          current_price?: number | null
-          entry_price?: number
-          highest_price?: number | null
-          id?: string
-          is_demo?: boolean | null
-          quantity?: number
-          side?: string
-          sl_order_id?: string | null
-          sl_price?: number | null
           symbol?: string
-          tp_order_id?: string | null
-          tp_price?: number | null
-          trailing_activation?: number | null
-          unrealized_pnl?: number | null
-          updated_at?: string | null
+          target_price?: number
+          triggered_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "price_alerts_bot_config_id_fkey"
+            columns: ["bot_config_id"]
+            isOneToOne: false
+            referencedRelation: "bot_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      profiles: {
+      rate_limit_tracking: {
         Row: {
           created_at: string
+          endpoint: string
           id: string
+          request_count: number
           updated_at: string
-          username: string
+          user_id: string
+          window_start: string
         }
         Insert: {
           created_at?: string
-          id: string
+          endpoint: string
+          id?: string
+          request_count?: number
           updated_at?: string
-          username: string
+          user_id: string
+          window_start?: string
         }
         Update: {
           created_at?: string
+          endpoint?: string
           id?: string
-          updated_at?: string
-          username?: string
-        }
-        Relationships: []
-      }
-      strategies: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean
-          name: string
-          parameters: Json
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          parameters?: Json
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          parameters?: Json
+          request_count?: number
           updated_at?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      system_settings: {
-        Row: {
-          created_at: string
-          emergency_message: string | null
-          id: string
-          is_singleton: boolean
-          trading_enabled: boolean
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          emergency_message?: string | null
-          id?: string
-          is_singleton?: boolean
-          trading_enabled?: boolean
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          emergency_message?: string | null
-          id?: string
-          is_singleton?: boolean
-          trading_enabled?: boolean
-          updated_at?: string
-          updated_by?: string | null
+          window_start?: string
         }
         Relationships: []
       }
       trades: {
         Row: {
-          close_reason: string | null
-          commission: number | null
+          binance_order_id: string | null
+          bot_config_id: string | null
           created_at: string
           executed_at: string | null
           id: string
-          is_demo: boolean
-          order_id: string | null
           price: number
           profit_loss: number | null
           quantity: number
-          side: Database["public"]["Enums"]["trade_side"]
-          status: Database["public"]["Enums"]["trade_status"]
+          side: string
+          status: string
           symbol: string
-          type: Database["public"]["Enums"]["trade_type"]
+          type: string
           updated_at: string
           user_id: string
         }
         Insert: {
-          close_reason?: string | null
-          commission?: number | null
+          binance_order_id?: string | null
+          bot_config_id?: string | null
           created_at?: string
           executed_at?: string | null
           id?: string
-          is_demo?: boolean
-          order_id?: string | null
           price: number
           profit_loss?: number | null
           quantity: number
-          side: Database["public"]["Enums"]["trade_side"]
-          status?: Database["public"]["Enums"]["trade_status"]
+          side: string
+          status: string
           symbol: string
-          type: Database["public"]["Enums"]["trade_type"]
+          type: string
           updated_at?: string
           user_id: string
         }
         Update: {
-          close_reason?: string | null
-          commission?: number | null
+          binance_order_id?: string | null
+          bot_config_id?: string | null
           created_at?: string
           executed_at?: string | null
           id?: string
-          is_demo?: boolean
-          order_id?: string | null
           price?: number
           profit_loss?: number | null
           quantity?: number
-          side?: Database["public"]["Enums"]["trade_side"]
-          status?: Database["public"]["Enums"]["trade_status"]
+          side?: string
+          status?: string
           symbol?: string
-          type?: Database["public"]["Enums"]["trade_type"]
+          type?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
-      }
-      trading_mode_audit: {
-        Row: {
-          confirmed_at: string | null
-          created_at: string
-          id: string
-          new_mode: string | null
-          old_mode: string | null
-          user_id: string
-        }
-        Insert: {
-          confirmed_at?: string | null
-          created_at?: string
-          id?: string
-          new_mode?: string | null
-          old_mode?: string | null
-          user_id: string
-        }
-        Update: {
-          confirmed_at?: string | null
-          created_at?: string
-          id?: string
-          new_mode?: string | null
-          old_mode?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      trading_settings: {
-        Row: {
-          created_at: string
-          demo_balance: number
-          id: string
-          initial_capital: number
-          real_mode_confirmed_at: string | null
-          trading_mode: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          demo_balance?: number
-          id?: string
-          initial_capital?: number
-          real_mode_confirmed_at?: string | null
-          trading_mode?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          demo_balance?: number
-          id?: string
-          initial_capital?: number
-          real_mode_confirmed_at?: string | null
-          trading_mode?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "trades_bot_config_id_fkey"
+            columns: ["bot_config_id"]
+            isOneToOne: false
+            referencedRelation: "bot_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      acquire_analysis_lock: {
-        Args: { p_cooldown_minutes?: number; p_user_id: string }
-        Returns: {
-          is_active: boolean
-          last_analysis_at: string
-          leverage: number
-          min_confidence: number
-          quantity_usdt: number
-          stop_loss: number
-          take_profit: number
-        }[]
-      }
-      has_role: {
+      check_rate_limit: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
+          p_endpoint: string
+          p_max_requests: number
+          p_user_id: string
+          p_window_seconds: number
         }
         Returns: boolean
       }
-      reset_daily_bot_stats: { Args: never; Returns: undefined }
+      cleanup_old_bot_logs: { Args: never; Returns: number }
+      cleanup_old_rate_limits: { Args: never; Returns: number }
     }
     Enums: {
-      app_role: "admin" | "user"
-      performance_period: "DAILY" | "WEEKLY" | "MONTHLY" | "ALL_TIME"
-      trade_side: "BUY" | "SELL"
-      trade_status: "PENDING" | "FILLED" | "PARTIAL" | "CANCELLED" | "FAILED"
-      trade_type: "MARKET" | "LIMIT" | "STOP_LOSS" | "TAKE_PROFIT"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -700,12 +384,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "user"],
-      performance_period: ["DAILY", "WEEKLY", "MONTHLY", "ALL_TIME"],
-      trade_side: ["BUY", "SELL"],
-      trade_status: ["PENDING", "FILLED", "PARTIAL", "CANCELLED", "FAILED"],
-      trade_type: ["MARKET", "LIMIT", "STOP_LOSS", "TAKE_PROFIT"],
-    },
+    Enums: {},
   },
 } as const
