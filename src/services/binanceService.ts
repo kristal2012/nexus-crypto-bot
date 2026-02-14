@@ -32,7 +32,7 @@ const BINANCE_BASE_URLS = [
 ];
 
 // Vercel Proxy Bridge (Bypass Geoblock)
-const VERCEL_PROXY = 'https://nexus-crypto-bot.vercel.app/api/binance-proxy';
+const VERCEL_PROXY = process.env.VITE_BINANCE_PROXY_URL || 'https://nexus-crypto-bot.vercel.app/api/binance-proxy';
 
 const isBrowser = typeof window !== 'undefined';
 const API_BASE_URL = isBrowser ? '' : 'https://api.binance.com';
@@ -40,43 +40,47 @@ const API_BASE_URL = isBrowser ? '' : 'https://api.binance.com';
 // Serviço para interação com a Binance API
 export const binanceService = {
   async fetchWithRetry(path: string): Promise<any> {
-    const fullPath = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+    // 1. Prioridade: Proxy Vercel (Seguro para VPS e Browser)
+    try {
+      const cleanPath = path.startsWith('/') ? path : `/${path}`;
+      const [apiPath, query] = cleanPath.split('?');
+      const proxyUrl = new URL(VERCEL_PROXY);
+      proxyUrl.searchParams.append('path', apiPath);
 
-    // Try mirrors first
-    for (const baseUrl of BINANCE_BASE_URLS) {
-      if (!isBrowser && baseUrl === 'https://api.binance.com') {
-        // Na VPS (Node), tentamos o mirror direto se não for bloqueado
+      if (query) {
+        const queryParams = new URLSearchParams(query);
+        queryParams.forEach((value, key) => {
+          proxyUrl.searchParams.append(key, value);
+        });
       }
-      try {
-        const response = await fetch(`${baseUrl}${path}`);
-        if (response.ok) return await response.json();
-        console.warn(`⚠️ Binance mirror ${baseUrl} returned ${response.status}`);
 
-        // If 451, don't even try other direct mirrors, go straight to proxy
+      console.log(`📡 [BinanceService] Enviando via Proxy: ${proxyUrl.toString()}`);
+      const response = await fetch(proxyUrl.toString());
+      if (response.ok) return await response.json();
+
+      console.warn(`⚠️ Vercel Proxy retornou status ${response.status}. Tentando mirrors diretos como fallback...`);
+    } catch (error) {
+      console.error(`❌ Vercel Proxy inacessível: ${error}. Tentando mirrors diretos...`);
+    }
+
+    // 2. Fallback: Mirrors diretos da Binance
+    for (const baseUrl of BINANCE_BASE_URLS) {
+      try {
+        const fullUrl = `${baseUrl}${path.startsWith('/') ? path : '/' + path}`;
+        console.log(`📡 [BinanceService] Tentando mirror direto: ${fullUrl}`);
+        const response = await fetch(fullUrl);
+        if (response.ok) return await response.json();
+        console.warn(`⚠️ Binance mirror ${baseUrl} retornou ${response.status}`);
+
         if (response.status === 451) {
-          console.log('🛡️ Regional block detected (451). Switching to Vercel Proxy...');
-          break;
+          console.error(`🚨 Mirror ${baseUrl} bloqueado regionalmente (451).`);
         }
       } catch (error) {
-        console.warn(`❌ Binance mirror ${baseUrl} unreachable: ${error}`);
+        console.warn(`❌ Binance mirror ${baseUrl} inacessível: ${error}`);
       }
     }
 
-    // Proxy Fallback (Safe Bridge)
-    try {
-      // The proxy expects ?path=/api/v3/...&param1=val1
-      const [apiPath, query] = path.split('?');
-      const proxyUrl = `${VERCEL_PROXY}?path=${apiPath}${query ? '&' + query : ''}`;
-
-      console.log(`📡 Fetching through Proxy: ${proxyUrl}`);
-      const response = await fetch(proxyUrl);
-      if (response.ok) return await response.json();
-      console.error(`❌ Vercel Proxy failed: ${response.status}`);
-    } catch (error) {
-      console.error(`❌ Vercel Proxy unreachable: ${error}`);
-    }
-
-    throw new Error('All Binance API mirrors and Vercel Proxy failed');
+    throw new Error('Todos os mirrors da Binance e o Vercel Proxy falharam.');
   },
 
   async getPrice(symbol: string): Promise<PriceData | null> {

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { generateBinanceSignature } from "../utils/binance-auth";
 
 const isBrowser = typeof window !== 'undefined';
-const VERCEL_PROXY = 'https://nexus-crypto-bot.vercel.app/api/binance-proxy';
+const VERCEL_PROXY = process.env.VITE_BINANCE_PROXY_URL || 'https://nexus-crypto-bot.vercel.app/api/binance-proxy';
 
 export interface BotConfig {
   id: string;
@@ -150,8 +150,12 @@ export const tradeService = {
 
     // Obter preço atual para registro (VIA PROXY)
     const proxyPathPrice = `/api/v3/ticker/price?symbol=${finalSymbol}`;
-    const proxyUrlPrice = isBrowser ? `/api/binance-proxy?path=${proxyPathPrice}` : `${VERCEL_PROXY}?path=${proxyPathPrice}`;
-    const responsePrice = await fetch(proxyUrlPrice);
+    const proxyUrlPrice = new URL(VERCEL_PROXY);
+    proxyUrlPrice.searchParams.append('path', '/api/v3/ticker/price');
+    proxyUrlPrice.searchParams.append('symbol', finalSymbol);
+
+    console.log(`[TradeService] Buscando preço via Proxy: ${proxyUrlPrice.toString()}`);
+    const responsePrice = await fetch(proxyUrlPrice.toString());
     const priceData = await responsePrice.json();
     const currentPrice = parseFloat(priceData.price);
 
@@ -210,11 +214,18 @@ export const tradeService = {
     const signedQuery = `${queryString}&signature=${signature}`;
 
     // USAR PROXY PARA ORDEM REAL
-    const proxyPathOrder = `/api/v3/order?${signedQuery}`;
-    const proxyUrlOrder = isBrowser ? `/api/binance-proxy?path=${proxyPathOrder}` : `${VERCEL_PROXY}?path=${proxyPathOrder}`;
-    console.log(`[TradeService] Enviando ordem via Proxy: ${proxyUrlOrder}`);
+    const proxyUrlOrder = new URL(VERCEL_PROXY);
+    proxyUrlOrder.searchParams.append('path', '/api/v3/order');
 
-    const response = await fetch(proxyUrlOrder, {
+    // Append all signed query params to proxy URL
+    const queryParams = new URLSearchParams(signedQuery);
+    queryParams.forEach((value, key) => {
+      proxyUrlOrder.searchParams.append(key, value);
+    });
+
+    console.log(`[TradeService] Enviando ordem via Proxy: ${proxyUrlOrder.toString()}`);
+
+    const response = await fetch(proxyUrlOrder.toString(), {
       method: 'POST',
       headers: { 'X-MBX-APIKEY': apiKey }
     });
