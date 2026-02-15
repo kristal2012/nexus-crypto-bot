@@ -8880,5 +8880,147 @@
       "platform": "win32",
       "uptime": 2701
     }
+  },
+  {
+    "id": "c0y86dhbk",
+    "created_at": "2026-02-15T23:35:23.881Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-15T23:35:23.879Z",
+      "platform": "win32",
+      "uptime": 301
+    }
+  },
+  {
+    "id": "4h5jcjz9w",
+    "created_at": "2026-02-15T23:38:52.772Z",
+    "level": "INFO",
+    "message": "AI/Remote updated trading parameters",
+    "details": {
+      "params": {
+        "STOP_LOSS_PERCENT": 0.8,
+        "TAKE_PROFIT_PERCENT": 1.5,
+        "MAX_HOLD_MINUTES": 30,
+        "CAPITAL_PER_ROUND_PERCENT": 25,
+        "MAX_ALLOCATION_PER_PAIR_PERCENT": 15,
+        "SAFETY_RESERVE_PERCENT": 5,
+        "MAX_POSITIONS": 5,
+        "LEVERAGE": 5,
+        "TRADE_QUANTITY_USDT": 50,
+        "MOMENTUM_BUY_THRESHOLD": 0.2,
+        "MIN_VOLUME_RATIO": 1.05,
+        "PRICE_VELOCITY_THRESHOLD": 0.1,
+        "PAIR_COOLDOWN_SECONDS": 30,
+        "PROFIT_PROTECT_THRESHOLD": 0.8,
+        "AUTO_REINVEST": true,
+        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
+        "MIN_VOLATILITY_PERCENT": 0.15,
+        "VOLATILITY_WINDOW_TICKS": 20,
+        "LOSS_STREAK_LIMIT": 4,
+        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
+        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
+        "LOSS_COOLDOWN_BASE_MINUTES": 5,
+        "LOSS_COOLDOWN_MULTIPLIER": 1,
+        "takeProfitPercent": 1.5,
+        "stopLossPercent": 0.8,
+        "maxPositions": 5,
+        "momentumBuyThreshold": 0.2,
+        "minConfidence": 0.6
+      }
+    }
+  },
+  {
+    "id": "2i8ljustp",
+    "created_at": "2026-02-15T23:38:52.863Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-15T23:38:52.860Z",
+      "platform": "win32",
+      "uptime": 3001
+    }
+  },
+  {
+    "id": "2axirdgw1",
+    "created_at": "2026-02-15T23:40:23.881Z",
+    "level": "INFO",
+    "message": "AI/Remote updated trading parameters",
+    "details": {
+      "params": {
+        "STOP_LOSS_PERCENT": 2,
+        "TAKE_PROFIT_PERCENT": 5,
+        "MAX_HOLD_MINUTES": 30,
+        "CAPITAL_PER_ROUND_PERCENT": 25,
+        "MAX_ALLOCATION_PER_PAIR_PERCENT": 15,
+        "SAFETY_RESERVE_PERCENT": 5,
+        "MAX_POSITIONS": 5,
+        "LEVERAGE": 5,
+        "TRADE_QUANTITY_USDT": 50,
+        "MOMENTUM_BUY_THRESHOLD": 0.15,
+        "MIN_VOLUME_RATIO": 1.05,
+        "PRICE_VELOCITY_THRESHOLD": 0.1,
+        "PAIR_COOLDOWN_SECONDS": 30,
+        "PROFIT_PROTECT_THRESHOLD": 0.8,
+        "AUTO_REINVEST": true,
+        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
+        "MIN_VOLATILITY_PERCENT": 0.15,
+        "VOLATILITY_WINDOW_TICKS": 20,
+        "LOSS_STREAK_LIMIT": 4,
+        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
+        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
+        "LOSS_COOLDOWN_BASE_MINUTES": 5,
+        "LOSS_COOLDOWN_MULTIPLIER": 1,
+        "takeProfitPercent": 1.5,
+        "stopLossPercent": 0.8,
+        "maxPositions": 5,
+        "momentumBuyThreshold": 0.2,
+        "minConfidence": 0.6
+      }
+    }
+  },
+  {
+    "id": "gcisaq102",
+    "created_at": "2026-02-15T23:40:23.887Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-15T23:40:23.884Z",
+      "platform": "win32",
+      "uptime": 601
+    }
+  },
+  {
+    "id": "k8wq62ks5",
+    "created_at": "2026-02-15T23:43:52.912Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-15T23:43:52.908Z",
+      "platform": "win32",
+      "uptime": 3301
+    }
+  },
+  {
+    "id": "gfyduvrgm",
+    "created_at": "2026-02-15T23:44:07.110Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-15T23:44:07.108Z",
+      "platform": "win32",
+      "uptime": 301
+    }
+  },
+  {
+    "id": "mu3x1yxmc",
+    "created_at": "2026-02-15T23:45:23.890Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-15T23:45:23.886Z",
+      "platform": "win32",
+      "uptime": 901
+    }
   }
 ]

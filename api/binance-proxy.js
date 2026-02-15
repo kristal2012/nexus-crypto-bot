@@ -25,10 +25,10 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Missing path parameter' });
         }
 
-        // Construir URL da Binance (Utilizando .me para evitar geoblocks regionais no Vercel/VPS)
+        // Construir URL da Binance (Utilizando .com aqui porque a VERCEL não está em região bloqueada no Vercel/VPS)
         // Detectar se é Futures ou Spot
         const isFutures = path.startsWith('/fapi');
-        const baseUrl = isFutures ? 'https://fapi.binance.me' : 'https://api.binance.me';
+        const baseUrl = isFutures ? 'https://fapi.binance.com' : 'https://api.binance.com';
 
         const queryStr = Object.entries(params)
             .map(([key, val]) => `${key}=${val}`)
@@ -72,7 +72,8 @@ export default async function handler(req, res) {
         console.error('[Proxy Error]', error);
         return res.status(500).json({
             error: 'Proxy Internal Error',
-            message: error.message
+            message: error.message,
+            targetUrl: targetUrl || 'not_defined'
         });
     }
 }
