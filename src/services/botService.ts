@@ -2,6 +2,7 @@ import { localDb } from "./localDbService";
 import { supabaseSync } from "./supabaseSyncService";
 import { z } from "zod";
 import { generateBinanceSignature } from "../utils/binance-auth";
+import { RISK_SETTINGS } from "./riskService";
 
 const isBrowser = typeof window !== 'undefined';
 const VERCEL_PROXY = process.env.VITE_BINANCE_PROXY_URL || 'https://nexus-crypto-bot.vercel.app/api/binance-proxy';
@@ -54,7 +55,7 @@ const TradeRequestSchema = z.object({
       z.string().regex(/^[A-Z0-9]{1,20}USDT$/, "Símbolo inválido. Use pares USDT, ex: BTCUSDT")
     ),
   side: z.enum(["BUY", "SELL"]),
-  quantity: z.number().positive().max(10000),
+  quantity: z.number().positive().max(1000000), // Aumentado para suportar volumes com alavancagem
   type: z.enum(["MARKET", "LIMIT"]).default("MARKET"),
   testMode: z.boolean().default(true),
 });
@@ -124,6 +125,61 @@ export const tradeService = {
     return localDb.getTrades(limit);
   },
 
+  async setLeverage(symbol: string, leverage: number): Promise<any> {
+    const config = localDb.getConfig();
+    const apiKey = config.api_key_encrypted;
+    const apiSecret = config.api_secret_encrypted;
+
+    if (!apiKey || !apiSecret) {
+      console.warn('[TradeService] Credenciais não encontradas. Pulando setLeverage (esperado em modo demo)');
+      return { success: true };
+    }
+
+    const timestamp = Date.now();
+    const params = {
+      symbol: normalizeSymbol(symbol),
+      leverage: Math.floor(leverage).toString(),
+      timestamp: timestamp.toString(),
+    };
+
+    const queryString = Object.entries(params).map(([k, v]) => `${k}=${v}`).join('&');
+    const signature = generateBinanceSignature(queryString, apiSecret);
+    const signedQuery = `${queryString}&signature=${signature}`;
+
+    const proxyUrl = new URL(VERCEL_PROXY);
+    proxyUrl.searchParams.append('path', '/fapi/v1/leverage');
+    proxyUrl.searchParams.append('method', 'POST');
+
+    const queryParams = new URLSearchParams(signedQuery);
+    queryParams.forEach((value, key) => {
+      proxyUrl.searchParams.append(key, value);
+    });
+
+    console.log(`[TradeService] Configurando alavancagem via Proxy: ${proxyUrl.toString()}`);
+
+    try {
+      const response = await fetch(proxyUrl.toString(), {
+        method: 'POST',
+        headers: {
+          'X-MBX-APIKEY': apiKey,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        console.error(`[TradeService] Erro ao configurar alavancagem: ${data.msg || 'Erro desconhecido'}`);
+        return { success: false, error: data.msg };
+      }
+
+      console.log(`[TradeService] Alavancagem ajustada: ${leverage}x para ${symbol}`);
+      return { success: true, data };
+    } catch (error) {
+      console.error('[TradeService] Falha na rede ao configurar alavancagem:', error);
+      return { success: false, error: 'Network failure' };
+    }
+  },
+
   async executeTrade(symbol: string, side: 'BUY' | 'SELL', quantity: number, testMode = true): Promise<any> {
     // Normalize and validate input
     const bodyCandidate = {
@@ -141,7 +197,6 @@ export const tradeService = {
 
     const { symbol: finalSymbol, side: finalSide, quantity: finalQuantity, type: finalType } = parsed.data;
 
-    // LOCAL EXECUTION (Bypass Supabase)
     // LOCAL EXECUTION (Bypass Supabase)
     const apiKey = localDb.getConfig().api_key_encrypted;
     const apiSecret = localDb.getConfig().api_secret_encrypted;
@@ -212,6 +267,15 @@ export const tradeService = {
     const signature = generateBinanceSignature(queryString, apiSecret);
     const signedQuery = `${queryString}&signature=${signature}`;
 
+    // CONFIGURAR ALAVANCAGEM ANTES DA COMPRA REAL
+    if (finalSide === 'BUY') {
+      try {
+        await this.setLeverage(finalSymbol, RISK_SETTINGS.LEVERAGE || 5);
+      } catch (e) {
+        console.warn(`[TradeService] Falha não-bloqueante ao setar alavancagem: ${e}`);
+      }
+    }
+
     // USAR PROXY PARA ORDEM REAL (FUTURES)
     const proxyUrlOrder = new URL(VERCEL_PROXY);
     proxyUrlOrder.searchParams.append('path', '/fapi/v1/order');
@@ -264,8 +328,6 @@ export const tradeService = {
 // Serviço para gerenciar logs
 export const logService = {
   async getLogs(_userId: string, _limit = 100): Promise<BotLog[]> {
-    // In local mode, logs can be read from files as well
-    // For now returning empty or implementing a local file logger
     return [];
   },
 

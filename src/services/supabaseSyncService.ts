@@ -82,7 +82,14 @@ class SupabaseSyncService {
                 const local = localDb.getConfig();
                 if (data.is_powered_on !== local.is_powered_on || data.is_running !== local.is_running) {
                     console.log('🔄 Remote config update detected:', data.is_powered_on ? 'ON' : 'OFF');
-                    localDb.saveConfig(data as any);
+
+                    // Preservar chaves locais ao sincronizar do cloud
+                    const mergedConfig = {
+                        ...data,
+                        api_key_encrypted: data.api_key_encrypted || local.api_key_encrypted,
+                        api_secret_encrypted: data.api_secret_encrypted || local.api_secret_encrypted,
+                    };
+                    localDb.saveConfig(mergedConfig as any);
                 }
                 return data as any;
             }
@@ -112,7 +119,6 @@ class SupabaseSyncService {
 
                 // Sync config to local
                 localDb.saveConfig(configs[0] as any);
-            } else {
                 // Create new config
                 const localConfig = localDb.getConfig();
                 const { data: newConfig, error: createError } = await supabase
@@ -122,9 +128,9 @@ class SupabaseSyncService {
                         test_mode: localConfig.test_mode ?? true,
                         test_balance: localConfig.test_balance ?? 1000,
                         trading_pair: localConfig.trading_pair ?? 'BTCUSDT',
-                        quantity: localConfig.quantity ?? 0.001,
-                        take_profit_percent: 6.0,
-                        stop_loss_percent: 3.0,
+                        quantity: localConfig.quantity ?? 100,
+                        take_profit_percent: 5.0,
+                        stop_loss_percent: 2.5,
                         daily_profit_goal: localConfig.daily_profit_goal ?? 50,
                         is_running: false,
                         is_powered_on: false
@@ -225,8 +231,6 @@ class SupabaseSyncService {
                     daily_profit_goal: config.daily_profit_goal,
                     is_running: config.is_running,
                     is_powered_on: config.is_powered_on,
-                    api_key_encrypted: config.api_key_encrypted,
-                    api_secret_encrypted: config.api_secret_encrypted,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', this.configId);

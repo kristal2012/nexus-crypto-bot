@@ -4,17 +4,21 @@
  */
 export const RISK_SETTINGS = {
   // Mean Reversion Strategy - Parâmetros Otimizados (Turbo Scalping)
-  STOP_LOSS_PERCENT: 1.0, // Reduzido para 1% (proteção rápida)
-  TAKE_PROFIT_PERCENT: 1.5, // Reduzido para 1.5% (lucros rápidos e frequentes)
+  STOP_LOSS_PERCENT: 2.0, // Aumentado para 2% para evitar ruído (saída técnica)
+  TAKE_PROFIT_PERCENT: 5.0, // Aumentado para 5% (objetivo de lucro REAL)
 
   // Session/position management
-  MAX_HOLD_MINUTES: 15, // Tempo máximo reduzido (giro rápido de capital)
+  MAX_HOLD_MINUTES: 30, // Tempo aumentado para permitir desenvolvimento do trend
 
   // Capital Management (percent values)
-  CAPITAL_PER_ROUND_PERCENT: 25, // Aumentado para 25% (mais agressividade na rodada)
-  MAX_ALLOCATION_PER_PAIR_PERCENT: 10, // Aumentado para 10% por par (menos "migalhas", mais convicção)
-  SAFETY_RESERVE_PERCENT: 5, // Reserva mantida
-  MAX_POSITIONS: 10, // Aumentado para 10 posições simultâneas (mais diversidade)
+  CAPITAL_PER_ROUND_PERCENT: 25,
+  MAX_ALLOCATION_PER_PAIR_PERCENT: 15, // Aumentado para 15% (trades mais pesados)
+  SAFETY_RESERVE_PERCENT: 5,
+  MAX_POSITIONS: 5, // Reduzido para 5 (foco em qualidade/mão pesada)
+
+  // High Performance Trading
+  LEVERAGE: 5, // 5x Alavancagem (Padrão sugerido para conta real)
+  TRADE_QUANTITY_USDT: 50, // 50 USDT por operação (base)
 
   // Momentum Parameters (percent units) - Entrada "Gatilho Rápido"
   MOMENTUM_BUY_THRESHOLD: 0.15, // Reduzido de 0.3 para 0.15 (qualquer movimento de reversão ativa)

@@ -1,3 +1,4 @@
+import { localDb } from "./localDbService";
 export interface PriceData {
   symbol: string;
   price: number;
@@ -24,8 +25,9 @@ export interface Candle {
 
 // 🚀 Prioridade para Futures Mirrors e Regionais (Seguro para Geoblocks)
 const BINANCE_BASE_URLS = [
+  'https://fapi.binance.me',  // Futures Proxy Me (Prioridade para VPS)
   'https://fapi.binance.com', // Futures Principal
-  'https://fapi.binance.me',  // Futures Proxy Me
+  'https://api.binance.me',   // Spot Proxy Me
   'https://api.binance.com',
   'https://api1.binance.com',
 ];
@@ -38,13 +40,14 @@ const API_BASE_URL = isBrowser ? '' : 'https://fapi.binance.com';
 
 // Serviço para interação com a Binance API
 export const binanceService = {
-  async fetchWithRetry(path: string): Promise<any> {
+  async fetchWithRetry(path: string, method: string = 'GET'): Promise<any> {
     // 1. Prioridade: Proxy Vercel (Seguro para VPS e Browser)
     try {
       const cleanPath = path.startsWith('/') ? path : `/${path}`;
       const [apiPath, query] = cleanPath.split('?');
       const proxyUrl = new URL(VERCEL_PROXY);
       proxyUrl.searchParams.append('path', apiPath);
+      if (method !== 'GET') proxyUrl.searchParams.append('method', method);
 
       if (query) {
         const queryParams = new URLSearchParams(query);
@@ -53,8 +56,17 @@ export const binanceService = {
         });
       }
 
-      console.log(`📡 [BinanceService] Enviando via Proxy: ${proxyUrl.toString()}`);
-      const response = await fetch(proxyUrl.toString());
+      const config = localDb.getConfig();
+      const apiKey = config.api_key_encrypted;
+
+      console.log(`📡 [BinanceService] Enviando (${method}) via Proxy: ${proxyUrl.toString()}`);
+      const response = await fetch(proxyUrl.toString(), {
+        method,
+        headers: {
+          ...(method === 'POST' ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
+          ...(apiKey ? { 'X-MBX-APIKEY': apiKey } : {})
+        }
+      });
       if (response.ok) return await response.json();
 
       console.warn(`⚠️ Vercel Proxy retornou status ${response.status}. Tentando mirrors diretos como fallback...`);
@@ -80,6 +92,18 @@ export const binanceService = {
     }
 
     throw new Error('Todos os mirrors da Binance e o Vercel Proxy falharam.');
+  },
+
+  async setLeverage(symbol: string, leverage: number): Promise<any> {
+    try {
+      const timestamp = Date.now();
+      const query = `symbol=${symbol}&leverage=${leverage}&timestamp=${timestamp}`;
+      // Nota: No futuro, adicionar lógica de assinatura se o proxy não lidar com isso
+      return await this.fetchWithRetry(`/fapi/v1/leverage?${query}`, 'POST');
+    } catch (error) {
+      console.error('Exception in setLeverage:', error);
+      return null;
+    }
   },
 
   async getPrice(symbol: string): Promise<PriceData | null> {

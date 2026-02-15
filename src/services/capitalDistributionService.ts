@@ -58,7 +58,8 @@ class CapitalDistributionService {
         }
 
         const price = priceData.price;
-        const quantity = allocationPerPair / price;
+        const leverage = RISK_SETTINGS.LEVERAGE || 1;
+        const quantity = (allocationPerPair * leverage) / price;
 
         allocations.set(symbol, {
           symbol,
@@ -67,7 +68,7 @@ class CapitalDistributionService {
           quantity: Number(quantity.toFixed(8)), // 8 casas decimais para cripto
         });
 
-        console.log(`${symbol}: ${allocationPerPair.toFixed(2)} USDT (${quantity.toFixed(8)} units @ $${price.toFixed(2)})`);
+        console.log(`${symbol}: ${allocationPerPair.toFixed(2)} USDT x${leverage} (${quantity.toFixed(8)} units @ $${price.toFixed(2)})`);
       } catch (error) {
         console.error(`Error allocating capital for ${symbol}:`, error);
       }
