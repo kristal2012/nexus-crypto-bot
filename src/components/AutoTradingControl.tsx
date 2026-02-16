@@ -20,16 +20,22 @@ export const AutoTradingControl = () => {
   useEffect(() => {
     loadLastAnalysis();
     checkCredentials();
-    
+
     // Update analysis display every 60 seconds
     const displayInterval = setInterval(() => {
       loadLastAnalysis();
     }, 60000);
-    
+
     return () => clearInterval(displayInterval);
   }, []);
 
   const checkCredentials = async () => {
+    // BYPASS PARA MODO SIMULAÇÃO
+    const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
+      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
+
+    if (isSimulation) return;
+
     try {
       const { data } = await supabase
         .from('binance_api_keys')
@@ -98,7 +104,7 @@ export const AutoTradingControl = () => {
           });
           return;
         }
-        
+
         // Handle successful execution
         if (response.executed_trades && response.executed_trades.length > 0) {
           console.log(`Auto analysis completed: ${response.executed_trades.length} trades executed`);
@@ -145,7 +151,7 @@ export const AutoTradingControl = () => {
 
     // Delay first execution to avoid immediate rate limit on page load
     const initialDelay = 2000; // 2 seconds
-    console.log(`⏰ [AutoTradingControl] Scheduling first analysis in ${initialDelay/1000}s`);
+    console.log(`⏰ [AutoTradingControl] Scheduling first analysis in ${initialDelay / 1000}s`);
     timeoutId = setTimeout(executeAutoAnalysis, initialDelay);
 
     // Then execute every 5 minutes (300000 ms)
@@ -172,9 +178,9 @@ export const AutoTradingControl = () => {
           total: data.length,
           highConfidence: highConfidence.length,
           lastRun: data[0].created_at,
-          bestOpportunity: data.reduce((best, current) => 
+          bestOpportunity: data.reduce((best, current) =>
             current.confidence > best.confidence ? current : best
-          , data[0])
+            , data[0])
         });
       }
     } catch (error) {
@@ -188,11 +194,11 @@ export const AutoTradingControl = () => {
 
       const minConf = config?.minConfidence || 60;
       const qty = config?.quantityUsdt || 10;
-      
+
       toast({
         title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
-        description: checked 
-          ? `A IA executará análises a cada 5min, operando ${qty} USDT por trade em pares com ≥${minConf}% de confiança` 
+        description: checked
+          ? `A IA executará análises a cada 5min, operando ${qty} USDT por trade em pares com ≥${minConf}% de confiança`
           : "A análise automática foi pausada",
       });
     } catch (error) {
