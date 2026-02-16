@@ -215,6 +215,20 @@ const CACHE_DURATION = 30000;
  * [WEB-ONLY] Chamada via Supabase Edge Function
  */
 export const validateBinanceApiKeys = async (): Promise<BinanceApiKeyStatus> => {
+  // BYPASS PARA MODO SIMULAÇÃO
+  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
+
+  if (isSimulation) {
+    return {
+      isConfigured: true,
+      hasPermissions: true,
+      canTradeFutures: true,
+      balance: 1000, // Saldo fictício de simulação
+      error: undefined
+    };
+  }
+
   if (validationCache && (Date.now() - validationCache.timestamp) < CACHE_DURATION) {
     return validationCache.data;
   }
