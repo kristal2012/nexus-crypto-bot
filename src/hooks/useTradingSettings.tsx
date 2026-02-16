@@ -14,7 +14,7 @@ export const useTradingSettings = () => {
   const { toast } = useToast();
 
   const fetchSettings = async () => {
-    
+
     try {
 
       let { data, error } = await supabase
@@ -78,7 +78,7 @@ export const useTradingSettings = () => {
       if (error) throw error;
 
       setSettings((prev) => prev ? { ...prev, trading_mode: mode } : null);
-      
+
       toast({
         title: "Modo alterado",
         description: `Modo de trading alterado para ${mode === "DEMO" ? "Demonstração" : "Real"}`,
@@ -109,8 +109,14 @@ export const useTradingSettings = () => {
     }
   };
 
+  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
+
   return {
-    settings,
+    settings: isSimulation ? {
+      trading_mode: "DEMO" as const,
+      demo_balance: settings?.demo_balance || 10000
+    } : settings,
     loading,
     updateTradingMode,
     updateDemoBalance,
