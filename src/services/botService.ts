@@ -104,21 +104,21 @@ export const botConfigService = {
   async saveApiCredentials(_userId: string, apiKey: string, apiSecret: string): Promise<boolean> {
     console.log('💾 Salvando credenciais API...', { apiKey: apiKey ? 'presente' : 'vazio', apiSecret: apiSecret ? 'presente' : 'vazio' });
     const current = localDb.getConfig();
-    
-    console.log('📋 Config atual antes de salvar:', { 
-      hasApiKey: !!current.api_key_encrypted, 
-      hasApiSecret: !!current.api_secret_encrypted 
+
+    console.log('📋 Config atual antes de salvar:', {
+      hasApiKey: !!current.api_key_encrypted,
+      hasApiSecret: !!current.api_secret_encrypted
     });
-    
+
     const newConfig = {
       ...current,
       api_key_encrypted: apiKey || current.api_key_encrypted,
       api_secret_encrypted: apiSecret || current.api_secret_encrypted
     };
 
-    console.log('📋 Config nova a ser salva:', { 
-      hasApiKey: !!newConfig.api_key_encrypted, 
-      hasApiSecret: !!newConfig.api_secret_encrypted 
+    console.log('📋 Config nova a ser salva:', {
+      hasApiKey: !!newConfig.api_key_encrypted,
+      hasApiSecret: !!newConfig.api_secret_encrypted
     });
 
     localDb.saveConfig(newConfig);
@@ -181,7 +181,7 @@ export const tradeService = {
         price: currentPrice,
         status: finalSide === 'BUY' ? 'PENDING' : 'EXECUTED',
         created_at: new Date().toISOString(),
-        profit_loss: profitLoss ?? (finalSide === 'SELL' ? 0 : undefined), // Incluir profit_loss se for venda
+        profit_loss: profitLoss ?? (finalSide === 'SELL' ? 0 : undefined),
       };
 
       // Simular delay de rede para realismo (200-500ms)
@@ -204,6 +204,7 @@ export const tradeService = {
         }
       });
 
+      console.log(`✅ [SIMULAÇÃO] Ordem de ${finalSide} ${finalSymbol} processada.`);
       return { success: true, testMode: true, trade: simulatedTrade };
     }
 
