@@ -197,13 +197,89 @@ export const binanceService = {
   }
 };
 
+export interface BinanceApiKeyStatus {
+  isConfigured: boolean;
+  hasPermissions: boolean;
+  canTradeFutures: boolean;
+  error?: string;
+  balance?: number;
+}
+
+// CACHE & THROTTLE para Validação (Web)
+let validationCache: { data: BinanceApiKeyStatus; timestamp: number } | null = null;
+let validationPromise: Promise<BinanceApiKeyStatus> | null = null;
+const CACHE_DURATION = 30000;
+
+/**
+ * Valida se as API keys estão configuradas e têm as permissões corretas
+ * [WEB-ONLY] Chamada via Supabase Edge Function
+ */
+export const validateBinanceApiKeys = async (): Promise<BinanceApiKeyStatus> => {
+  if (validationCache && (Date.now() - validationCache.timestamp) < CACHE_DURATION) {
+    return validationCache.data;
+  }
+
+  if (validationPromise) return validationPromise;
+
+  validationPromise = (async () => {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('binance-account');
+
+      if (error || data?.error) {
+        return {
+          isConfigured: !!data?.isConfigured,
+          hasPermissions: false,
+          canTradeFutures: false,
+          error: data?.error || error?.message || 'Erro na validação'
+        };
+      }
+
+      return {
+        isConfigured: true,
+        hasPermissions: true,
+        canTradeFutures: true,
+        balance: parseFloat(data.totalWalletBalance || '0')
+      };
+    } catch (e) {
+      return {
+        isConfigured: false,
+        hasPermissions: false,
+        canTradeFutures: false,
+        error: 'Erro de conexão com o servidor'
+      };
+    } finally {
+      validationPromise = null;
+    }
+  })();
+
+  const result = await validationPromise;
+  if (result.isConfigured && !result.error) {
+    validationCache = { data: result, timestamp: Date.now() };
+  }
+  return result;
+};
+
+/**
+ * Formata valores USDT
+ */
+export const formatUSDT = (value: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
 /**
  * [WEB-ONLY] Limpa o cache de validação da API para forçar revalidação no frontend
  */
 export const clearBinanceValidationCache = () => {
+  validationCache = null;
   if (typeof window !== 'undefined') {
     localStorage.removeItem('binance_validation_status');
     localStorage.removeItem('binance_api_validated');
-    console.log('🧹 [BinanceService] Cache de validação limpo.');
   }
+  console.log('🧹 [BinanceService] Cache de validação limpo.');
 };
