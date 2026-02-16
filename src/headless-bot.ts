@@ -30,7 +30,7 @@ async function startHeadlessBot() {
     console.log(`🛠️ Config: Modo=${isTestMode ? 'TESTE' : 'REAL'} | Saldo=$${initialBalance}`);
 
     // 2. Health Check Server (para o Guardian/Watchdog)
-    const HEALTH_PORT = 8002; // Porta diferente do Flash Bot (8001) para evitar conflitos
+    const HEALTH_PORT = 8001;
     const healthServer = http.createServer((req, res) => {
         if (req.url === '/api/status') {
             const stats = {
@@ -67,42 +67,47 @@ async function startHeadlessBot() {
         supabaseSync.heartbeat();
     }, 300000); // Check every 5 mins
 
+    // 4. Remote Config Polling Loop (Control via Vercel Dashboard)
     setInterval(async () => {
-        try {
-            const remoteConfig = await supabaseSync.fetchRemoteConfig();
-
-            if (remoteConfig) {
-                // Log estado remoto periódico para debug (cada ~1min)
-                if (Date.now() % 60000 < 30000) {
-                    console.log(`📡 [Remote Polling] Power=${remoteConfig.is_powered_on ? 'ON' : 'OFF'} | Mode=${remoteConfig.test_mode ? 'TEST' : 'REAL'} | isRunning=${tradingService.getIsRunning()}`);
-                }
-
-                // Apply powered on/off switch
-                if (remoteConfig.is_powered_on === false && tradingService.getIsRunning()) {
-                    console.log('🛑 [Remote] Shutdown command received from cloud.');
+        const remoteConfig = await supabaseSync.fetchRemoteConfig();
+        if (remoteConfig) {
+            // Sincronizar chaves API se mudaram
+            const currentConfig = localDb.getConfig();
+            if (remoteConfig.api_key_encrypted !== currentConfig.api_key_encrypted ||
+                remoteConfig.api_secret_encrypted !== currentConfig.api_secret_encrypted) {
+                console.log('🔄 [Remote] Novas chaves API detectadas. Reiniciando motor...');
+                localDb.saveConfig(remoteConfig);
+                if (tradingService.getIsRunning()) {
                     await tradingService.stop();
-                } else if (remoteConfig.is_powered_on === true && !tradingService.getIsRunning()) {
-                    console.log('🚀 [Remote] Startup command received from cloud. Starting trading engine...');
-
-                    const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'];
-                    await tradingService.start({
-                        userId: '00000000-0000-0000-0000-000000000000',
-                        configId: remoteConfig.id,
-                        symbols: symbols,
-                        totalCapital: remoteConfig.test_balance || 1000,
-                        takeProfitPercent: remoteConfig.take_profit_percent || 5,
-                        stopLossPercent: remoteConfig.stop_loss_percent || 2.5,
-                        testMode: remoteConfig.test_mode,
-                        maxPositions: 5
-                    });
-                }
-            } else {
-                if (Date.now() % 60000 < 30000) {
-                    console.warn('⚠️ [Remote Polling] Config não retornou dados. Verifique o ID no Supabase.');
+                    // O motor vai reiniciar no próximo check de is_powered_on
                 }
             }
-        } catch (error) {
-            console.error('❌ Error polling remote config:', error);
+
+            // Apply powered on/off switch
+            if (remoteConfig.is_powered_on === false && tradingService.getIsRunning()) {
+                console.log('🛑 [Remote] Shutdown command received from cloud.');
+                await tradingService.stop();
+            } else if (remoteConfig.is_powered_on === true && !tradingService.getIsRunning()) {
+                console.log('🚀 [Remote] Startup command received from cloud. Starting trading...');
+
+                const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'];
+                await tradingService.start({
+                    userId: '00000000-0000-0000-0000-000000000000',
+                    configId: remoteConfig.id,
+                    symbols: symbols,
+                    totalCapital: remoteConfig.test_balance || 1000,
+                    takeProfitPercent: remoteConfig.take_profit_percent || 5,
+                    stopLossPercent: remoteConfig.stop_loss_percent || 2.5,
+                    testMode: remoteConfig.test_mode,
+                    maxPositions: 5
+                });
+            }
+
+            // [NEW] Check for remote Circuit Breaker reset
+            if (supabaseSync.checkAndClearResetRequest()) {
+                console.log('⚡ [Remote] Resetting Circuit Breaker as requested from dashboard...');
+                await tradingService.clearCircuitBreaker();
+            }
         }
     }, 30000); // Check every 30 seconds
 
@@ -116,24 +121,25 @@ async function startHeadlessBot() {
         }
     }, 600000); // Check every 10 min
 
-    // 4. Iniciar Trading Service
+    // 4. Iniciar Trading Service (sempre em modo teste, automaticamente)
     try {
-        // Mocking do par de trading (No futuro buscar do pairSelectionService)
+        // Buscar config do Supabase primeiro
+        const remote = await supabaseSync.fetchRemoteConfig();
+
+        // Sempre usar RISK_SETTINGS para parâmetros de trading (não do Supabase)
         const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'];
 
-        console.log(`🚀 [Cryptum 7.1] Headless Bot iniciado. Monitorando: ${symbols.join(', ')}`);
-
-        // Tentar buscar config do Supabase primeiro
-        const remote = await supabaseSync.fetchRemoteConfig();
-        console.log(`📋 Config inicial carregada: ${remote ? 'Sim' : 'Não'} (ID: ${remote?.id || 'Norteado'})`);
+        console.log(`🚀 Iniciando monitoramento para: ${symbols.join(', ')}`);
+        console.log(`📊 TP: ${RISK_SETTINGS.TAKE_PROFIT_PERCENT}% | SL: ${RISK_SETTINGS.STOP_LOSS_PERCENT}% | Max Pos: ${RISK_SETTINGS.MAX_POSITIONS}`);
 
         await tradingService.start({
             userId: '00000000-0000-0000-0000-000000000000',
             configId: remote?.id || 'default-config-id',
             symbols: symbols,
             totalCapital: remote?.test_balance || initialBalance,
-            takeProfitPercent: remote?.take_profit_percent || RISK_SETTINGS.TAKE_PROFIT_PERCENT,
-            stopLossPercent: remote?.stop_loss_percent || RISK_SETTINGS.STOP_LOSS_PERCENT,
+            quantityPerTrade: remote?.quantity,
+            takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT,
+            stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT,
             testMode: remote?.test_mode !== undefined ? remote.test_mode : isTestMode,
             maxPositions: RISK_SETTINGS.MAX_POSITIONS
         });

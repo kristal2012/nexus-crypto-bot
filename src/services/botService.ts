@@ -1,11 +1,7 @@
 import { localDb } from "./localDbService";
 import { supabaseSync } from "./supabaseSyncService";
 import { z } from "zod";
-import { generateBinanceSignature } from "../utils/binance-auth";
-import { RISK_SETTINGS } from "./riskService";
-
-const isBrowser = typeof window !== 'undefined';
-const VERCEL_PROXY = process.env.VITE_BINANCE_PROXY_URL || 'https://nexus-crypto-bot.vercel.app/api/binance-proxy';
+import { generateBinanceSignature } from "@/utils/binance-auth";
 
 export interface BotConfig {
   id: string;
@@ -21,6 +17,7 @@ export interface BotConfig {
   trading_pair: string;
   api_key_encrypted?: string;
   api_secret_encrypted?: string;
+  reset_circuit_breaker?: boolean;
 }
 
 export interface Trade {
@@ -55,7 +52,7 @@ const TradeRequestSchema = z.object({
       z.string().regex(/^[A-Z0-9]{1,20}USDT$/, "Símbolo inválido. Use pares USDT, ex: BTCUSDT")
     ),
   side: z.enum(["BUY", "SELL"]),
-  quantity: z.number().positive().max(1000000), // Aumentado para suportar volumes com alavancagem
+  quantity: z.number().positive().max(10000),
   type: z.enum(["MARKET", "LIMIT"]).default("MARKET"),
   testMode: z.boolean().default(true),
 });
@@ -79,8 +76,15 @@ export const botConfigService = {
     if (userId) {
       const cloud = await supabaseSync.getCloudConfig();
       if (cloud) {
-        localDb.saveConfig(cloud);
-        return cloud;
+        // [FIX] Só substituir as chaves se o cloud realmente tiver chaves salvas
+        // Se o cloud não tiver chaves, manter as locais (se houver)
+        const mergedConfig = {
+          ...cloud,
+          api_key_encrypted: cloud.api_key_encrypted || local?.api_key_encrypted,
+          api_secret_encrypted: cloud.api_secret_encrypted || local?.api_secret_encrypted,
+        };
+        localDb.saveConfig(mergedConfig);
+        return mergedConfig;
       }
     }
 
@@ -98,17 +102,27 @@ export const botConfigService = {
   },
 
   async saveApiCredentials(_userId: string, apiKey: string, apiSecret: string): Promise<boolean> {
+    console.log('💾 Salvando credenciais API...', { apiKey: apiKey ? 'presente' : 'vazio', apiSecret: apiSecret ? 'presente' : 'vazio' });
     const current = localDb.getConfig();
+    
+    console.log('📋 Config atual antes de salvar:', { 
+      hasApiKey: !!current.api_key_encrypted, 
+      hasApiSecret: !!current.api_secret_encrypted 
+    });
+    
     const newConfig = {
       ...current,
-      api_key_encrypted: apiKey,
-      api_secret_encrypted: apiSecret
+      api_key_encrypted: apiKey || current.api_key_encrypted,
+      api_secret_encrypted: apiSecret || current.api_secret_encrypted
     };
 
-    localDb.saveConfig(newConfig);
+    console.log('📋 Config nova a ser salva:', { 
+      hasApiKey: !!newConfig.api_key_encrypted, 
+      hasApiSecret: !!newConfig.api_secret_encrypted 
+    });
 
-    // Sync to Supabase for VPS/Cloud
-    await supabaseSync.syncConfig(newConfig);
+    localDb.saveConfig(newConfig);
+    console.log('✅ Credenciais salvas localmente (NÃO enviados para Supabase por segurança)');
     return true;
   },
 
@@ -125,62 +139,7 @@ export const tradeService = {
     return localDb.getTrades(limit);
   },
 
-  async setLeverage(symbol: string, leverage: number): Promise<any> {
-    const config = localDb.getConfig();
-    const apiKey = config.api_key_encrypted;
-    const apiSecret = config.api_secret_encrypted;
-
-    if (!apiKey || !apiSecret) {
-      console.warn('[TradeService] Credenciais não encontradas. Pulando setLeverage (esperado em modo demo)');
-      return { success: true };
-    }
-
-    const timestamp = Date.now();
-    const params = {
-      symbol: normalizeSymbol(symbol),
-      leverage: Math.floor(leverage).toString(),
-      timestamp: timestamp.toString(),
-    };
-
-    const queryString = Object.entries(params).map(([k, v]) => `${k}=${v}`).join('&');
-    const signature = generateBinanceSignature(queryString, apiSecret);
-    const signedQuery = `${queryString}&signature=${signature}`;
-
-    const proxyUrl = new URL(VERCEL_PROXY);
-    proxyUrl.searchParams.append('path', '/fapi/v1/leverage');
-    proxyUrl.searchParams.append('method', 'POST');
-
-    const queryParams = new URLSearchParams(signedQuery);
-    queryParams.forEach((value, key) => {
-      proxyUrl.searchParams.append(key, value);
-    });
-
-    console.log(`[TradeService] Configurando alavancagem via Proxy: ${proxyUrl.toString()}`);
-
-    try {
-      const response = await fetch(proxyUrl.toString(), {
-        method: 'POST',
-        headers: {
-          'X-MBX-APIKEY': apiKey,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        console.error(`[TradeService] Erro ao configurar alavancagem: ${data.msg || 'Erro desconhecido'}`);
-        return { success: false, error: data.msg };
-      }
-
-      console.log(`[TradeService] Alavancagem ajustada: ${leverage}x para ${symbol}`);
-      return { success: true, data };
-    } catch (error) {
-      console.error('[TradeService] Falha na rede ao configurar alavancagem:', error);
-      return { success: false, error: 'Network failure' };
-    }
-  },
-
-  async executeTrade(symbol: string, side: 'BUY' | 'SELL', quantity: number, testMode = true): Promise<any> {
+  async executeTrade(symbol: string, side: 'BUY' | 'SELL', quantity: number, testMode = true, profitLoss?: number): Promise<any> {
     // Normalize and validate input
     const bodyCandidate = {
       symbol: normalizeSymbol(symbol),
@@ -198,18 +157,15 @@ export const tradeService = {
     const { symbol: finalSymbol, side: finalSide, quantity: finalQuantity, type: finalType } = parsed.data;
 
     // LOCAL EXECUTION (Bypass Supabase)
+    // LOCAL EXECUTION (Bypass Supabase)
     const apiKey = localDb.getConfig().api_key_encrypted;
     const apiSecret = localDb.getConfig().api_secret_encrypted;
 
     console.log(`[TradeService] Executando ordem LOCAL: ${finalSide} ${finalQuantity} ${finalSymbol}`);
 
-    // Obter preço atual para registro (VIA PROXY - FUTURES)
-    const proxyUrlPrice = new URL(VERCEL_PROXY);
-    proxyUrlPrice.searchParams.append('path', '/fapi/v1/ticker/price');
-    proxyUrlPrice.searchParams.append('symbol', finalSymbol);
-
-    console.log(`[TradeService] Buscando preço via Proxy: ${proxyUrlPrice.toString()}`);
-    const responsePrice = await fetch(proxyUrlPrice.toString());
+    // Obter preço atual para registro (VIA PROXY)
+    const proxyUrlPrice = `/api/binance-proxy?path=/api/v3/ticker/price&symbol=${finalSymbol}`;
+    const responsePrice = await fetch(proxyUrlPrice);
     const priceData = await responsePrice.json();
     const currentPrice = parseFloat(priceData.price);
 
@@ -225,6 +181,7 @@ export const tradeService = {
         price: currentPrice,
         status: finalSide === 'BUY' ? 'PENDING' : 'EXECUTED',
         created_at: new Date().toISOString(),
+        profit_loss: profitLoss ?? (finalSide === 'SELL' ? 0 : undefined), // Incluir profit_loss se for venda
       };
 
       // Simular delay de rede para realismo (200-500ms)
@@ -267,28 +224,11 @@ export const tradeService = {
     const signature = generateBinanceSignature(queryString, apiSecret);
     const signedQuery = `${queryString}&signature=${signature}`;
 
-    // CONFIGURAR ALAVANCAGEM ANTES DA COMPRA REAL
-    if (finalSide === 'BUY') {
-      try {
-        await this.setLeverage(finalSymbol, RISK_SETTINGS.LEVERAGE || 5);
-      } catch (e) {
-        console.warn(`[TradeService] Falha não-bloqueante ao setar alavancagem: ${e}`);
-      }
-    }
+    // USAR PROXY PARA ORDEM REAL
+    const proxyUrlOrder = `/api/binance-proxy?path=/api/v3/order&${signedQuery}`;
+    console.log(`[TradeService] Enviando ordem via Proxy: ${proxyUrlOrder}`);
 
-    // USAR PROXY PARA ORDEM REAL (FUTURES)
-    const proxyUrlOrder = new URL(VERCEL_PROXY);
-    proxyUrlOrder.searchParams.append('path', '/fapi/v1/order');
-
-    // Append all signed query params to proxy URL
-    const queryParams = new URLSearchParams(signedQuery);
-    queryParams.forEach((value, key) => {
-      proxyUrlOrder.searchParams.append(key, value);
-    });
-
-    console.log(`[TradeService] Enviando ordem via Proxy: ${proxyUrlOrder.toString()}`);
-
-    const response = await fetch(proxyUrlOrder.toString(), {
+    const response = await fetch(proxyUrlOrder, {
       method: 'POST',
       headers: { 'X-MBX-APIKEY': apiKey }
     });
@@ -309,7 +249,8 @@ export const tradeService = {
       status: finalSide === 'BUY' ? 'PENDING' : 'EXECUTED',
       binance_order_id: data.orderId?.toString(),
       executed_at: finalSide === 'SELL' ? new Date().toISOString() : undefined,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      profit_loss: profitLoss ?? (finalSide === 'SELL' ? 0 : undefined),
     };
 
     await supabaseSync.syncTrade(realTrade);
@@ -328,6 +269,8 @@ export const tradeService = {
 // Serviço para gerenciar logs
 export const logService = {
   async getLogs(_userId: string, _limit = 100): Promise<BotLog[]> {
+    // In local mode, logs can be read from files as well
+    // For now returning empty or implementing a local file logger
     return [];
   },
 

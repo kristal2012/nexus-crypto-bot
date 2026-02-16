@@ -1,33 +1,35 @@
 /**
  * Risk Settings - SSOT para parâmetros de risco
- * Estratégia: Momentum Trading (5-15 min por operação)
+ * Estratégia: Momentum Trading com filtro sensível + TP seguro
+ * 
+ * MATEMÁTICA DA ESTRATÉGIA:
+ * - Filtro de detecção: 0.03% (ouvir melhor o mercado)
+ * - Take Profit: 1.5% (cobre taxas de 0.2% e tem lucro líquido de ~1.3%)
+ * - Stop Loss: 1.0% (proteção rápida)
+ * - Break-even técnico: 0.30% (nunca buscar menos que isso)
  */
 export const RISK_SETTINGS = {
   // Mean Reversion Strategy - Parâmetros Otimizados (Turbo Scalping)
-  STOP_LOSS_PERCENT: 2.0, // Aumentado para 2% para evitar ruído (saída técnica)
-  TAKE_PROFIT_PERCENT: 5.0, // Aumentado para 5% (objetivo de lucro REAL)
+  STOP_LOSS_PERCENT: 1.0, // 1% - proteção rápida
+  TAKE_PROFIT_PERCENT: 1.5, // 1.5% - cobre taxas Binance (0.2%) + lucro
 
   // Session/position management
-  MAX_HOLD_MINUTES: 30, // Tempo aumentado para permitir desenvolvimento do trend
+  MAX_HOLD_MINUTES: 10, // 10 min - tempo médio de operação
 
   // Capital Management (percent values)
-  CAPITAL_PER_ROUND_PERCENT: 25,
-  MAX_ALLOCATION_PER_PAIR_PERCENT: 15, // Aumentado para 15% (trades mais pesados)
-  SAFETY_RESERVE_PERCENT: 5,
-  MAX_POSITIONS: 5, // Reduzido para 5 (foco em qualidade/mão pesada)
+  CAPITAL_PER_ROUND_PERCENT: 20, // 20% por rodada - mais agressivo
+  MAX_ALLOCATION_PER_PAIR_PERCENT: 10, // 10% por par - até 2 posições
+  SAFETY_RESERVE_PERCENT: 10, // Reserva para segurança
+  MAX_POSITIONS: 5, // 5 posições = 1 por par monitorado
 
-  // High Performance Trading
-  LEVERAGE: 5, // 5x Alavancagem (Padrão sugerido para conta real)
-  TRADE_QUANTITY_USDT: 50, // 50 USDT por operação (base)
-
-  // Momentum Parameters (percent units) - Entrada "Gatilho Rápido"
-  MOMENTUM_BUY_THRESHOLD: 0.15, // Reduzido de 0.3 para 0.15 (qualquer movimento de reversão ativa)
-  MIN_VOLUME_RATIO: 1.05, // Volume apenas 5% acima da média já serve
-  PRICE_VELOCITY_THRESHOLD: 0.1, // Velocidade mínima reduzida
+  // Momentum Parameters - FILTRO SENSÍVEL PARA DETECTAR MAIS OPORTUNIDADES
+  MOMENTUM_BUY_THRESHOLD: 0.01, // 0.01% - detecta micro-movimentos mínimos
+  MIN_VOLUME_RATIO: 1.02, // Volume apenas 2% acima da média
+  PRICE_VELOCITY_THRESHOLD: 0.01, // 0.01% - velocidade mínima extremamente sensível
 
   // Cooldown & Protection
-  PAIR_COOLDOWN_SECONDS: 30, // Reduzido para 30s (reentrada rápida)
-  PROFIT_PROTECT_THRESHOLD: 0.8, // Proteger lucro a partir de 0.8%
+  PAIR_COOLDOWN_SECONDS: 60, // 60s - mais ativo (antes: 300s)
+  PROFIT_PROTECT_THRESHOLD: 1.0, // Proteger lucro a partir de 1%
 
   // Reinvestment
   AUTO_REINVEST: true,
@@ -35,19 +37,19 @@ export const RISK_SETTINGS = {
   // ===== NOVOS FILTROS INTELIGENTES (Quality Over Quantity) =====
 
   // Filtro de Liquidez
-  MIN_QUOTE_VOLUME_24H_USDT: 2_000_000, // Reduzido para 2M (aceita mid-caps voláteis)
+  MIN_QUOTE_VOLUME_24H_USDT: 2_000_000, // 2M - aceita mid-caps voláteis
 
   // Filtro de Volatilidade Intraday
-  MIN_VOLATILITY_PERCENT: 0.15, // Reduzido para 0.15% (aceita mercados menos caóticos)
-  VOLATILITY_WINDOW_TICKS: 20, // Janela mais curta (20 ticks)
+  MIN_VOLATILITY_PERCENT: 0.005, // 0.005% - extremamente sensível para detectar qualquer movimento
+  VOLATILITY_WINDOW_TICKS: 20,
 
   // Circuit Breakers
-  LOSS_STREAK_LIMIT: 4, // Relaxado para 4 perdas
-  DAILY_MAX_DRAWDOWN_PERCENT: 5.0, // Relaxado para 5%
-  CIRCUIT_BREAKER_PAUSE_MINUTES: 30, // Pausa menor (30 min)
+  LOSS_STREAK_LIMIT: 4,
+  DAILY_MAX_DRAWDOWN_PERCENT: 5.0,
+  CIRCUIT_BREAKER_PAUSE_MINUTES: 30,
 
   // Cooldown Dinâmico
-  LOSS_COOLDOWN_BASE_MINUTES: 5, // Apenas 5 min após loss
+  LOSS_COOLDOWN_BASE_MINUTES: 3, // 3 min após loss
   LOSS_COOLDOWN_MULTIPLIER: 1.0,
 };
 

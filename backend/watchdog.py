@@ -7,114 +7,141 @@ import sys
 import logging
 from datetime import datetime
 
-# Configuração do LOG do Guardian
+# Configure Watchdog Logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - [CRYPTUM-GUARDIAN] - %(levelname)s - %(message)s',
+    format='%(asctime)s - [GUARDIAN] - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("cryptum_guardian.log", encoding='utf-8'),
+        logging.FileHandler("watchdog.log", encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
-
+# Force UTF-8 for stdout/stderr if possible
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 logger = logging.getLogger("Guardian")
 
-# Configurações
-HEALTH_URL = "http://127.0.0.1:8002/api/status"
-BOT_SCRIPT = r"c:\cryptum7.1_bot\run_engine_headless.bat"
-LOG_FILE = "cryptum_watchdog.log"
-CHECK_INTERVAL = 60  # segundos
-MAX_TIMEOUTS = 3     # reinicia após 3 falhas seguidas
+# Configuration
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Path to the Cryptum 7.1 workspace
+BOT_WORKSPACE = r"c:\cryptum7.1_bot"
+# Command: npx tsx src/headless-bot.ts
+BOT_START_COMMAND = ["npx", "tsx", "src/headless-bot.ts"]
 
-class CryptumGuardian:
+# Use localhost for internal monitoring
+API_URL = "http://127.0.0.1:8001/api/status"
+CHECK_INTERVAL = 60  # seconds
+MAX_TIMEOUTS = 3     # restarts after 3 failed checks
+STALE_DATA_THRESHOLD = 600 # seconds (10 mins)
+
+class BotGuardian:
     def __init__(self):
         self.process = None
         self.failed_checks = 0
+        self.last_success_time = time.time()
         self.is_running = True
 
     def start_bot(self):
-        """Inicia o robô capturando a saída para o log"""
+        """Starts the bot process using tsx in the correct workspace"""
         if self.process:
             self.stop_bot()
             
-        logger.info(f"🚀 Iniciando robô via: {BOT_SCRIPT}")
+        logger.info(f"Starting Volatile Trader Headless in: {BOT_WORKSPACE}")
         try:
-            # Abrir log em modo append
-            log_file = open("bot_output.log", "a", encoding='utf-8')
-            log_file.write(f"\n--- RESTART: {datetime.now()} ---\n")
-            log_file.flush()
+            # Capture errors to a file for debugging
+            log_path = os.path.join(BOT_WORKSPACE, "bot_error.log")
+            with open(log_path, "a") as err_log:
+                err_log.write(f"\n--- BOT STARTUP: {datetime.now()} ---\n")
             
-            # No Windows, usar shell=True e redirecionar streams
-            self.process = subprocess.Popen([BOT_SCRIPT], 
-                                         shell=True,
-                                         stdout=log_file,
-                                         stderr=log_file,
-                                         bufsize=1,
-                                         universal_newlines=True)
+            self.error_file = open(log_path, "a", buffering=1)
+            # Running with shell=True on Windows to handle npx correctly
+            self.process = subprocess.Popen(BOT_START_COMMAND, 
+                                         cwd=BOT_WORKSPACE,
+                                         stdout=self.error_file, 
+                                         stderr=self.error_file,
+                                         shell=True) 
             self.failed_checks = 0
-            logger.info("✅ Processo do robô iniciado (saída redirecionada para bot_output.log).")
+            self.last_success_time = time.time()
+            logger.info("Bot process spawned via tsx (Errors directed to bot_error.log).")
         except Exception as e:
-            logger.error(f"❌ Falha ao iniciar robô: {e}")
+            logger.error(f"Failed to start bot: {e}")
 
     def stop_bot(self):
-        """Tenta parar o robô (difícil via BAT, mas tentamos taskkill)"""
-        logger.warning("Parando instâncias anteriores do robô...")
-        try:
-            # Mata qualquer processo tsx/node do cryptum (pode ser agressivo se houver outros)
-            # Melhor usar o PID se tivéssemos, mas BAT cria sub-processos.
-            # Vamos assumir que o usuário só roda um cryptum.
-            subprocess.run(["taskkill", "/F", "/FI", "WINDOWTITLE eq Cryptum*", "/T"], capture_output=True)
-        except:
-            pass
+        """Stops the bot process safely"""
+        if self.process:
+            logger.warning("Stopping bot process...")
+            try:
+                # Terminate process tree on Windows
+                if sys.platform == "win32":
+                    subprocess.run(["taskkill", "/F", "/T", "/PID", str(self.process.pid)], capture_output=True)
+                else:
+                    os.kill(self.process.pid, signal.SIGTERM)
+                self.process.wait(timeout=5)
+            except:
+                try:
+                    self.process.kill()
+                except:
+                    pass
+            self.process = None
+            logger.info("Process terminated.")
 
     def check_health(self):
-        """Verifica se a API de saúde responde na porta 8002"""
+        """Checks if the bot API is responsive and healthy"""
         try:
-            response = requests.get(HEALTH_URL, timeout=10)
+            response = requests.get(API_URL, timeout=10)
             if response.status_code == 200:
                 data = response.json()
-                active = data.get("is_running", True)
-                logger.info(f"💓 Health Check: OK (Status: {'Ativo' if active else 'Idle'})")
+                is_running = data.get("is_running", True) # Headless returns this
+                
+                if is_running:
+                    logger.info("Health Check: PASS (Bot is active)")
+                else:
+                    logger.info(f"Health Check: PASS (Bot is IDLE/PAUSED)")
+                
                 self.failed_checks = 0
+                self.last_success_time = time.time()
                 return True
             else:
-                logger.error(f"⚠️ Health Check: Status {response.status_code}")
+                logger.error(f"Health Check: FAIL (Status Code {response.status_code})")
         except Exception as e:
-            logger.error(f"❌ Health Check: SEM RESPOSTA ({e})")
+            if self.failed_checks > 1:
+                logger.error(f"Health Check: ERROR ({e})")
         
         self.failed_checks += 1
         return False
 
     def run(self):
-        logger.info("🛡️ Cryptum Guardian iniciado. Monitorando 24/7...")
+        """Main Watchdog Loop"""
+        logger.info("Guardian Watchdog Started. Monitoring Volatile Trader 24/7...")
         self.start_bot()
-        time.sleep(30) # Espera inicial para boot
-        
+        time.sleep(60) # Increased wait for bot to initialize and sync cloud
+
         while self.is_running:
             try:
-                # 1. Verificar se o processo ainda existe no SO
+                # Check if process is still alive at OS level
                 if self.process and self.process.poll() is not None:
-                    logger.error("🚨 O PROCESSO DO ROBÔ MORREU NO SISTEMA!")
+                    logger.error("BOT PROCESS DIED UNEXPECTEDLY!")
                     self.start_bot()
-                    time.sleep(30)
-                    continue
-
-                # 2. Verificar saúde via API
+                    time.sleep(30) 
+                
+                # Check API Health
                 if not self.check_health():
                     if self.failed_checks >= MAX_TIMEOUTS:
-                        logger.critical("🚨 ROBÔ TRAVADO (TIMEOUT). REINICIANDO...")
+                        logger.critical("BOT UNRESPONSIVE. PERFORMING EMERGENCY RESTART...")
                         self.start_bot()
-                        time.sleep(30)
+                        time.sleep(60)
                 
                 time.sleep(CHECK_INTERVAL)
-                
             except KeyboardInterrupt:
-                logger.info("👋 Guardian desligando...")
+                logger.info("👋 Watchdog shutting down...")
                 self.is_running = False
+                self.stop_bot()
             except Exception as e:
-                logger.error(f"Erro inesperado no Guardian: {e}")
+                logger.error(f"Unexpected Guardian Error: {e}")
                 time.sleep(10)
 
 if __name__ == "__main__":
-    guardian = CryptumGuardian()
+    guardian = BotGuardian()
     guardian.run()
