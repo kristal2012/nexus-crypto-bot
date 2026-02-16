@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { FIXED_USER_ID } from "@/config/userConfig";
+import { FIXED_USER_ID, IS_SIMULATION_MODE } from "@/config/userConfig";
 import { Eye, EyeOff, Save, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { clearBinanceValidationCache } from "@/services/binanceService";
 import { BinanceApiKeysTroubleshooting } from "./BinanceApiKeysTroubleshooting";
@@ -43,10 +43,7 @@ export const BinanceApiSettings = () => {
 
   const checkSession = async () => {
     // BYPASS PARA MODO SIMULAÇÃO
-    const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
-
-    if (isSimulation) {
+    if (IS_SIMULATION_MODE) {
       setIsSessionValid(true);
       return;
     }
@@ -86,7 +83,7 @@ export const BinanceApiSettings = () => {
     // Verificar se a sessão é válida
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    if (sessionError || !session) {
+    if (!IS_SIMULATION_MODE && (sessionError || !session)) {
       console.error('❌ Sessão inválida ao tentar salvar:', sessionError);
       toast.error("❌ Sua sessão expirou. Recarregue a página.");
       return;

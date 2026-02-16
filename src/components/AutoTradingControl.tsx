@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bot, Sparkles, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { FIXED_USER_ID } from "@/config/userConfig";
+import { FIXED_USER_ID, IS_SIMULATION_MODE } from "@/config/userConfig";
 import { executeAutoTradeAnalysis, AutoTradeError } from "@/services/autoTradeService";
 import { useTradingConfig } from "@/hooks/useTradingConfig";
 import { useBotActive } from "@/hooks/useBotActive";
@@ -31,10 +31,7 @@ export const AutoTradingControl = () => {
 
   const checkCredentials = async () => {
     // BYPASS PARA MODO SIMULAÇÃO
-    const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
-
-    if (isSimulation) return;
+    if (IS_SIMULATION_MODE) return;
 
     try {
       const { data } = await supabase

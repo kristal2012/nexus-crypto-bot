@@ -6,8 +6,10 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { IS_SIMULATION_MODE } from "@/config/userConfig";
 
 export interface AutoTradeResponse {
+  // ... (rest of interfaces remain same)
   success: boolean;
   executed_trades?: any[];
   rate_limited?: boolean;
@@ -41,10 +43,7 @@ export interface AutoTradeError {
  */
 export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => {
   // BYPASS PARA MODO SIMULAÇÃO
-  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
-
-  if (isSimulation) {
+  if (IS_SIMULATION_MODE) {
     console.log('🧪 [autoTradeService] Simulando análise IA...');
     // Pequeno delay para simular processamento
     await new Promise(resolve => setTimeout(resolve, 1500));
