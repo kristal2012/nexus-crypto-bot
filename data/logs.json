@@ -1,43 +1,5 @@
 [
   {
-    "id": "g138gra3u",
-    "created_at": "2026-02-15T07:45:13.948Z",
-    "level": "INFO",
-    "message": "AI/Remote updated trading parameters",
-    "details": {
-      "params": {
-        "STOP_LOSS_PERCENT": 0.8,
-        "TAKE_PROFIT_PERCENT": 1.5,
-        "MAX_HOLD_MINUTES": 30,
-        "CAPITAL_PER_ROUND_PERCENT": 25,
-        "MAX_ALLOCATION_PER_PAIR_PERCENT": 15,
-        "SAFETY_RESERVE_PERCENT": 5,
-        "MAX_POSITIONS": 5,
-        "LEVERAGE": 5,
-        "TRADE_QUANTITY_USDT": 50,
-        "MOMENTUM_BUY_THRESHOLD": 0.2,
-        "MIN_VOLUME_RATIO": 1.05,
-        "PRICE_VELOCITY_THRESHOLD": 0.1,
-        "PAIR_COOLDOWN_SECONDS": 30,
-        "PROFIT_PROTECT_THRESHOLD": 0.8,
-        "AUTO_REINVEST": true,
-        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
-        "MIN_VOLATILITY_PERCENT": 0.15,
-        "VOLATILITY_WINDOW_TICKS": 20,
-        "LOSS_STREAK_LIMIT": 4,
-        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
-        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
-        "LOSS_COOLDOWN_BASE_MINUTES": 5,
-        "LOSS_COOLDOWN_MULTIPLIER": 1,
-        "takeProfitPercent": 1.5,
-        "stopLossPercent": 0.8,
-        "maxPositions": 5,
-        "momentumBuyThreshold": 0.2,
-        "minConfidence": 0.6
-      }
-    }
-  },
-  {
     "id": "798gv5s7k",
     "created_at": "2026-02-15T07:45:14.326Z",
     "level": "INFO",
@@ -9952,6 +9914,42 @@
       "timestamp": "2026-02-16T03:22:18.253Z",
       "platform": "win32",
       "uptime": 16406
+    }
+  },
+  {
+    "id": "mmo1q5nwg",
+    "created_at": "2026-02-16T22:59:48.209Z",
+    "level": "INFO",
+    "message": "AI/Remote updated trading parameters",
+    "details": {
+      "params": {
+        "STOP_LOSS_PERCENT": 1,
+        "TAKE_PROFIT_PERCENT": 1.5,
+        "MAX_HOLD_MINUTES": 10,
+        "CAPITAL_PER_ROUND_PERCENT": 20,
+        "MAX_ALLOCATION_PER_PAIR_PERCENT": 10,
+        "SAFETY_RESERVE_PERCENT": 10,
+        "MAX_POSITIONS": 5,
+        "MOMENTUM_BUY_THRESHOLD": 0.01,
+        "MIN_VOLUME_RATIO": 1.02,
+        "PRICE_VELOCITY_THRESHOLD": 0.01,
+        "PAIR_COOLDOWN_SECONDS": 60,
+        "PROFIT_PROTECT_THRESHOLD": 1,
+        "AUTO_REINVEST": true,
+        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
+        "MIN_VOLATILITY_PERCENT": 0.005,
+        "VOLATILITY_WINDOW_TICKS": 20,
+        "LOSS_STREAK_LIMIT": 4,
+        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
+        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
+        "LOSS_COOLDOWN_BASE_MINUTES": 3,
+        "LOSS_COOLDOWN_MULTIPLIER": 1,
+        "takeProfitPercent": 1.2,
+        "stopLossPercent": 0.9,
+        "maxPositions": 4,
+        "momentumBuyThreshold": 0.15,
+        "minConfidence": 0.6
+      }
     }
   }
 ]
