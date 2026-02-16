@@ -1,14 +1,29 @@
 import { RISK_SETTINGS } from './riskService';
 
-// Módulos Node.JS protegidos para não quebrar o build do Vite (Frontend)
+const isBrowser = typeof window !== 'undefined';
+
+// Módulos Node.JS protegidos (Carregamento condicional para não quebrar o Vite/Browser)
 let fs: any = null;
 let path: any = null;
 
-const isBrowser = typeof window !== 'undefined';
+// Função auxiliar para carregar módulos do Node sem quebrar o bundler do navegador
+const initNodeModules = async () => {
+    if (!isBrowser && !fs) {
+        try {
+            // Usamos import dinâmico com /* @vite-ignore */ para evitar que o Vite analise o módulo
+            const fsModule = await import(/* @vite-ignore */ 'fs');
+            const pathModule = await import(/* @vite-ignore */ 'path');
+            fs = fsModule.default || fsModule;
+            path = pathModule.default || pathModule;
+        } catch (e) {
+            console.error('❌ Falha ao carregar módulos do Node:', e);
+        }
+    }
+};
 
+// Inicialização imediata se não for browser
 if (!isBrowser) {
-    import('fs').then(module => fs = module);
-    import('path').then(module => path = module);
+    initNodeModules();
 }
 
 interface MoltBotIntel {

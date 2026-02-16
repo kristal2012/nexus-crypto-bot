@@ -196,3 +196,14 @@ export const binanceService = {
     return lossPercent >= stopLossPercent;
   }
 };
+
+/**
+ * [WEB-ONLY] Limpa o cache de validação da API para forçar revalidação no frontend
+ */
+export const clearBinanceValidationCache = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('binance_validation_status');
+    localStorage.removeItem('binance_api_validated');
+    console.log('🧹 [BinanceService] Cache de validação limpo.');
+  }
+};

@@ -4,18 +4,24 @@ const isBrowser = typeof window !== 'undefined';
 let fs: any = null;
 let path: any = null;
 
-if (!isBrowser) {
-    // No Node.js (VPS), usamos require para garantir carregamento síncrono
-    try {
-        const { createRequire } = await import('module');
-        const require = createRequire(import.meta.url);
-        fs = require('fs');
-        path = require('path');
-    } catch (e) {
-        // Fallback para ambientes que não suportam experimental-modules ou similar
-        fs = null;
-        path = null;
+// Função auxiliar para carregar módulos do Node sem quebrar o bundler do navegador
+const initNodeModules = async () => {
+    if (!isBrowser && !fs) {
+        try {
+            // Usamos import dinâmico com /* @vite-ignore */ para evitar que o Vite analise o módulo
+            const fsModule = await import(/* @vite-ignore */ 'fs');
+            const pathModule = await import(/* @vite-ignore */ 'path');
+            fs = fsModule.default || fsModule;
+            path = pathModule.default || pathModule;
+        } catch (e) {
+            console.error('❌ Falha ao carregar módulos do Node:', e);
+        }
     }
+};
+
+// Inicialização imediata se não for browser
+if (!isBrowser) {
+    initNodeModules();
 }
 
 
