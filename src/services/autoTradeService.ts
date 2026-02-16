@@ -40,6 +40,22 @@ export interface AutoTradeError {
  * Returns normalized response or throws AutoTradeError with parsed error details.
  */
 export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => {
+  // BYPASS PARA MODO SIMULAÇÃO
+  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
+
+  if (isSimulation) {
+    console.log('🧪 [autoTradeService] Simulando análise IA...');
+    // Pequeno delay para simular processamento
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    return {
+      success: true,
+      message: "Análise simulada concluída. Nenhuma oportunidade de alto risco encontrada.",
+      executed_trades: []
+    };
+  }
+
   try {
     const { data, error } = await supabase.functions.invoke('ai-auto-trade');
 
@@ -70,18 +86,18 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
     if (error) {
       const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
       const errorMsg = error?.message || errorStr;
-      
+
       // Check for 429 or rate limit indicators
       if (errorStr.includes('429') || errorMsg.includes('Rate limit') || errorMsg.includes('wait')) {
         console.log('⏳ [autoTradeService] Rate limit detected in error (fallback)');
-        
+
         // Extract remaining seconds if available
         let remainingSeconds = data?.remaining_seconds || 120;
         const match = errorMsg.match(/(\d+)\s*second/i);
         if (match) {
           remainingSeconds = parseInt(match[1]);
         }
-        
+
         return {
           success: false,
           rate_limited: true,
@@ -139,7 +155,7 @@ const parseSupabaseError = (error: any): AutoTradeError => {
       isRateLimit: true,
       remainingSeconds: match ? parseInt(match[1]) : undefined,
       message: errorMessage,
-      displayMessage: match 
+      displayMessage: match
         ? `Aguarde ${match[1]} segundos antes da próxima análise`
         : 'Aguarde antes da próxima análise (rate limit)',
     };
