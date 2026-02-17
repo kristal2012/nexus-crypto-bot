@@ -42,15 +42,35 @@ export interface AutoTradeError {
  * Returns normalized response or throws AutoTradeError with parsed error details.
  */
 export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => {
-  // BYPASS PARA MODO SIMULAÇÃO
   if (IS_SIMULATION_MODE) {
     console.log('🧪 [autoTradeService] Simulando análise IA...');
     // Pequeno delay para simular processamento
     await new Promise(resolve => setTimeout(resolve, 1500));
 
+    // Decidir aleatoriamente se haverá um trade (60% de chance)
+    const shouldTrade = Math.random() > 0.4;
+    const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'LINKUSDT'];
+    const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+
+    if (shouldTrade) {
+      console.log(`🎰 [autoTradeService] Simulação: Oportunidade encontrada em ${randomSymbol}`);
+      return {
+        success: true,
+        message: `[SIMULAÇÃO] Executada operação de COMPRA em ${randomSymbol} com 89.5% de confiança.`,
+        executed_trades: [{
+          symbol: randomSymbol,
+          side: 'BUY',
+          quantity: 0.1,
+          price: 50000,
+          is_demo: true,
+          executed_at: new Date().toISOString()
+        }]
+      };
+    }
+
     return {
       success: true,
-      message: "Análise simulada concluída. Nenhuma oportunidade de alto risco encontrada.",
+      message: "Análise simulada concluída. Nenhuma oportunidade de alto risco encontrada no momento.",
       executed_trades: []
     };
   }

@@ -13,6 +13,7 @@ import { useBotActive } from "@/hooks/useBotActive";
 
 export const AutoTradingControl = () => {
   const [lastAnalysis, setLastAnalysis] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
   const { config } = useTradingConfig();
   const { isActive, toggleBotActive } = useBotActive();
@@ -34,7 +35,7 @@ export const AutoTradingControl = () => {
     if (IS_SIMULATION_MODE) return;
 
     try {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('binance_api_keys')
         .select('api_key, api_secret_encrypted')
         .eq('user_id', FIXED_USER_ID)
@@ -68,6 +69,7 @@ export const AutoTradingControl = () => {
       }
 
       isExecuting = true;
+      setIsAnalyzing(true);
       try {
         console.log('🤖 [AutoTradingControl] Executing automatic analysis...');
         const response = await executeAutoTradeAnalysis();
@@ -143,6 +145,7 @@ export const AutoTradingControl = () => {
         });
       } finally {
         isExecuting = false;
+        setIsAnalyzing(false);
       }
     };
 
@@ -162,7 +165,7 @@ export const AutoTradingControl = () => {
 
   const loadLastAnalysis = async () => {
     try {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('ai_analysis_results')
         .select('*')
         .eq('user_id', FIXED_USER_ID)
@@ -225,7 +228,7 @@ export const AutoTradingControl = () => {
             </div>
           </div>
           <Badge variant={isActive ? "default" : "secondary"}>
-            {isActive ? "ATIVO" : "PAUSADO"}
+            {isAnalyzing ? "ANALISANDO..." : isActive ? "ATIVO" : "PAUSADO"}
           </Badge>
         </div>
 
