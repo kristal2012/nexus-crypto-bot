@@ -1,34 +1,34 @@
 /**
  * Risk Settings - SSOT para parâmetros de risco
- * Estratégia: Momentum Trading com filtro sensível + TP seguro
+ * Estratégia: Cryptum 7.1 Futures (Scalping/Mean Reversion)
  * 
  * MATEMÁTICA DA ESTRATÉGIA:
- * - Filtro de detecção: 0.03% (ouvir melhor o mercado)
- * - Take Profit: 1.5% (cobre taxas de 0.2% e tem lucro líquido de ~1.3%)
- * - Stop Loss: 1.0% (proteção rápida)
- * - Break-even técnico: 0.30% (nunca buscar menos que isso)
+ * - Entrada: Reversão à Média (Bollinger Bands + RSI)
+ * - Take Profit: 1.5% (Alvo Scalping)
+ * - Stop Loss: 1.0% (Proteção Rápida)
+ * - Break-even: 0.30%
  */
 export const RISK_SETTINGS = {
-  // Mean Reversion Strategy - Parâmetros Otimizados (Turbo Scalping)
+  // Mean Reversion Strategy - Parâmetros Otimizados (Futures Scalping)
   STOP_LOSS_PERCENT: 1.0, // 1% - proteção rápida
-  TAKE_PROFIT_PERCENT: 1.5, // 1.5% - cobre taxas Binance (0.2%) + lucro
+  TAKE_PROFIT_PERCENT: 1.5, // 1.5% - alvo scalping
 
   // Session/position management
-  MAX_HOLD_MINUTES: 10, // 10 min - tempo médio de operação
+  MAX_HOLD_MINUTES: 10, // 10 min - tempo médio de scalp
 
   // Capital Management (percent values)
-  CAPITAL_PER_ROUND_PERCENT: 20, // 20% por rodada - mais agressivo
-  MAX_ALLOCATION_PER_PAIR_PERCENT: 10, // 10% por par - até 2 posições
-  SAFETY_RESERVE_PERCENT: 10, // Reserva para segurança
-  MAX_POSITIONS: 5, // 5 posições = 1 por par monitorado
+  CAPITAL_PER_ROUND_PERCENT: 20, // 20% por operação
+  MAX_ALLOCATION_PER_PAIR_PERCENT: 10,
+  SAFETY_RESERVE_PERCENT: 10,
+  MAX_POSITIONS: 5,
 
-  // Momentum Parameters - FILTRO SENSÍVEL PARA DETECTAR MAIS OPORTUNIDADES
-  MOMENTUM_BUY_THRESHOLD: 0.01, // 0.01% - detecta micro-movimentos mínimos
-  MIN_VOLUME_RATIO: 1.02, // Volume apenas 2% acima da média
-  PRICE_VELOCITY_THRESHOLD: 0.01, // 0.01% - velocidade mínima extremamente sensível
+  // Secondary Filters (Legacy from Volatile Bot - Mantidos para compatibilidade)
+  MOMENTUM_BUY_THRESHOLD: 0.01, // 0.01% - Sensibilidade de movimento (Secundário)
+  MIN_VOLUME_RATIO: 1.02, // Volume acima da média
+  PRICE_VELOCITY_THRESHOLD: 0.01,
 
   // Cooldown & Protection
-  PAIR_COOLDOWN_SECONDS: 60, // 60s - mais ativo (antes: 300s)
+  PAIR_COOLDOWN_SECONDS: 60, // 60s - Scalping dinâmico
   PROFIT_PROTECT_THRESHOLD: 1.0, // Proteger lucro a partir de 1%
 
   // Reinvestment

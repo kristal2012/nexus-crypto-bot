@@ -15,7 +15,7 @@ import { localDb } from './services/localDbService';
 
 async function startHeadlessBot() {
     console.log('----------------------------------------------------');
-    console.log('   VOLATILE TRADER - HEADLESS ENGINE (24/7)         ');
+    console.log('   CRYPTUM 7.1 - FUTURES ENGINE (SCALPING)          ');
     console.log('----------------------------------------------------');
     console.log(`🕒 Início: ${new Date().toLocaleString()}`);
 
