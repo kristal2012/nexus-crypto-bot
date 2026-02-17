@@ -24,12 +24,17 @@ export interface Candle {
 }
 
 // 🚀 Prioridade para Futures Mirrors e Regionais (Seguro para Geoblocks)
+// 🚀 Prioridade para Futures Mirrors e Regionais (Seguro para Geoblocks)
 const BINANCE_BASE_URLS = [
-  'https://fapi.binance.me',  // Futures Proxy Me (Prioridade para VPS)
-  'https://fapi.binance.com', // Futures Principal
-  'https://api.binance.me',   // Spot Proxy Me
+  'https://fapi.binance.me',   // Futures Proxy Me (Prioridade para VPS)
+  'https://fapi.binance.com',  // Futures Principal
+  'https://fapi.binance.info', // Info Mirror
+  'https://fapi.binance.net',  // Net Mirror
+  'https://api.binance.me',    // Spot Proxy Me
   'https://api.binance.com',
   'https://api1.binance.com',
+  'https://api2.binance.com',
+  'https://api3.binance.com',
 ];
 
 // Vercel Proxy Bridge (Bypass Geoblock)
