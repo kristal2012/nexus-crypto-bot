@@ -1,35 +1,5 @@
 [
   {
-    "id": "8l7o1uwut",
-    "created_at": "2026-02-17T04:06:24.345Z",
-    "level": "ERROR",
-    "message": "Erro ao executar compra",
-    "details": {
-      "message": "Failed to parse URL from /api/binance-proxy?path=/fapi/v1/ticker/price&symbol=XRPUSDT",
-      "stack": "TypeError: Failed to parse URL from /api/binance-proxy?path=/fapi/v1/ticker/price&symbol=XRPUSDT\n    at node:internal/deps/undici/undici:16416:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async Object.executeTrade (c:\\cryptum7.1_bot\\src\\services\\botService.ts:168:27)\n    at async TradingService.executeBuy (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:631:22)\n    at async TradingService.analyzeMarketAndTrade (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:504:13)\n    at async Timeout._onTimeout (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:217:9)"
-    }
-  },
-  {
-    "id": "65lx2qwu6",
-    "created_at": "2026-02-17T04:06:24.607Z",
-    "level": "ERROR",
-    "message": "Erro ao executar compra",
-    "details": {
-      "message": "Failed to parse URL from /api/binance-proxy?path=/fapi/v1/ticker/price&symbol=SOLUSDT",
-      "stack": "TypeError: Failed to parse URL from /api/binance-proxy?path=/fapi/v1/ticker/price&symbol=SOLUSDT\n    at node:internal/deps/undici/undici:16416:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async Object.executeTrade (c:\\cryptum7.1_bot\\src\\services\\botService.ts:168:27)\n    at async TradingService.executeBuy (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:631:22)\n    at async TradingService.analyzeMarketAndTrade (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:504:13)\n    at async Timeout._onTimeout (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:217:9)"
-    }
-  },
-  {
-    "id": "1y798iuvo",
-    "created_at": "2026-02-17T04:06:24.697Z",
-    "level": "ERROR",
-    "message": "Erro ao executar compra",
-    "details": {
-      "message": "Failed to parse URL from /api/binance-proxy?path=/fapi/v1/ticker/price&symbol=ETHUSDT",
-      "stack": "TypeError: Failed to parse URL from /api/binance-proxy?path=/fapi/v1/ticker/price&symbol=ETHUSDT\n    at node:internal/deps/undici/undici:16416:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async Object.executeTrade (c:\\cryptum7.1_bot\\src\\services\\botService.ts:168:27)\n    at async TradingService.executeBuy (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:631:22)\n    at async TradingService.analyzeMarketAndTrade (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:504:13)\n    at async Timeout._onTimeout (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:217:9)"
-    }
-  },
-  {
     "id": "8difpvnhk",
     "created_at": "2026-02-17T04:06:24.823Z",
     "level": "ERROR",
@@ -4997,6 +4967,88 @@
     "details": {
       "message": "Failed to parse URL from /api/binance-proxy?path=/fapi/v1/ticker/price&symbol=SOLUSDT",
       "stack": "TypeError: Failed to parse URL from /api/binance-proxy?path=/fapi/v1/ticker/price&symbol=SOLUSDT\n    at node:internal/deps/undici/undici:16416:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async Object.executeTrade (c:\\cryptum7.1_bot\\src\\services\\botService.ts:168:27)\n    at async TradingService.executeBuy (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:631:22)\n    at async TradingService.analyzeMarketAndTrade (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:504:13)\n    at async Timeout._onTimeout (c:\\cryptum7.1_bot\\src\\services\\tradingService.ts:217:9)"
+    }
+  },
+  {
+    "id": "ly9tviktk",
+    "created_at": "2026-02-17T04:19:26.808Z",
+    "level": "INFO",
+    "message": "AI/Remote updated trading parameters",
+    "details": {
+      "params": {
+        "STOP_LOSS_PERCENT": 1,
+        "TAKE_PROFIT_PERCENT": 1.5,
+        "MAX_HOLD_MINUTES": 10,
+        "CAPITAL_PER_ROUND_PERCENT": 20,
+        "MAX_ALLOCATION_PER_PAIR_PERCENT": 10,
+        "SAFETY_RESERVE_PERCENT": 10,
+        "MAX_POSITIONS": 5,
+        "MOMENTUM_BUY_THRESHOLD": 0.01,
+        "MIN_VOLUME_RATIO": 1.02,
+        "PRICE_VELOCITY_THRESHOLD": 0.01,
+        "PAIR_COOLDOWN_SECONDS": 60,
+        "PROFIT_PROTECT_THRESHOLD": 1,
+        "AUTO_REINVEST": true,
+        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
+        "MIN_VOLATILITY_PERCENT": 0.005,
+        "VOLATILITY_WINDOW_TICKS": 20,
+        "LOSS_STREAK_LIMIT": 4,
+        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
+        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
+        "LOSS_COOLDOWN_BASE_MINUTES": 3,
+        "LOSS_COOLDOWN_MULTIPLIER": 1,
+        "takeProfitPercent": 1.2,
+        "stopLossPercent": 0.9,
+        "maxPositions": 4,
+        "momentumBuyThreshold": 0.15,
+        "minConfidence": 0.6
+      }
+    }
+  },
+  {
+    "id": "qzwhoy7xe",
+    "created_at": "2026-02-17T04:34:51.469Z",
+    "level": "INFO",
+    "message": "AI/Remote updated trading parameters",
+    "details": {
+      "params": {
+        "STOP_LOSS_PERCENT": 1,
+        "TAKE_PROFIT_PERCENT": 1.5,
+        "MAX_HOLD_MINUTES": 10,
+        "CAPITAL_PER_ROUND_PERCENT": 20,
+        "MAX_ALLOCATION_PER_PAIR_PERCENT": 10,
+        "SAFETY_RESERVE_PERCENT": 10,
+        "MAX_POSITIONS": 5,
+        "MOMENTUM_BUY_THRESHOLD": 0.01,
+        "MIN_VOLUME_RATIO": 1.02,
+        "PRICE_VELOCITY_THRESHOLD": 0.01,
+        "PAIR_COOLDOWN_SECONDS": 60,
+        "PROFIT_PROTECT_THRESHOLD": 1,
+        "AUTO_REINVEST": true,
+        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
+        "MIN_VOLATILITY_PERCENT": 0.005,
+        "VOLATILITY_WINDOW_TICKS": 20,
+        "LOSS_STREAK_LIMIT": 4,
+        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
+        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
+        "LOSS_COOLDOWN_BASE_MINUTES": 3,
+        "LOSS_COOLDOWN_MULTIPLIER": 1,
+        "takeProfitPercent": 2,
+        "stopLossPercent": 1,
+        "maxPositions": 4,
+        "momentumBuyThreshold": 0.15,
+        "minConfidence": 0.6
+      }
+    }
+  },
+  {
+    "id": "52q6x31xa",
+    "created_at": "2026-02-17T04:36:39.735Z",
+    "level": "SUCCESS",
+    "message": "Teste de Conexão efetuado às 10:36:39 PM",
+    "details": {
+      "source": "test_log.ts",
+      "test_id": "p7ttb"
     }
   }
 ]

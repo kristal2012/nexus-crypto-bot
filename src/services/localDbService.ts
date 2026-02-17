@@ -21,7 +21,7 @@ const initNodeModules = async () => {
 
 // Inicialização imediata se não for browser
 if (!isBrowser) {
-    initNodeModules();
+    await initNodeModules();
 }
 
 
