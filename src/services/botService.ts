@@ -2,6 +2,7 @@ import { localDb } from "./localDbService";
 import { supabaseSync } from "./supabaseSyncService";
 import { z } from "zod";
 import { generateBinanceSignature } from "@/utils/binance-auth";
+import { binanceService } from "./binanceService";
 
 export interface BotConfig {
   id: string;
@@ -164,10 +165,13 @@ export const tradeService = {
     console.log(`[TradeService] Executando ordem LOCAL: ${finalSide} ${finalQuantity} ${finalSymbol}`);
 
     // Obter preço atual para registro (VIA PROXY)
-    const proxyUrlPrice = `/api/binance-proxy?path=/fapi/v1/ticker/price&symbol=${finalSymbol}`;
-    const responsePrice = await fetch(proxyUrlPrice);
-    const priceData = await responsePrice.json();
-    const currentPrice = parseFloat(priceData.price);
+    // Obter preço atual para registro (VIA binanceService para compatibilidade Node/Browser)
+    const priceInfo = await binanceService.getPrice(finalSymbol);
+    const currentPrice = priceInfo ? priceInfo.price : 0;
+
+    if (!priceInfo) {
+      console.warn(`[TradeService] Alerta: Preço não disponível para ${finalSymbol}, usando 0.`);
+    }
 
     if (testMode) {
       console.log(`[TradeService] [SIMULAÇÃO] Simulando ordem de ${finalSide} para ${finalSymbol} ao preço de ${currentPrice}`);
