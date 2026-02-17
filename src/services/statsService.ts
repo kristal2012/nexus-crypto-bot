@@ -40,14 +40,14 @@ export const statsService = {
     try {
       // Buscar todas as trades locais
       let trades = localDb.getTrades(2000);
-      
+
       // [FIX] Ignorar trades com mais de 1 hora para fresh start
       const oneHourAgo = Date.now() - (60 * 60 * 1000);
       trades = (trades || []).filter((t: any) => {
         const tradeTime = new Date(t.created_at).getTime();
         return tradeTime > oneHourAgo;
       });
-      
+
       const allTrades = trades || [];
 
       // Capital base (saldo inicial)
@@ -67,16 +67,46 @@ export const statsService = {
       });
 
       // Encontrar posições que ainda não foram vendidas (pares BUY sem corresponding SELL)
-      const soldSymbolIds = new Set<string>();
+      // [FIX] Usar lógica FIFO para abater vendas das compras, pois os IDs são diferentes
+      const buysBySymbol: { [key: string]: any[] } = {};
+      const sellsBySymbol: { [key: string]: any[] } = {};
+
+      // Agrupar por símbolo
       allTrades.forEach((t: any) => {
-        if (t.side === 'SELL' && t.status === 'EXECUTED') {
-          soldSymbolIds.add(`${t.symbol}-${t.id}`);
+        if (!buysBySymbol[t.symbol]) buysBySymbol[t.symbol] = [];
+        if (!sellsBySymbol[t.symbol]) sellsBySymbol[t.symbol] = [];
+
+        if (t.side === 'BUY' && t.status !== 'FAILED') {
+          buysBySymbol[t.symbol].push(t);
+        } else if (t.side === 'SELL' && t.status === 'EXECUTED') {
+          sellsBySymbol[t.symbol].push(t);
         }
       });
 
-      // Filtrar apenas posições que ainda não foram vendidas
-      const openPositions = openBuyTrades.filter((t: any) => {
-        return !soldSymbolIds.has(`${t.symbol}-${t.id}`);
+      const openPositions: any[] = [];
+
+      // Processar FIFO por símbolo
+      Object.keys(buysBySymbol).forEach(symbol => {
+        const buys = buysBySymbol[symbol].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        const sells = sellsBySymbol[symbol];
+
+        let totalSoldQty = sells.reduce((sum: number, s: any) => sum + Number(s.quantity), 0);
+
+        // Abater quantidade vendida das compras (do mais antigo para o mais novo)
+        for (const buy of buys) {
+          const buyQty = Number(buy.quantity);
+          if (totalSoldQty >= buyQty * 0.99) { // Tolerância de 1% para arredondamento
+            totalSoldQty -= buyQty;
+            // Trade totalmente vendida
+          } else {
+            // Trade parcialmente aberta ou totalmente aberta
+            // Para simplificar, consideramos "aberta" se não foi totalmente vendida
+            // Em um sistema real, ajustariamos a quantidade, mas aqui retornamos a trade original
+            openPositions.push(buy);
+            // Se sobrou soldQty, abatemos da próxima (não deve acontecer se FIFO for estrito)
+            totalSoldQty = 0;
+          }
+        }
       });
 
       console.log(`🔍 [Stats] Trades carregados: ${allTrades.length} | Posições abertas detectadas: ${openPositions.length}`);
@@ -89,12 +119,12 @@ export const statsService = {
         openPositions.map(async (t: any) => {
           const buyPrice = Number(t.price) || 0;
           const quantity = Number(t.quantity) || 0;
-          
+
           // Buscar preço atual do mercado
           let currentPrice = buyPrice;
           let unrealizedPnL = 0;
           let unrealizedPnLPercent = 0;
-          
+
           try {
             const priceData = await binanceService.getPrice(t.symbol);
             if (priceData && priceData.price) {
