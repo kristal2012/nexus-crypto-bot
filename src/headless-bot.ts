@@ -19,6 +19,10 @@ async function startHeadlessBot() {
     console.log('----------------------------------------------------');
     console.log(`🕒 Início: ${new Date().toLocaleString()}`);
 
+    // 0. Initialize Local DB (Node Environment)
+    console.log('📂 Initializing Local Database...');
+    await localDb.initialize();
+
     // 1. Initialize Supabase Cloud Sync
     console.log('📡 Initializing Supabase cloud sync...');
     await supabaseSync.initialize();

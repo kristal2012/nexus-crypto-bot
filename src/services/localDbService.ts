@@ -19,17 +19,15 @@ const initNodeModules = async () => {
     }
 };
 
-// Inicialização imediata se não for browser
-if (!isBrowser) {
-    await initNodeModules();
-}
+// Inicialização movida para método explícito para evitar Top-Level Await (quebra Vite build)
+// if (!isBrowser) { await initNodeModules(); }
 
 
 // No Navegador, usamos localStorage para persistência local rápida
 const getBrowserData = () => {
     if (!isBrowser) return { config: {}, trades: [], logs: [] };
     try {
-        const data = localStorage.getItem('BOT_DATA');
+        const data = localStorage.getItem('BOT_DATA'); // Keep 'BOT_DATA' as per original
         const parsed = data ? JSON.parse(data) : { config: {}, trades: [], logs: [] };
         // Debug: log se há chaves salvas
         console.log('📋 [LocalDB] Dados carregados do LocalStorage:', {
@@ -51,6 +49,12 @@ const saveBrowserData = (data: any) => {
 };
 
 export const localDb = {
+    async initialize() {
+        if (!isBrowser) {
+            await initNodeModules();
+        }
+    },
+
     // Configurações do Bot
     getConfig: () => {
         if (isBrowser) {
