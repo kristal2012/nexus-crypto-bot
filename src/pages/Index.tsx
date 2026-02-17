@@ -8,6 +8,7 @@ import { AutoTradingControl } from "@/components/AutoTradingControl";
 import { UserIdDisplay } from "@/components/UserIdDisplay";
 import { AdminEmergencyControl } from "@/components/AdminEmergencyControl";
 import { BotStatus } from "@/components/BotStatus";
+import { SystemLogs } from "@/components/SystemLogs";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useDemoPositionMonitor } from "@/hooks/useDemoPositionMonitor";
@@ -19,7 +20,7 @@ const Index = () => {
   const { refetch: refetchStats } = useDashboardStats();
   const { isDemoMode } = useTradingMode();
   const { isActive } = useBotActive();
-  
+
   // Monitor DEMO positions for TP/SL/Trailing
   useDemoPositionMonitor(isActive, isDemoMode);
 
@@ -30,14 +31,15 @@ const Index = () => {
         <CircuitBreakerAlert />
         <StrategyAdjustmentSuggestions />
         <DemoBalanceManager onBalanceUpdate={refetchStats} />
-        
+
         <UserIdDisplay />
         {isAdmin && <AdminEmergencyControl />}
-        
+
         <TradingDashboard />
         <BotStatus />
         <SystemHealthMonitor />
         <TradingModeDebugger />
+        <SystemLogs />
         <AutoTradingControl />
       </div>
     </div>
