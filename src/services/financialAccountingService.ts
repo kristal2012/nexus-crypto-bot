@@ -71,11 +71,11 @@ export const getFinancialSnapshot = async (userId: string): Promise<FinancialSna
   // BYPASS PARA MODO SIMULAÇÃO
   if (IS_SIMULATION_MODE) {
     return {
-      totalBalance: 10000,
-      freeBalance: 10000,
+      totalBalance: 1000,
+      freeBalance: 1000,
       allocatedCapital: 0,
       unrealizedPnL: 0,
-      initialBalance: 10000,
+      initialBalance: 1000,
       dailyProfit: 0,
       monthlyProfit: 0,
       activePositionsCount: 0,
@@ -252,7 +252,7 @@ async function calculateMonthlyProfit(
     .limit(1)
     .maybeSingle();
 
-  const monthlyStartBalance = firstDayStats?.starting_balance || 10000;
+  const monthlyStartBalance = firstDayStats?.starting_balance || 1000;
   const monthlyProfit = currentTotalBalance - monthlyStartBalance;
 
   console.log(`📅 Lucro mensal: ${currentTotalBalance.toFixed(2)} - ${monthlyStartBalance.toFixed(2)} = ${monthlyProfit.toFixed(2)}`);

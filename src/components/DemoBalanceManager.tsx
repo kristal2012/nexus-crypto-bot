@@ -32,9 +32,9 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
   }
 
   const handleUpdateBalance = async () => {
-    
+
     const value = parseFloat(newBalance);
-    
+
     if (isNaN(value) || value <= 0) {
       toast({
         title: "Valor inválido",
@@ -49,7 +49,7 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
       await updateDemoBalanceService(FIXED_USER_ID, value);
       await refetch();
       onBalanceUpdate?.();
-      
+
       toast({
         title: "Saldo atualizado",
         description: `Novo saldo demo: $${value.toLocaleString()}`,
@@ -69,10 +69,10 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
   const handleReset = async () => {
     setUpdating(true);
     try {
-      await resetDemoAccount(FIXED_USER_ID, 10000);
+      await resetDemoAccount(FIXED_USER_ID, 1000);
       await refetch();
       onBalanceUpdate?.();
-      
+
       toast({
         title: "Conta demo resetada",
         description: "Saldo resetado e auto-trading pausado. Reative manualmente se necessário.",
@@ -142,7 +142,7 @@ export const DemoBalanceManager = ({ onBalanceUpdate }: DemoBalanceManagerProps)
           className="w-full"
         >
           <RotateCcw className="w-4 h-4 mr-2" />
-          Resetar para $10,000
+          Resetar para $1,000
         </Button>
       </CardContent>
     </Card>

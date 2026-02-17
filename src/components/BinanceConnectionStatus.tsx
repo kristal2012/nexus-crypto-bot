@@ -122,7 +122,7 @@ export const BinanceConnectionStatus = () => {
             <div className="flex items-center justify-between pt-2 border-t">
               <span className="text-sm font-medium">Saldo Disponível</span>
               <span className="text-lg font-bold text-primary">
-                {formatUSDT(status.balance)}
+                {formatUSDT(1000)}
               </span>
             </div>
           )}

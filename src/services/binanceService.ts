@@ -224,7 +224,7 @@ export const validateBinanceApiKeys = async (): Promise<BinanceApiKeyStatus> => 
       isConfigured: true,
       hasPermissions: true,
       canTradeFutures: true,
-      balance: 10000, // Saldo fictício de simulação
+      balance: 1000, // Saldo fictício de simulação
       error: undefined
     };
   }
