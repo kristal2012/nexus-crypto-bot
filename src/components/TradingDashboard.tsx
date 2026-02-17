@@ -7,13 +7,12 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useBotActive } from "@/hooks/useBotActive";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Activity,
-  TrendingUp,
-  TrendingDown,
+import { 
+  Activity, 
+  TrendingUp, 
+  TrendingDown, 
   Target,
   BarChart3,
   Settings,
@@ -33,10 +32,9 @@ import { LastTradingRound } from "./LastTradingRound";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 export const TradingDashboard = () => {
-  // Hook customizado que centraliza o controle do bot
-  const { isActive: botActive, toggleBotActive } = useBotActive();
+  const [botActive, setBotActive] = useState(false);
   const [circuitBreakerStatus, setCircuitBreakerStatus] = useState<any>(null);
-
+  
   // Hook customizado que centraliza TODAS as estatísticas (SSOT)
   const {
     initialBalance,
@@ -78,12 +76,12 @@ export const TradingDashboard = () => {
             <p className="text-sm text-muted-foreground">Sistema de Trading Automatizado</p>
           </div>
         </div>
-
+        
         {/* Bot Control Button */}
         <Button
           size="lg"
           variant={botActive ? "destructive" : "default"}
-          onClick={() => toggleBotActive(!botActive)}
+          onClick={() => setBotActive(!botActive)}
           className="gap-2"
         >
           {botActive ? (

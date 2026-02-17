@@ -1,44 +1,14 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 const isBrowser = typeof window !== 'undefined';
-
-// Módulos Node.JS protegidos (Carregamento condicional para não quebrar o Vite/Browser)
-let fs: any = null;
-let path: any = null;
-
-// Função auxiliar para carregar módulos do Node sem quebrar o bundler do navegador
-const initNodeModules = async () => {
-    if (!isBrowser && !fs) {
-        try {
-            // Usamos import dinâmico com /* @vite-ignore */ para evitar que o Vite analise o módulo
-            const fsModule = await import(/* @vite-ignore */ 'fs');
-            const pathModule = await import(/* @vite-ignore */ 'path');
-            fs = fsModule.default || fsModule;
-            path = pathModule.default || pathModule;
-        } catch (e) {
-            console.error('❌ Falha ao carregar módulos do Node:', e);
-        }
-    }
-};
-
-// Inicialização imediata se não for browser
-if (!isBrowser) {
-    initNodeModules();
-}
-
 
 // No Navegador, usamos localStorage para persistência local rápida
 const getBrowserData = () => {
     if (!isBrowser) return { config: {}, trades: [], logs: [] };
     try {
         const data = localStorage.getItem('BOT_DATA');
-        const parsed = data ? JSON.parse(data) : { config: {}, trades: [], logs: [] };
-        // Debug: log se há chaves salvas
-        console.log('📋 [LocalDB] Dados carregados do LocalStorage:', {
-            hasApiKey: !!parsed.config?.api_key_encrypted,
-            hasApiSecret: !!parsed.config?.api_secret_encrypted,
-            apiKeyLength: parsed.config?.api_key_encrypted?.length || 0,
-            apiSecretLength: parsed.config?.api_secret_encrypted?.length || 0
-        });
-        return parsed;
+        return data ? JSON.parse(data) : { config: {}, trades: [], logs: [] };
     } catch (e) {
         return { config: {}, trades: [], logs: [] };
     }
@@ -81,15 +51,7 @@ export const localDb = {
     saveConfig: (config: any) => {
         if (isBrowser) {
             const data = getBrowserData();
-            // [FIX] Não sobrescrever chaves API com valores vazios ou nulos
-            const mergedConfig = { ...data.config, ...config };
-            if ((config.api_key_encrypted === '' || config.api_key_encrypted === null) && data.config.api_key_encrypted) {
-                mergedConfig.api_key_encrypted = data.config.api_key_encrypted;
-            }
-            if ((config.api_secret_encrypted === '' || config.api_secret_encrypted === null) && data.config.api_secret_encrypted) {
-                mergedConfig.api_secret_encrypted = data.config.api_secret_encrypted;
-            }
-            data.config = mergedConfig;
+            data.config = { ...data.config, ...config };
             saveBrowserData(data);
             return true;
         }
@@ -149,123 +111,6 @@ export const localDb = {
         });
         fs.writeFileSync(filePath, JSON.stringify(trades, null, 2));
         return true;
-    },
-
-    // Limpar posições duplicadas (manter apenas a mais antiga para cada símbolo)
-    cleanDuplicatePositions: () => {
-        if (isBrowser) {
-            const data = getBrowserData();
-            const trades = data.trades || [];
-
-            // Separar compras abertas
-            const buyTrades = trades.filter((t: any) => t.side === 'BUY' && t.status === 'PENDING');
-
-            // Encontrar símbolos duplicados e manter apenas o mais antigo
-            const symbolMap = new Map<string, any>();
-            buyTrades.forEach((t: any) => {
-                if (!symbolMap.has(t.symbol)) {
-                    symbolMap.set(t.symbol, t);
-                } else {
-                    const existing = symbolMap.get(t.symbol);
-                    if (new Date(t.created_at) < new Date(existing.created_at)) {
-                        symbolMap.set(t.symbol, t);
-                    }
-                }
-            });
-
-            // Manter apenas uma posição por símbolo
-            const keptSymbols = new Set(symbolMap.keys());
-            const cleanedTrades = trades.filter((t: any) => {
-                if (t.side === 'BUY' && t.status === 'PENDING') {
-                    return keptSymbols.has(t.symbol);
-                }
-                return true;
-            });
-
-            data.trades = cleanedTrades;
-            saveBrowserData(data);
-
-            console.log(`🧹 [LocalDB] Limpas posições duplicadas. Manter: ${keptSymbols.size} posições`);
-            return keptSymbols.size;
-        }
-
-        const DATA_DIR = path.resolve(process.cwd(), 'data');
-        const filePath = path.join(DATA_DIR, 'trades.json');
-
-        if (!fs.existsSync(filePath)) return 0;
-
-        try {
-            let trades = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-
-            // Separar compras abertas
-            const buyTrades = trades.filter((t: any) => t.side === 'BUY' && t.status === 'PENDING');
-
-            // Encontrar símbolos duplicados e manter apenas o mais antigo
-            const symbolMap = new Map<string, any>();
-            buyTrades.forEach((t: any) => {
-                if (!symbolMap.has(t.symbol)) {
-                    symbolMap.set(t.symbol, t);
-                } else {
-                    const existing = symbolMap.get(t.symbol);
-                    if (new Date(t.created_at) < new Date(existing.created_at)) {
-                        symbolMap.set(t.symbol, t);
-                    }
-                }
-            });
-
-            // Manter apenas uma posição por símbolo
-            const keptSymbols = new Set(symbolMap.keys());
-            trades = trades.filter((t: any) => {
-                if (t.side === 'BUY' && t.status === 'PENDING') {
-                    return keptSymbols.has(t.symbol);
-                }
-                return true;
-            });
-
-            fs.writeFileSync(filePath, JSON.stringify(trades, null, 2));
-            console.log(`🧹 [LocalDB] Limpas posições duplicadas. Manter: ${keptSymbols.size} posições`);
-            return keptSymbols.size;
-        } catch (e) {
-            console.error('❌ Erro ao limpar posições duplicadas:', e);
-            return 0;
-        }
-    },
-
-    // Reset completo de todos os trades, posições e profit diário
-    resetAllTrades: () => {
-        if (isBrowser) {
-            const data = getBrowserData();
-            data.trades = [];
-            // Resetar profit diário também
-            data.dailyProfit = 0;
-            data.dailyProfitPercent = 0;
-            data.profitHistory = [];
-            saveBrowserData(data);
-            console.log('🔄 [LocalDB] Todos os trades e profits foram resetados');
-            return true;
-        }
-
-        const DATA_DIR = path.resolve(process.cwd(), 'data');
-        const tradesFilePath = path.join(DATA_DIR, 'trades.json');
-
-        try {
-            fs.writeFileSync(tradesFilePath, JSON.stringify([], null, 2));
-
-            // Resetar profit diário no config
-            const configPath = path.join(DATA_DIR, 'config.json');
-            if (fs.existsSync(configPath)) {
-                const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-                config.daily_profit = 0;
-                config.daily_profit_percent = 0;
-                fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-            }
-
-            console.log('🔄 [LocalDB] Todos os trades e profits foram resetados');
-            return true;
-        } catch (e) {
-            console.error('❌ Erro ao resetar trades:', e);
-            return false;
-        }
     },
 
     // Logs do Bot

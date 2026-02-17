@@ -6,10 +6,8 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import { IS_SIMULATION_MODE } from "@/config/userConfig";
 
 export interface AutoTradeResponse {
-  // ... (rest of interfaces remain same)
   success: boolean;
   executed_trades?: any[];
   rate_limited?: boolean;
@@ -42,71 +40,6 @@ export interface AutoTradeError {
  * Returns normalized response or throws AutoTradeError with parsed error details.
  */
 export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => {
-  if (IS_SIMULATION_MODE) {
-    console.log('🧪 [autoTradeService] Iniciando análise de ALTA FIDELIDADE baseada em dados reais...');
-
-    try {
-      // 1. Buscar dados reais da Binance (Simulando análise de múltiplos pares)
-      const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'LINKUSDT'];
-      // Selecionar um par aleatório para análise neste ciclo (para variar)
-      const symbol = symbols[Math.floor(Math.random() * symbols.length)];
-
-      console.log(`📡 [autoTradeService] Buscando candles reais para ${symbol}...`);
-      const { binanceService } = await import("./binanceService");
-      const { meanReversionStrategy } = await import("./strategies/meanReversionStrategy");
-
-      const candles = await binanceService.getCandles(symbol, '1m', 30);
-
-      if (!candles || candles.length < 20) {
-        return {
-          success: true,
-          message: `Dados insuficientes para análise de ${symbol}. Aguardando mercado...`,
-          executed_trades: []
-        };
-      }
-
-      const prices = candles.map(c => c.close);
-      const currentPrice = prices[prices.length - 1];
-
-      // 2. Executar Estratégia Real
-      const signal = meanReversionStrategy.analyzeBuyOpportunity(prices);
-
-      // Pequeno delay para simular o tempo de "pensamento" da IA
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      if (signal.action === 'buy' && signal.confidence >= 0.7) {
-        console.log(`🎯 [autoTradeService] Simulação: Oportunidade REAL encontrada em ${symbol}!`);
-        return {
-          success: true,
-          message: `[SIMULAÇÃO REAL] ${signal.reason}`,
-          executed_trades: [{
-            symbol: symbol,
-            side: 'BUY',
-            quantity: 0.1,
-            price: currentPrice,
-            is_demo: true,
-            executed_at: new Date().toISOString(),
-            confidence: signal.confidence
-          }]
-        };
-      }
-
-      console.log(`⚖️ [autoTradeService] Simulação: Mercado neutro para ${symbol}. Analisando condições...`);
-      return {
-        success: true,
-        message: `Análise real concluída para ${symbol}. Motivo: ${signal.reason}`,
-        executed_trades: []
-      };
-    } catch (error) {
-      console.error('❌ Erro na simulação de alta fidelidade:', error);
-      return {
-        success: true,
-        message: "Erro ao processar dados reais. Mantendo robô em standby...",
-        executed_trades: []
-      };
-    }
-  }
-
   try {
     const { data, error } = await supabase.functions.invoke('ai-auto-trade');
 
@@ -137,18 +70,18 @@ export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => 
     if (error) {
       const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
       const errorMsg = error?.message || errorStr;
-
+      
       // Check for 429 or rate limit indicators
       if (errorStr.includes('429') || errorMsg.includes('Rate limit') || errorMsg.includes('wait')) {
         console.log('⏳ [autoTradeService] Rate limit detected in error (fallback)');
-
+        
         // Extract remaining seconds if available
         let remainingSeconds = data?.remaining_seconds || 120;
         const match = errorMsg.match(/(\d+)\s*second/i);
         if (match) {
           remainingSeconds = parseInt(match[1]);
         }
-
+        
         return {
           success: false,
           rate_limited: true,
@@ -206,7 +139,7 @@ const parseSupabaseError = (error: any): AutoTradeError => {
       isRateLimit: true,
       remainingSeconds: match ? parseInt(match[1]) : undefined,
       message: errorMessage,
-      displayMessage: match
+      displayMessage: match 
         ? `Aguarde ${match[1]} segundos antes da próxima análise`
         : 'Aguarde antes da próxima análise (rate limit)',
     };

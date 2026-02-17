@@ -23,14 +23,10 @@ export const BinanceConnectionStatus = () => {
   };
 
   useEffect(() => {
-    // 🔧 FASE 2: Só valida se usuário já tentou configurar chaves OU se está em modo simulação
+    // 🔧 FASE 2: Só valida se usuário já tentou configurar chaves
     const hasAttemptedConfig = localStorage.getItem('binance_config_attempted');
-
-    // Verificar se estamos em modo simulação para bypass total
-    const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
-
-    if (isSimulation || hasAttemptedConfig) {
+    
+    if (hasAttemptedConfig) {
       checkConnection();
     } else {
       // Usuário novo - não valida ainda, apenas mostra mensagem informativa
@@ -122,7 +118,7 @@ export const BinanceConnectionStatus = () => {
             <div className="flex items-center justify-between pt-2 border-t">
               <span className="text-sm font-medium">Saldo Disponível</span>
               <span className="text-lg font-bold text-primary">
-                {formatUSDT(1000)}
+                {formatUSDT(status.balance)}
               </span>
             </div>
           )}
@@ -162,9 +158,9 @@ export const BinanceConnectionStatus = () => {
         )}
 
         {/* Botão de Atualizar */}
-        <Button
-          onClick={checkConnection}
-          variant="outline"
+        <Button 
+          onClick={checkConnection} 
+          variant="outline" 
           className="w-full"
           disabled={loading}
         >

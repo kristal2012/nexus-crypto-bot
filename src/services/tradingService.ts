@@ -8,14 +8,12 @@ import { RISK_SETTINGS } from "./riskService";
 import { operationsStatsService } from "./operationsStatsService";
 import { adaptiveStrategyService, type AdaptiveRiskParams } from "./adaptiveStrategyService";
 import { moltBotIntelService } from "./moltBotIntelService";
-import { statsService } from "./statsService";
 
 export interface TradingConfig {
   userId: string;
   configId: string;
   symbols: string[]; // Agora suporta múltiplos pares
   totalCapital: number;
-  quantityPerTrade?: number; // Quantidade fixa por trade (em USDT) - se não definido, usa cálculo automático
   takeProfitPercent: number;
   stopLossPercent: number;
   testMode: boolean;
@@ -73,8 +71,7 @@ class TradingService {
       config.userId,
       config.totalCapital,
       config.symbols,
-      config.testMode,
-      config.quantityPerTrade
+      config.testMode
     );
 
     // multiPairService.start já loga internamente
@@ -148,29 +145,7 @@ class TradingService {
     // Parar serviço de múltiplos pares
     multiPairService.stop();
 
-    // Fechar todas as posições abertas antes de parar
-    console.log("🔴 Fechando todas as posições abertas...");
-    for (const [tradeId, position] of this.openPositions) {
-      try {
-        const currentPrice = await binanceService.getPrice(position.symbol);
-        if (currentPrice?.price) {
-          await this.executeSell(position, currentPrice.price, "EMERGENCY_STOP");
-        }
-      } catch (e) {
-        console.error(`❌ Erro ao fechar posição ${position.symbol}:`, e);
-      }
-    }
-    this.openPositions.clear();
-
     console.log("Stopped Momentum Trading");
-  }
-
-  /**
-   * Reconcilia o estado em memória com o banco de dados local
-   */
-  public async reconcile(): Promise<void> {
-    console.log("🔄 [TradingService] Reconciliando posições...");
-    await this.loadOpenPositions();
   }
 
   private async loadOpenPositions(): Promise<void> {
@@ -372,11 +347,6 @@ class TradingService {
           const rebuyZone = avgLows * 1.003; // +0.3% de tolerância
 
           if (currentPrice <= rebuyZone) {
-            // [FIX] Verificar se NÃO já tem posição aberta para este símbolo
-            if (this.openPositions.has(symbol)) {
-              console.log(`⏭️ ${symbol} RECOMPRA: Posição já existe, ignorando`);
-              continue;
-            }
             console.log(`🔄 ${symbol} RECOMPRA RÁPIDA: Preço voltou para $${currentPrice.toFixed(2)} (zona: $${rebuyZone.toFixed(2)})`);
             const allocation = this.capitalAllocations.get(symbol);
             if (allocation && this.openPositions.size < maxPositions) {
@@ -462,23 +432,9 @@ class TradingService {
         console.log(`🧪 Candles usados p/ sinal ${symbol}: fresh=${candles.length}, monitor=${pairMonitor.lastCandles?.length ?? 0}`);
 
         // Verificar sinal de compra com alocação adaptativa
-        // [FIX] Verificar se já existe posição aberta para este símbolo (usando símbolo, não tradeId)
-        const hasOpenPositionForSymbol = Array.from(this.openPositions.values())
-          .some(pos => pos.symbol === symbol);
-        
-        // Calcular capital já alocado em posições abertas
-        const allocatedCapital = Array.from(this.openPositions.values())
-          .reduce((sum, pos) => sum + (pos.buyPrice * pos.quantity), 0);
-        
-        const availableCapital = this.config.totalCapital - allocatedCapital;
-        const tradeCost = allocation ? allocation.quantity * currentPrice : 0;
-
-        if (signal.shouldBuy && 
-            this.openPositions.size < maxPositions && 
-            !hasOpenPositionForSymbol &&
-            availableCapital >= tradeCost) {
+        if (signal.shouldBuy && this.openPositions.size < maxPositions) {
           const allocation = this.capitalAllocations.get(symbol);
-          if (allocation && tradeCost > 0) {
+          if (allocation) {
             // Ajustar quantidade baseado em alocação adaptativa
             const adaptiveAllocationPercent = this.currentAdaptiveParams?.maxAllocationPerPairPercent || RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT;
             const originalAllocationPercent = RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT;
@@ -486,13 +442,8 @@ class TradingService {
             const adjustedQuantity = allocation.quantity * allocationFactor;
 
             console.log(`🎯 Sinal de compra: ${signal.reason} | Alocação: ${adaptiveAllocationPercent}% (${this.currentAdaptiveParams?.mode || 'normal'})`);
-            console.log(`💰 Capital: disponível $${availableCapital.toFixed(2)} | custo trade: $${tradeCost.toFixed(2)}`);
             await this.executeBuy(symbol, currentPrice, adjustedQuantity);
           }
-        } else if (hasOpenPositionForSymbol) {
-          console.log(`⏭️ ${symbol}: Posição já existe para este símbolo, ignorando sinal`);
-        } else if (availableCapital < tradeCost) {
-          console.log(`⚠️ ${symbol}: Capital insuficiente (disponível: $${availableCapital.toFixed(2)}, necessário: $${tradeCost.toFixed(2)})`);
         }
       } catch (error) {
         console.error(`Error analyzing ${symbol}:`, error);
@@ -501,26 +452,7 @@ class TradingService {
   }
 
   private async checkOpenPositions(): Promise<void> {
-    if (!this.config) return;
-
-    // [RECONCILIATION] Se a memória estiver vazia mas houver trades abertas no DB, carregar
-    if (this.openPositions.size === 0) {
-      const stats = await statsService.getAccountStats(this.config.userId, this.config.testMode, this.config.totalCapital);
-      if (stats.activeTrades.length > 0) {
-        console.log(`🔄 [Reconciliation] Recuperando ${stats.activeTrades.length} posições abertas do armazenamento local.`);
-        stats.activeTrades.forEach(t => {
-          this.openPositions.set(t.id, {
-            tradeId: t.id,
-            symbol: t.symbol,
-            buyPrice: t.price,
-            quantity: t.quantity,
-            timestamp: new Date(t.created_at).getTime()
-          });
-        });
-      }
-    }
-
-    if (this.openPositions.size === 0) return;
+    if (!this.config || this.openPositions.size === 0) return;
 
     for (const [tradeId, position] of this.openPositions.entries()) {
       const now = Date.now();
@@ -528,60 +460,67 @@ class TradingService {
 
       // Verificar se posição está expirada (hold time)
       if (elapsedMinutes > RISK_SETTINGS.MAX_HOLD_MINUTES) {
-        console.log(`⚠️ Marcando posição expirada como TIMEOUT_EXIT: ${position.symbol} (${elapsedMinutes.toFixed(0)} min > ${RISK_SETTINGS.MAX_HOLD_MINUTES} min)`);
-        const currentPriceData = await binanceService.getPrice(position.symbol);
-        await this.executeSell(position, currentPriceData?.price || position.buyPrice, "TIMEOUT_EXIT");
+        console.log(`⚠️ Marcando posição expirada como TIMEOUT_EXIT: ${position.symbol} (${elapsedMinutes.toFixed(0)} min)`);
+        await this.executeSell(position, position.buyPrice, "TIMEOUT_EXIT");
         continue;
       }
 
-      const currentPriceResult = await binanceService.getPrice(position.symbol);
-      if (!currentPriceResult) continue;
-      const currentPrice = currentPriceResult.price;
+      const currentPrice = await binanceService.getPrice(position.symbol);
+      if (!currentPrice) continue;
 
-      const profitPercent = ((currentPrice - position.buyPrice) / position.buyPrice) * 100;
+      const profitPercent = ((currentPrice.price - position.buyPrice) / position.buyPrice) * 100;
 
-      // Parâmetros adaptativos ou padrão
-      const adaptiveTakeProfit = this.currentAdaptiveParams?.takeProfitPercent || this.config?.takeProfitPercent || RISK_SETTINGS.TAKE_PROFIT_PERCENT;
-      const adaptiveStopLoss = this.currentAdaptiveParams?.stopLossPercent || this.config?.stopLossPercent || RISK_SETTINGS.STOP_LOSS_PERCENT;
-      const adaptiveProfitProtect = this.currentAdaptiveParams?.profitProtectThreshold || RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD;
-
-      // Log detalhado de monitoramento (importante para o usuário ver que está vivo)
-      const targetTP = position.buyPrice * (1 + (adaptiveTakeProfit / 100));
-      const targetSL = position.buyPrice * (1 - (adaptiveStopLoss / 100));
-      const distTP = ((targetTP - currentPrice) / currentPrice) * 100;
-
-      console.log(`📡 [Monitor] ${position.symbol} | Preço: $${currentPrice.toFixed(2)} | P/L: ${profitPercent.toFixed(2)}% | Alvo: $${targetTP.toFixed(2)} (${distTP.toFixed(2)}% p/ TP) | SL: $${targetSL.toFixed(2)}`);
-
-      // 1. Take Profit
-      if (profitPercent >= adaptiveTakeProfit) {
-        console.log(`✅ Take profit atingido em ${position.symbol}: ${profitPercent.toFixed(2)}%`);
-        await this.executeSell(position, currentPrice, "TAKE_PROFIT");
+      // Saída por tempo máximo de posição (fail fast para estratégia 5-15min)
+      const holdMs = Date.now() - position.timestamp;
+      const maxHoldMs = RISK_SETTINGS.MAX_HOLD_MINUTES * 60 * 1000;
+      if (holdMs >= maxHoldMs) {
+        console.log(`⏱️ Tempo máximo atingido para ${position.symbol} (${(holdMs / 60000).toFixed(1)}min). Encerrando posição.`);
+        await this.executeSell(position, currentPrice.price, "TIMEOUT_EXIT");
         continue;
       }
 
-      // 2. Stop Loss
-      if (profitPercent <= -adaptiveStopLoss) {
-        console.log(`🛑 Stop loss atingido em ${position.symbol}: ${profitPercent.toFixed(2)}%`);
-        await this.executeSell(position, currentPrice, "STOP_LOSS");
-        continue;
-      }
-
-      // 3. Estratégias Adicionais (Bollinger, RSI, etc)
+      // Obter candles atuais para decisão de venda (necessário 21+ para BB+RSI)
       const candles = await binanceService.getCandles(position.symbol, '1m', 50);
-      if (candles && candles.length >= 21) {
-        if (momentumStrategyService.shouldSell(candles, position.buyPrice)) {
-          console.log(`💰 [Strategy] Venda por Mean Reversion detectada em ${position.symbol}`);
-          await this.executeSell(position, currentPrice, "STRATEGY_EXIT");
+      const pairMonitor = multiPairService.getPair(position.symbol);
+
+      if (candles && candles.length >= 3) {
+        const momentum = momentumStrategyService.analyzeMomentum(
+          pairMonitor?.lastPrices || [],
+          undefined,
+          candles
+        );
+
+        const avgMaximas = momentum.avgHighs || 0;
+        console.log(`📊 ${position.symbol} | Compra: $${position.buyPrice.toFixed(2)} | Atual: $${currentPrice.price.toFixed(2)} | P/L: ${profitPercent.toFixed(2)}% | Média Máximas: $${avgMaximas.toFixed(2)}`);
+
+        // Check take profit com parâmetros adaptativos
+        const adaptiveTakeProfit = this.currentAdaptiveParams?.takeProfitPercent || this.config?.takeProfitPercent || RISK_SETTINGS.TAKE_PROFIT_PERCENT;
+        if (profitPercent >= adaptiveTakeProfit) {
+          console.log(`✅ Take profit atingido: ${profitPercent.toFixed(2)}% (limite adaptativo: ${adaptiveTakeProfit.toFixed(2)}%)`);
+          await this.executeSell(position, currentPrice.price, "TAKE_PROFIT");
           continue;
         }
 
-        const momentum = momentumStrategyService.analyzeMomentum([], undefined, candles);
-        const avgHighs = momentum.avgHighs || 0;
+        // Check stop loss com parâmetros adaptativos
+        const adaptiveStopLoss = this.currentAdaptiveParams?.stopLossPercent || this.config?.stopLossPercent || RISK_SETTINGS.STOP_LOSS_PERCENT;
+        if (profitPercent <= -adaptiveStopLoss) {
+          console.log(`🛑 Stop loss atingido: ${profitPercent.toFixed(2)}% (limite adaptativo: -${adaptiveStopLoss.toFixed(2)}%)`);
+          await this.executeSell(position, currentPrice.price, "STOP_LOSS");
+          continue;
+        }
 
-        // Proteção de lucro parcil
-        if (profitPercent >= adaptiveProfitProtect && currentPrice >= avgHighs * 0.98) {
-          console.log(`💰 [ProfitProtect] Protegendo lucro atual em ${position.symbol}: ${profitPercent.toFixed(2)}%`);
-          await this.executeSell(position, currentPrice, "PROFIT_PROTECT");
+        // NOVA ESTRATÉGIA: Mean Reversion (passa buyPrice agora)
+        if (momentumStrategyService.shouldSell(candles, position.buyPrice)) {
+          console.log(`💰 Mean Reversion: Sinal de venda detectado`);
+          await this.executeSell(position, currentPrice.price, "STRATEGY_EXIT");
+          continue;
+        }
+
+        // Proteção de lucro parcial com threshold adaptativo
+        const adaptiveProfitProtect = this.currentAdaptiveParams?.profitProtectThreshold || RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD;
+        if (profitPercent >= adaptiveProfitProtect && currentPrice.price >= avgMaximas * 0.98) {
+          console.log(`💰 Protegendo lucro parcial: ${profitPercent.toFixed(2)}% (threshold adaptativo: ${adaptiveProfitProtect.toFixed(2)}%)`);
+          await this.executeSell(position, currentPrice.price, "PROFIT_PROTECT");
           continue;
         }
       }
@@ -667,16 +606,7 @@ class TradingService {
           position.quantity
         );
 
-        // Pass profit_loss to trade execution
-        await tradeService.executeTrade(
-          position.symbol,
-          "SELL",
-          position.quantity,
-          this.config.testMode,
-          profitLoss
-        );
-
-        // Remover posição após venda
+        // Update localDb trade (simulado via lógica do addTrade no executeTrade)
         this.openPositions.delete(position.tradeId);
 
         // Registrar cooldown do par

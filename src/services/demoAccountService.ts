@@ -13,12 +13,12 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const resetDemoAccount = async (
   userId: string,
-  newBalance: number = 1000
+  newBalance: number = 10000
 ): Promise<void> => {
   console.log(`🔄 [RESET DEMO] Iniciando reset para userId: ${userId}, novo saldo: $${newBalance}`);
-
+  
   // PASSO 1 - Verificar estado atual do auto-trading
-  const { data: configBefore, error: configCheckError } = await (supabase as any)
+  const { data: configBefore, error: configCheckError } = await supabase
     .from("auto_trading_config")
     .select("is_active")
     .eq("user_id", userId)
@@ -27,13 +27,13 @@ export const resetDemoAccount = async (
   if (configCheckError) {
     console.error("❌ [RESET DEMO] Erro ao verificar config:", configCheckError);
   }
-
+  
   const wasActive = configBefore?.is_active || false;
   console.log(`📊 [RESET DEMO] Bot estava ${wasActive ? 'ATIVO' : 'INATIVO'} antes do reset`);
-
+  
   // PASSO 2 - CRÍTICO: Pausar o auto-trading temporariamente
   console.log("⏸️ [RESET DEMO] Pausando auto-trading temporariamente...");
-  const { error: pauseError } = await (supabase as any)
+  const { error: pauseError } = await supabase
     .from("auto_trading_config")
     .update({ is_active: false })
     .eq("user_id", userId);
@@ -43,9 +43,9 @@ export const resetDemoAccount = async (
   } else {
     console.log("✅ [RESET DEMO] Auto-trading pausado");
   }
-
+  
   // PASSO 3: Atualiza demo_balance e initial_capital simultaneamente
-  const { error: settingsError } = await (supabase as any)
+  const { error: settingsError } = await supabase
     .from("trading_settings")
     .update({
       demo_balance: newBalance,
@@ -61,7 +61,7 @@ export const resetDemoAccount = async (
   console.log("✅ [RESET DEMO] trading_settings atualizado");
 
   // Verifica quantas posições demo existem antes de limpar
-  const { data: existingPositions, error: checkError } = await (supabase as any)
+  const { data: existingPositions, error: checkError } = await supabase
     .from("positions")
     .select("id, symbol, quantity")
     .eq("user_id", userId)
@@ -74,7 +74,7 @@ export const resetDemoAccount = async (
   }
 
   // Limpa TODAS as posições demo abertas do usuário
-  const { error: positionsError } = await (supabase as any)
+  const { error: positionsError } = await supabase
     .from("positions")
     .delete()
     .eq("user_id", userId)
@@ -85,14 +85,14 @@ export const resetDemoAccount = async (
     throw positionsError; // Lança erro para interromper o reset se falhar
   } else {
     console.log("✅ [RESET DEMO] Todas as posições demo foram removidas");
-
+    
     // Verifica se realmente foram deletadas
-    const { data: remainingPositions } = await (supabase as any)
+    const { data: remainingPositions } = await supabase
       .from("positions")
       .select("id")
       .eq("user_id", userId)
       .eq("is_demo", true);
-
+    
     if (remainingPositions && remainingPositions.length > 0) {
       console.error(`⚠️ [RESET DEMO] ATENÇÃO: Ainda existem ${remainingPositions.length} posições demo após o delete!`);
     } else {
@@ -101,7 +101,7 @@ export const resetDemoAccount = async (
   }
 
   // Limpa histórico de trades demo
-  const { error: tradesError } = await (supabase as any)
+  const { error: tradesError } = await supabase
     .from("trades")
     .delete()
     .eq("user_id", userId)
@@ -116,9 +116,9 @@ export const resetDemoAccount = async (
   // Atualiza ou recria estatísticas do dia atual com o novo saldo
   const today = new Date().toISOString().split('T')[0];
   console.log(`📊 [RESET DEMO] Atualizando bot_daily_stats para hoje (${today})`);
-
+  
   // Primeiro, tenta atualizar o registro de hoje se existir
-  const { error: updateError } = await (supabase as any)
+  const { error: updateError } = await supabase
     .from("bot_daily_stats")
     .update({
       starting_balance: newBalance,
@@ -138,7 +138,7 @@ export const resetDemoAccount = async (
   }
 
   // Deleta estatísticas de dias anteriores
-  const { error: deleteError } = await (supabase as any)
+  const { error: deleteError } = await supabase
     .from("bot_daily_stats")
     .delete()
     .eq("user_id", userId)
@@ -149,15 +149,15 @@ export const resetDemoAccount = async (
   } else {
     console.log("✅ [RESET DEMO] Estatísticas antigas limpas");
   }
-
+  
   // PASSO FINAL - Reativar o bot se estava ativo antes
   if (wasActive) {
     console.log("🔄 [RESET DEMO] Reativando auto-trading...");
-    const { error: reactivateError } = await (supabase as any)
+    const { error: reactivateError } = await supabase
       .from("auto_trading_config")
       .update({ is_active: true })
       .eq("user_id", userId);
-
+    
     if (reactivateError) {
       console.error("❌ [RESET DEMO] Erro ao reativar auto-trading:", reactivateError);
       throw new Error("Falha ao reativar o bot após reset. Por favor, reative manualmente.");
@@ -167,7 +167,7 @@ export const resetDemoAccount = async (
   } else {
     console.log("ℹ️ [RESET DEMO] Bot permanece inativo (estava inativo antes do reset)");
   }
-
+  
   console.log("🎉 [RESET DEMO] Reset concluído com sucesso!");
 };
 
@@ -178,7 +178,7 @@ export const updateDemoBalance = async (
   userId: string,
   newBalance: number
 ): Promise<void> => {
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("trading_settings")
     .update({
       demo_balance: newBalance,
@@ -197,12 +197,12 @@ const fetchCurrentPrice = async (symbol: string): Promise<number> => {
     const response = await fetch(
       `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`
     );
-
+    
     if (!response.ok) {
       console.error(`❌ Erro ao buscar preço para ${symbol}: ${response.status}`);
       throw new Error(`Failed to fetch price for ${symbol}`);
     }
-
+    
     const data = await response.json();
     return parseFloat(data.price);
   } catch (error) {
@@ -217,9 +217,9 @@ const fetchCurrentPrice = async (symbol: string): Promise<number> => {
  */
 export const closeAllDemoPositions = async (userId: string): Promise<void> => {
   console.log(`🔒 [CLOSE POSITIONS] Iniciando fechamento de posições demo para userId: ${userId}`);
-
+  
   // Verificar se está em modo demo
-  const { data: settings, error: settingsError } = await (supabase as any)
+  const { data: settings, error: settingsError } = await supabase
     .from("trading_settings")
     .select("trading_mode")
     .eq("user_id", userId)
@@ -237,7 +237,7 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
 
   // CRÍTICO: Pausar o auto-trading ANTES de deletar posições
   console.log("⏸️ [CLOSE POSITIONS] Pausando auto-trading para evitar novas posições...");
-  const { error: pauseError } = await (supabase as any)
+  const { error: pauseError } = await supabase
     .from("auto_trading_config")
     .update({ is_active: false })
     .eq("user_id", userId);
@@ -249,7 +249,7 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
   console.log("✅ [CLOSE POSITIONS] Auto-trading pausado com sucesso");
 
   // Buscar posições abertas
-  const { data: positions, error: fetchError } = await (supabase as any)
+  const { data: positions, error: fetchError } = await supabase
     .from("positions")
     .select("*")
     .eq("user_id", userId)
@@ -271,18 +271,18 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
   for (const position of positions) {
     try {
       console.log(`💰 [CLOSE POSITIONS] Criando trade de SELL para ${position.symbol}...`);
-
+      
       // Buscar preço atual da Binance
       const currentPrice = await fetchCurrentPrice(position.symbol);
       console.log(`📊 [CLOSE POSITIONS] Preço atual de ${position.symbol}: $${currentPrice}`);
-
+      
       // Calcular P&L
       const pnl = (currentPrice - position.entry_price) * position.quantity;
       const commission = (currentPrice * position.quantity) * 0.001; // 0.1% de comissão
       console.log(`💵 [CLOSE POSITIONS] P&L: ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} USDT`);
-
+      
       // Criar trade de SELL
-      const { error: tradeError } = await (supabase as any)
+      const { error: tradeError } = await supabase
         .from("trades")
         .insert({
           user_id: userId,
@@ -316,7 +316,7 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
   }
 
   // Deletar todas as posições demo
-  const { error: deleteError } = await (supabase as any)
+  const { error: deleteError } = await supabase
     .from("positions")
     .delete()
     .eq("user_id", userId)
@@ -330,16 +330,16 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
   console.log("✅ [CLOSE POSITIONS] Todas as posições demo foram fechadas");
 
   // Verificação dupla: confirmar que nenhuma posição restou
-  const { data: remainingPositions } = await (supabase as any)
+  const { data: remainingPositions } = await supabase
     .from("positions")
     .select("id")
     .eq("user_id", userId)
     .eq("is_demo", true);
-
+  
   if (remainingPositions && remainingPositions.length > 0) {
     console.error(`⚠️ [CLOSE POSITIONS] ATENÇÃO: Ainda existem ${remainingPositions.length} posições demo após o delete!`);
     // Tentar deletar novamente
-    await (supabase as any)
+    await supabase
       .from("positions")
       .delete()
       .eq("user_id", userId)
@@ -350,7 +350,7 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
 
   // ✅ LIMPAR HISTÓRICO DE TRADES PARA RESETAR WIN RATE
   console.log("🗑️ [CLOSE POSITIONS] Limpando histórico de trades demo para resetar win rate...");
-  const { error: tradesDeleteError } = await (supabase as any)
+  const { error: tradesDeleteError } = await supabase
     .from("trades")
     .delete()
     .eq("user_id", userId)
@@ -364,7 +364,7 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
 
   // Atualizar saldo atual no bot_daily_stats
   const today = new Date().toISOString().split('T')[0];
-  const { data: dailyStats, error: statsError } = await (supabase as any)
+  const { data: dailyStats, error: statsError } = await supabase
     .from("bot_daily_stats")
     .select("starting_balance")
     .eq("user_id", userId)
@@ -372,9 +372,9 @@ export const closeAllDemoPositions = async (userId: string): Promise<void> => {
     .single();
 
   if (!statsError && dailyStats) {
-    const { error: updateError } = await (supabase as any)
+    const { error: updateError } = await supabase
       .from("bot_daily_stats")
-      .update({
+      .update({ 
         current_balance: dailyStats.starting_balance,
         profit_loss_percent: 0,        // Resetar P&L% (anular perdas)
         trades_count: 0,               // Resetar contagem de trades

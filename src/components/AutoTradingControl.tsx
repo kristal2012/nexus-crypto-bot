@@ -6,14 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Bot, Sparkles, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { FIXED_USER_ID, IS_SIMULATION_MODE } from "@/config/userConfig";
+import { FIXED_USER_ID } from "@/config/userConfig";
 import { executeAutoTradeAnalysis, AutoTradeError } from "@/services/autoTradeService";
 import { useTradingConfig } from "@/hooks/useTradingConfig";
 import { useBotActive } from "@/hooks/useBotActive";
 
 export const AutoTradingControl = () => {
   const [lastAnalysis, setLastAnalysis] = useState<any>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
   const { config } = useTradingConfig();
   const { isActive, toggleBotActive } = useBotActive();
@@ -21,21 +20,18 @@ export const AutoTradingControl = () => {
   useEffect(() => {
     loadLastAnalysis();
     checkCredentials();
-
+    
     // Update analysis display every 60 seconds
     const displayInterval = setInterval(() => {
       loadLastAnalysis();
     }, 60000);
-
+    
     return () => clearInterval(displayInterval);
   }, []);
 
   const checkCredentials = async () => {
-    // BYPASS PARA MODO SIMULAÇÃO
-    if (IS_SIMULATION_MODE) return;
-
     try {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from('binance_api_keys')
         .select('api_key, api_secret_encrypted')
         .eq('user_id', FIXED_USER_ID)
@@ -69,7 +65,6 @@ export const AutoTradingControl = () => {
       }
 
       isExecuting = true;
-      setIsAnalyzing(true);
       try {
         console.log('🤖 [AutoTradingControl] Executing automatic analysis...');
         const response = await executeAutoTradeAnalysis();
@@ -103,7 +98,7 @@ export const AutoTradingControl = () => {
           });
           return;
         }
-
+        
         // Handle successful execution
         if (response.executed_trades && response.executed_trades.length > 0) {
           console.log(`Auto analysis completed: ${response.executed_trades.length} trades executed`);
@@ -145,13 +140,12 @@ export const AutoTradingControl = () => {
         });
       } finally {
         isExecuting = false;
-        setIsAnalyzing(false);
       }
     };
 
     // Delay first execution to avoid immediate rate limit on page load
     const initialDelay = 2000; // 2 seconds
-    console.log(`⏰ [AutoTradingControl] Scheduling first analysis in ${initialDelay / 1000}s`);
+    console.log(`⏰ [AutoTradingControl] Scheduling first analysis in ${initialDelay/1000}s`);
     timeoutId = setTimeout(executeAutoAnalysis, initialDelay);
 
     // Then execute every 5 minutes (300000 ms)
@@ -165,7 +159,7 @@ export const AutoTradingControl = () => {
 
   const loadLastAnalysis = async () => {
     try {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from('ai_analysis_results')
         .select('*')
         .eq('user_id', FIXED_USER_ID)
@@ -178,9 +172,9 @@ export const AutoTradingControl = () => {
           total: data.length,
           highConfidence: highConfidence.length,
           lastRun: data[0].created_at,
-          bestOpportunity: data.reduce((best, current) =>
+          bestOpportunity: data.reduce((best, current) => 
             current.confidence > best.confidence ? current : best
-            , data[0])
+          , data[0])
         });
       }
     } catch (error) {
@@ -194,11 +188,11 @@ export const AutoTradingControl = () => {
 
       const minConf = config?.minConfidence || 60;
       const qty = config?.quantityUsdt || 10;
-
+      
       toast({
         title: checked ? "IA Trading Ativado" : "IA Trading Desativado",
-        description: checked
-          ? `A IA executará análises a cada 5min, operando ${qty} USDT por trade em pares com ≥${minConf}% de confiança`
+        description: checked 
+          ? `A IA executará análises a cada 5min, operando ${qty} USDT por trade em pares com ≥${minConf}% de confiança` 
           : "A análise automática foi pausada",
       });
     } catch (error) {
@@ -228,7 +222,7 @@ export const AutoTradingControl = () => {
             </div>
           </div>
           <Badge variant={isActive ? "default" : "secondary"}>
-            {isAnalyzing ? "ANALISANDO..." : isActive ? "ATIVO" : "PAUSADO"}
+            {isActive ? "ATIVO" : "PAUSADO"}
           </Badge>
         </div>
 

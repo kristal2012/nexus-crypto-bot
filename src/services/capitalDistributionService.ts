@@ -21,8 +21,7 @@ class CapitalDistributionService {
     userId: string,
     totalCapital: number,
     pairs: string[],
-    testMode: boolean,
-    quantityPerTrade?: number // Quantidade fixa em USDT definida pelo usuário
+    testMode: boolean
   ): Promise<Map<string, CapitalAllocation>> {
     const allocations = new Map<string, CapitalAllocation>();
 
@@ -31,39 +30,7 @@ class CapitalDistributionService {
       return allocations;
     }
 
-    // Se o usuário definiu quantidade por trade, usar valor fixo
-    if (quantityPerTrade && quantityPerTrade > 0) {
-      console.log(`💰 Usando quantidade fixa: ${quantityPerTrade.toFixed(2)} USDT por trade`);
-      
-      for (const symbol of pairs) {
-        try {
-          const priceData = await binanceService.getPrice(symbol);
-
-          if (!priceData) {
-            console.error(`Error fetching price for ${symbol}`);
-            continue;
-          }
-
-          const price = priceData.price;
-          const quantity = quantityPerTrade / price;
-
-          allocations.set(symbol, {
-            symbol,
-            allocatedAmount: quantityPerTrade,
-            allocatedPercent: (quantityPerTrade / totalCapital) * 100,
-            quantity: Number(quantity.toFixed(8)),
-          });
-
-          console.log(`${symbol}: ${quantityPerTrade.toFixed(2)} USDT (${quantity.toFixed(8)} units @ $${price.toFixed(2)})`);
-        } catch (error) {
-          console.error(`Error allocating capital for ${symbol}:`, error);
-        }
-      }
-
-      return allocations;
-    }
-
-    // Caso contrário, usar cálculo automático (divisão do capital)
+    // Capital por rodada definido na estratégia (SSOT)
     const capitalPerRound = totalCapital * this.CAPITAL_PER_ROUND;
 
     // Capital disponível para trading (exclui reserva de segurança)

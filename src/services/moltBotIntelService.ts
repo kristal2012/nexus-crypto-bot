@@ -1,30 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { RISK_SETTINGS } from './riskService';
-
-const isBrowser = typeof window !== 'undefined';
-
-// Módulos Node.JS protegidos (Carregamento condicional para não quebrar o Vite/Browser)
-let fs: any = null;
-let path: any = null;
-
-// Função auxiliar para carregar módulos do Node sem quebrar o bundler do navegador
-const initNodeModules = async () => {
-    if (!isBrowser && !fs) {
-        try {
-            // Usamos import dinâmico com /* @vite-ignore */ para evitar que o Vite analise o módulo
-            const fsModule = await import(/* @vite-ignore */ 'fs');
-            const pathModule = await import(/* @vite-ignore */ 'path');
-            fs = fsModule.default || fsModule;
-            path = pathModule.default || pathModule;
-        } catch (e) {
-            console.error('❌ Falha ao carregar módulos do Node:', e);
-        }
-    }
-};
-
-// Inicialização imediata se não for browser
-if (!isBrowser) {
-    initNodeModules();
-}
 
 interface MoltBotIntel {
     networkAnalysis: {
@@ -43,28 +19,34 @@ interface MoltBotIntel {
         stopLossPercent: number;
         orderSizeMultiplier: number;
         maxPositions: number;
-        minConfidence?: number;
+        minConfidence?: number; // Novo campo para ajuste dinâmico de assertividade
     };
     date: string;
     provider: string;
 }
 
+const isBrowser = typeof window !== 'undefined';
+
 class MoltBotIntelService {
+    private readonly INTEL_FILE_PATH = 'C:\\THE_FLASH_BOT\\data\\intelligence\\latest_intel.json';
     private intelPath: string | null = null;
 
     constructor() {
         if (!isBrowser) {
-            this.intelPath = 'C:\\THE_FLASH_BOT\\data\\intelligence\\latest_intel.json';
+            // Caminho absoluto centralizado na VPS
+            // USANDO INTELIGÊNCIA COMPARTILHADA (CÉREBRO ÚNICO)
+            this.intelPath = this.INTEL_FILE_PATH;
         }
     }
 
     public getLatestIntel(): MoltBotIntel | null {
         if (isBrowser || !this.intelPath) {
+            // No navegador, a inteligência via filesystem não está disponível
             return null;
         }
 
         try {
-            if (!fs?.existsSync(this.intelPath)) {
+            if (!fs.existsSync(this.intelPath)) {
                 console.warn(`[MoltBot] Relatório não encontrado em: ${this.intelPath}`);
                 return null;
             }
@@ -77,6 +59,9 @@ class MoltBotIntelService {
         }
     }
 
+    /**
+     * Aplica a inteligência do MoltBot aos parâmetros de risco do Volatile Trader
+     */
     public applyIntelToRisk(currentParams: any): any {
         const intel = this.getLatestIntel();
         if (!intel) return currentParams;
@@ -85,11 +70,12 @@ class MoltBotIntelService {
 
         return {
             ...currentParams,
+            // Ajustes dinâmicos baseados na IA
             takeProfitPercent: intel.optimizedParameters.takeProfitPercent || currentParams.takeProfitPercent,
             stopLossPercent: intel.optimizedParameters.stopLossPercent || currentParams.stopLossPercent,
             maxPositions: intel.optimizedParameters.maxPositions || currentParams.maxPositions,
             momentumBuyThreshold: intel.networkAnalysis.cexTriggerThreshold * 100 || currentParams.momentumBuyThreshold,
-            minConfidence: intel.optimizedParameters.minConfidence || 0.6
+            minConfidence: intel.optimizedParameters.minConfidence || 0.6 // Default 60% se não vier da IA
         };
     }
 }

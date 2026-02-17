@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { FIXED_USER_ID, IS_SIMULATION_MODE } from "@/config/userConfig";
+import { FIXED_USER_ID } from "@/config/userConfig";
 import { Eye, EyeOff, Save, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { clearBinanceValidationCache } from "@/services/binanceService";
 import { BinanceApiKeysTroubleshooting } from "./BinanceApiKeysTroubleshooting";
@@ -42,16 +42,10 @@ export const BinanceApiSettings = () => {
   }, []);
 
   const checkSession = async () => {
-    // BYPASS PARA MODO SIMULAÇÃO
-    if (IS_SIMULATION_MODE) {
-      setIsSessionValid(true);
-      return;
-    }
-
     const { data: { session }, error } = await supabase.auth.getSession();
     const isValid = !!session && !error;
     setIsSessionValid(isValid);
-
+    
     if (!isValid) {
       console.error('❌ Sessão inválida:', error);
     } else {
@@ -82,8 +76,8 @@ export const BinanceApiSettings = () => {
   const saveApiKeys = async () => {
     // Verificar se a sessão é válida
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (!IS_SIMULATION_MODE && (sessionError || !session)) {
+    
+    if (sessionError || !session) {
       console.error('❌ Sessão inválida ao tentar salvar:', sessionError);
       toast.error("❌ Sua sessão expirou. Recarregue a página.");
       return;
@@ -99,11 +93,11 @@ export const BinanceApiSettings = () => {
     }
 
     setLoading(true);
-
+    
     // Limpa cache ANTES de salvar novas chaves
     clearBinanceValidationCache();
     localStorage.setItem('binance_config_attempted', 'true');
-
+    
     console.log("🔐 Salvando chaves da Binance...", { user_id: FIXED_USER_ID });
 
     try {
@@ -120,7 +114,7 @@ export const BinanceApiSettings = () => {
       // Tratar erro 401 explicitamente
       if (error) {
         console.error("❌ Erro da edge function:", error);
-
+        
         if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
           toast.error("❌ Sessão expirada. Redirecionando para login...");
           setTimeout(() => {
@@ -128,17 +122,17 @@ export const BinanceApiSettings = () => {
           }, 1500);
           return;
         }
-
+        
         throw error;
       }
 
       console.log("✅ Chaves salvas com sucesso!");
-
+      
       // Limpa cache APÓS sucesso para forçar revalidação
       clearBinanceValidationCache();
-
+      
       toast.success("✓ Chaves da API salvas e criptografadas com sucesso! Você já pode usar o IA Trading.");
-
+      
       // Reload the page after 1.5 seconds to refresh all components and clear secret from memory
       setTimeout(() => {
         window.location.reload();
@@ -182,7 +176,7 @@ export const BinanceApiSettings = () => {
             </AlertDescription>
           </Alert>
         )}
-
+        
         <div className="space-y-2">
           <Label htmlFor="api-key">API Key</Label>
           <Input
@@ -226,11 +220,11 @@ export const BinanceApiSettings = () => {
         </Button>
 
         <p className="text-sm text-muted-foreground">
-          ⚠️ Suas chaves são criptografadas com AES-256-GCM antes de serem armazenadas.
+          ⚠️ Suas chaves são criptografadas com AES-256-GCM antes de serem armazenadas. 
           Nunca compartilhe suas chaves da API com terceiros.
         </p>
       </CardContent>
-
+      
       <BinanceApiKeysTroubleshooting />
     </Card>
   );
