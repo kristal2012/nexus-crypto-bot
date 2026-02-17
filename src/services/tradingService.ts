@@ -646,9 +646,12 @@ class TradingService {
 
         logService.addLog('SUCCESS', `🚀 Compra: ${symbol} @ $${price.toFixed(2)}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error executing buy:", error);
-      logService.addLog('ERROR', "Erro ao executar compra");
+      logService.addLog('ERROR', "Erro ao executar compra", {
+        message: error?.message || 'Erro desconhecido',
+        stack: error?.stack
+      });
     }
   }
 
