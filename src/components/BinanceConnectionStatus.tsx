@@ -27,8 +27,8 @@ export const BinanceConnectionStatus = () => {
     const hasAttemptedConfig = localStorage.getItem('binance_config_attempted');
 
     // Verificar se estamos em modo simulação para bypass total
-    const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
+    const isSimulation = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TRADING_MODE === 'test') ||
+      (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test');
 
     if (isSimulation || hasAttemptedConfig) {
       checkConnection();

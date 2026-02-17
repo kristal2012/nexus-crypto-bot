@@ -38,7 +38,9 @@ const BINANCE_BASE_URLS = [
 ];
 
 // Vercel Proxy Bridge (Bypass Geoblock)
-const VERCEL_PROXY = process.env.VITE_BINANCE_PROXY_URL || 'https://nexus-crypto-bot.vercel.app/api/binance-proxy';
+const VERCEL_PROXY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BINANCE_PROXY_URL) ||
+  (typeof process !== 'undefined' && process.env?.VITE_BINANCE_PROXY_URL) ||
+  'https://nexus-crypto-bot.vercel.app/api/binance-proxy';
 
 const isBrowser = typeof window !== 'undefined';
 const API_BASE_URL = isBrowser ? '' : 'https://fapi.binance.com';
@@ -221,8 +223,8 @@ const CACHE_DURATION = 30000;
  */
 export const validateBinanceApiKeys = async (): Promise<BinanceApiKeyStatus> => {
   // BYPASS PARA MODO SIMULAÇÃO
-  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
+  const isSimulation = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TRADING_MODE === 'test') ||
+    (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test');
 
   if (isSimulation) {
     return {
