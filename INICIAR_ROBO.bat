@@ -1,24 +1,26 @@
 @echo off
-color 0A
+color 0B
 echo ==================================================
-echo       INICIANDO SISTEMA CRYPTUM 7.1
+echo       INICIANDO CRYPTUM 7.1 (MODO NUVEM)
 echo ==================================================
 echo.
 
 cd /d "%~dp0"
 
-echo [1/2] Ligando o Cerebro do Robo (Backend)...
-start "CEREBRO DO ROBO - NAO FECHE" cmd /k "npm run start:bot"
+echo [1/2] Ligando o MOTOR do Robo (Necessario para operar)...
+start "MOTOR CRYPTUM - NAO FECHE" cmd /k "npm run start:bot"
 
-echo [2/2] Abrindo o Painel de Controle (Dashboard)...
-echo O navegador abrira automaticamente em instantes...
-start "DASHBOARD - NAO FECHE" cmd /k "npm run dev -- --open"
+echo [2/2] Acessando o Painel na NUVEM (Vercel)...
+timeout /t 3 >nul
+start https://nexus-crypto-bot.vercel.app
 
 echo.
 echo ==================================================
-echo       SISTEMA INICIADO COM SUCESSO!
+echo       CONECTADO!
 echo ==================================================
 echo.
-echo Mantenha as janelas pretas abertas para o robo funcionar.
-echo Voce pode minimizar esta janela agora.
-timeout /t 10
+echo O robo esta rodando aqui (janela preta) e enviando dados para o site.
+echo Voce pode controlar tudo pelo Chrome.
+echo.
+echo NAO FECHE ESTA JANELA PRETA ENQUANTO QUISER OPERAR.
+pause
