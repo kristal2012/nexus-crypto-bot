@@ -512,301 +512,300 @@ class TradingService {
         console.error(`Error analyzing ${symbol}:`, error);
       }
     }
-  }
 
-  // Log periódico do estado do mercado (Heartbeat para o Dashboard)
-  if(shouldLogAnalysis && analysisSummary.length > 0) {
-  console.log('📡 Enviando resumo de mercado para o Dashboard...');
-  logService.addLog('INFO', `Análise de Mercado (${analysisSummary.length} pares)`, {
-    timestamp: new Date().toISOString(),
-    summary: analysisSummary
-  });
-  this.lastAnalysisLogTime = Date.now();
-}
-  }
-
-  private async checkOpenPositions(): Promise < void> {
-  if(!this.config) return;
-
-  // [RECONCILIATION] Se a memória estiver vazia mas houver trades abertas no DB, carregar
-  if(this.openPositions.size === 0) {
-  const stats = await statsService.getAccountStats(this.config.userId, this.config.testMode, this.config.totalCapital);
-  if (stats.activeTrades.length > 0) {
-    console.log(`🔄 [Reconciliation] Recuperando ${stats.activeTrades.length} posições abertas do armazenamento local.`);
-    stats.activeTrades.forEach(t => {
-      this.openPositions.set(t.id, {
-        tradeId: t.id,
-        symbol: t.symbol,
-        buyPrice: t.price,
-        quantity: t.quantity,
-        timestamp: new Date(t.created_at).getTime()
+    // Log periódico do estado do mercado (Heartbeat para o Dashboard)
+    if (shouldLogAnalysis && analysisSummary.length > 0) {
+      console.log('📡 Enviando resumo de mercado para o Dashboard...');
+      logService.addLog('INFO', `Análise de Mercado (${analysisSummary.length} pares)`, {
+        timestamp: new Date().toISOString(),
+        summary: analysisSummary
       });
-    });
-  }
-}
-
-if (this.openPositions.size === 0) return;
-
-for (const [tradeId, position] of this.openPositions.entries()) {
-  const now = Date.now();
-  const elapsedMinutes = (now - position.timestamp) / 60000;
-
-  // Verificar se posição está expirada (hold time)
-  if (elapsedMinutes > RISK_SETTINGS.MAX_HOLD_MINUTES) {
-    console.log(`⚠️ Marcando posição expirada como TIMEOUT_EXIT: ${position.symbol} (${elapsedMinutes.toFixed(0)} min > ${RISK_SETTINGS.MAX_HOLD_MINUTES} min)`);
-    const currentPriceData = await binanceService.getPrice(position.symbol);
-    await this.executeSell(position, currentPriceData?.price || position.buyPrice, "TIMEOUT_EXIT");
-    continue;
-  }
-
-  const currentPriceResult = await binanceService.getPrice(position.symbol);
-  if (!currentPriceResult) continue;
-  const currentPrice = currentPriceResult.price;
-
-  const profitPercent = ((currentPrice - position.buyPrice) / position.buyPrice) * 100;
-
-  // Parâmetros adaptativos ou padrão
-  const adaptiveTakeProfit = this.currentAdaptiveParams?.takeProfitPercent || this.config?.takeProfitPercent || RISK_SETTINGS.TAKE_PROFIT_PERCENT;
-  const adaptiveStopLoss = this.currentAdaptiveParams?.stopLossPercent || this.config?.stopLossPercent || RISK_SETTINGS.STOP_LOSS_PERCENT;
-  const adaptiveProfitProtect = this.currentAdaptiveParams?.profitProtectThreshold || RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD;
-
-  // Log detalhado de monitoramento (importante para o usuário ver que está vivo)
-  const targetTP = position.buyPrice * (1 + (adaptiveTakeProfit / 100));
-  const targetSL = position.buyPrice * (1 - (adaptiveStopLoss / 100));
-  const distTP = ((targetTP - currentPrice) / currentPrice) * 100;
-
-  console.log(`📡 [Monitor] ${position.symbol} | Preço: $${currentPrice.toFixed(2)} | P/L: ${profitPercent.toFixed(2)}% | Alvo: $${targetTP.toFixed(2)} (${distTP.toFixed(2)}% p/ TP) | SL: $${targetSL.toFixed(2)}`);
-
-  // 1. Take Profit
-  if (profitPercent >= adaptiveTakeProfit) {
-    console.log(`✅ Take profit atingido em ${position.symbol}: ${profitPercent.toFixed(2)}%`);
-    await this.executeSell(position, currentPrice, "TAKE_PROFIT");
-    continue;
-  }
-
-  // 2. Stop Loss
-  if (profitPercent <= -adaptiveStopLoss) {
-    console.log(`🛑 Stop loss atingido em ${position.symbol}: ${profitPercent.toFixed(2)}%`);
-    await this.executeSell(position, currentPrice, "STOP_LOSS");
-    continue;
-  }
-
-  // 3. Estratégias Adicionais (Bollinger, RSI, etc)
-  const candles = await binanceService.getCandles(position.symbol, '1m', 50);
-  if (candles && candles.length >= 21) {
-    if (momentumStrategyService.shouldSell(candles, position.buyPrice)) {
-      console.log(`💰 [Strategy] Venda por Mean Reversion detectada em ${position.symbol}`);
-      await this.executeSell(position, currentPrice, "STRATEGY_EXIT");
-      continue;
-    }
-
-    const momentum = momentumStrategyService.analyzeMomentum([], undefined, candles);
-    const avgHighs = momentum.avgHighs || 0;
-
-    // Proteção de lucro parcil
-    if (profitPercent >= adaptiveProfitProtect && currentPrice >= avgHighs * 0.98) {
-      console.log(`💰 [ProfitProtect] Protegendo lucro atual em ${position.symbol}: ${profitPercent.toFixed(2)}%`);
-      await this.executeSell(position, currentPrice, "PROFIT_PROTECT");
-      continue;
+      this.lastAnalysisLogTime = Date.now();
     }
   }
-}
+
+  private async checkOpenPositions(): Promise<void> {
+    if (!this.config) return;
+
+    // [RECONCILIATION] Se a memória estiver vazia mas houver trades abertas no DB, carregar
+    if (this.openPositions.size === 0) {
+      const stats = await statsService.getAccountStats(this.config.userId, this.config.testMode, this.config.totalCapital);
+      if (stats.activeTrades.length > 0) {
+        console.log(`🔄 [Reconciliation] Recuperando ${stats.activeTrades.length} posições abertas do armazenamento local.`);
+        stats.activeTrades.forEach(t => {
+          this.openPositions.set(t.id, {
+            tradeId: t.id,
+            symbol: t.symbol,
+            buyPrice: t.price,
+            quantity: t.quantity,
+            timestamp: new Date(t.created_at).getTime()
+          });
+        });
+      }
+    }
+
+    if (this.openPositions.size === 0) return;
+
+    for (const [tradeId, position] of this.openPositions.entries()) {
+      const now = Date.now();
+      const elapsedMinutes = (now - position.timestamp) / 60000;
+
+      // Verificar se posição está expirada (hold time)
+      if (elapsedMinutes > RISK_SETTINGS.MAX_HOLD_MINUTES) {
+        console.log(`⚠️ Marcando posição expirada como TIMEOUT_EXIT: ${position.symbol} (${elapsedMinutes.toFixed(0)} min > ${RISK_SETTINGS.MAX_HOLD_MINUTES} min)`);
+        const currentPriceData = await binanceService.getPrice(position.symbol);
+        await this.executeSell(position, currentPriceData?.price || position.buyPrice, "TIMEOUT_EXIT");
+        continue;
+      }
+
+      const currentPriceResult = await binanceService.getPrice(position.symbol);
+      if (!currentPriceResult) continue;
+      const currentPrice = currentPriceResult.price;
+
+      const profitPercent = ((currentPrice - position.buyPrice) / position.buyPrice) * 100;
+
+      // Parâmetros adaptativos ou padrão
+      const adaptiveTakeProfit = this.currentAdaptiveParams?.takeProfitPercent || this.config?.takeProfitPercent || RISK_SETTINGS.TAKE_PROFIT_PERCENT;
+      const adaptiveStopLoss = this.currentAdaptiveParams?.stopLossPercent || this.config?.stopLossPercent || RISK_SETTINGS.STOP_LOSS_PERCENT;
+      const adaptiveProfitProtect = this.currentAdaptiveParams?.profitProtectThreshold || RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD;
+
+      // Log detalhado de monitoramento (importante para o usuário ver que está vivo)
+      const targetTP = position.buyPrice * (1 + (adaptiveTakeProfit / 100));
+      const targetSL = position.buyPrice * (1 - (adaptiveStopLoss / 100));
+      const distTP = ((targetTP - currentPrice) / currentPrice) * 100;
+
+      console.log(`📡 [Monitor] ${position.symbol} | Preço: $${currentPrice.toFixed(2)} | P/L: ${profitPercent.toFixed(2)}% | Alvo: $${targetTP.toFixed(2)} (${distTP.toFixed(2)}% p/ TP) | SL: $${targetSL.toFixed(2)}`);
+
+      // 1. Take Profit
+      if (profitPercent >= adaptiveTakeProfit) {
+        console.log(`✅ Take profit atingido em ${position.symbol}: ${profitPercent.toFixed(2)}%`);
+        await this.executeSell(position, currentPrice, "TAKE_PROFIT");
+        continue;
+      }
+
+      // 2. Stop Loss
+      if (profitPercent <= -adaptiveStopLoss) {
+        console.log(`🛑 Stop loss atingido em ${position.symbol}: ${profitPercent.toFixed(2)}%`);
+        await this.executeSell(position, currentPrice, "STOP_LOSS");
+        continue;
+      }
+
+      // 3. Estratégias Adicionais (Bollinger, RSI, etc)
+      const candles = await binanceService.getCandles(position.symbol, '1m', 50);
+      if (candles && candles.length >= 21) {
+        if (momentumStrategyService.shouldSell(candles, position.buyPrice)) {
+          console.log(`💰 [Strategy] Venda por Mean Reversion detectada em ${position.symbol}`);
+          await this.executeSell(position, currentPrice, "STRATEGY_EXIT");
+          continue;
+        }
+
+        const momentum = momentumStrategyService.analyzeMomentum([], undefined, candles);
+        const avgHighs = momentum.avgHighs || 0;
+
+        // Proteção de lucro parcil
+        if (profitPercent >= adaptiveProfitProtect && currentPrice >= avgHighs * 0.98) {
+          console.log(`💰 [ProfitProtect] Protegendo lucro atual em ${position.symbol}: ${profitPercent.toFixed(2)}%`);
+          await this.executeSell(position, currentPrice, "PROFIT_PROTECT");
+          continue;
+        }
+      }
+    }
   }
 
   /**
    * Monitora capital liberado e reinveste automaticamente
    */
   private startReinvestmentMonitoring(): void {
-  this.reinvestInterval = setInterval(async () => {
-    if (!this.isRunning || !this.config) return;
+    this.reinvestInterval = setInterval(async () => {
+      if (!this.isRunning || !this.config) return;
+
+      try {
+        // Se temos menos posições que o máximo, tentar abrir novas
+        const maxPositions = this.config.maxPositions || this.MAX_POSITIONS;
+        if (this.openPositions.size < maxPositions) {
+          console.log(`💰 Capital disponível para reinvestimento. Posições abertas: ${this.openPositions.size}/${maxPositions}`);
+          // O analyzeMarketAndTrade já vai cuidar de abrir novas posições
+        }
+      } catch (error) {
+        console.error("Error in reinvestment monitoring:", error);
+      }
+    }, this.REINVEST_CHECK_INTERVAL);
+  }
+
+  private async executeBuy(symbol: string, price: number, quantity: number): Promise<void> {
+    if (!this.config) return;
 
     try {
-      // Se temos menos posições que o máximo, tentar abrir novas
-      const maxPositions = this.config.maxPositions || this.MAX_POSITIONS;
-      if (this.openPositions.size < maxPositions) {
-        console.log(`💰 Capital disponível para reinvestimento. Posições abertas: ${this.openPositions.size}/${maxPositions}`);
-        // O analyzeMarketAndTrade já vai cuidar de abrir novas posições
+      console.log(`🟢 Executando COMPRA: ${symbol} @ $${price.toFixed(2)} (qty: ${quantity})`);
+
+      const result = await tradeService.executeTrade(
+        symbol,
+        "BUY",
+        quantity,
+        this.config.testMode
+      );
+
+      if (result && result.trade) {
+        this.openPositions.set(result.trade.id, {
+          tradeId: result.trade.id,
+          symbol: symbol,
+          buyPrice: price,
+          quantity: quantity,
+          timestamp: Date.now(),
+        });
+
+        logService.addLog('SUCCESS', `🚀 Compra: ${symbol} @ $${price.toFixed(2)}`);
+      }
+    } catch (error: any) {
+      console.error("Error executing buy:", error);
+      logService.addLog('ERROR', "Erro ao executar compra", {
+        message: error?.message || 'Erro desconhecido',
+        stack: error?.stack
+      });
+    }
+  }
+
+  private async executeSell(position: Position, price: number, reason: string): Promise<void> {
+    if (!this.config) return;
+
+    try {
+      const profitPercent = ((price - position.buyPrice) / position.buyPrice) * 100;
+      const reasonEmoji = reason === "TAKE_PROFIT" ? "✅" : reason === "STOP_LOSS" ? "🛑" : "⚠️";
+
+      console.log(`[TradeService] [${this.config.testMode ? 'SIMULAÇÃO' : 'REAL'}] Executando ${position.symbol} @ $${price.toFixed(2)} | ${reason} (${profitPercent.toFixed(2)}%)`);
+
+      // Trava de segurança extra
+      if (this.config.testMode && !this.config.testMode === false) {
+        // redundância para garantir que nada passe
+      }
+
+      const result = await tradeService.executeTrade(
+        position.symbol,
+        "SELL",
+        position.quantity,
+        this.config.testMode
+      );
+
+      if (result) {
+        // Calculate profit/loss
+        const profitLoss = binanceService.calculateProfitLoss(
+          position.buyPrice,
+          price,
+          position.quantity
+        );
+
+        // Pass profit_loss to trade execution
+        await tradeService.executeTrade(
+          position.symbol,
+          "SELL",
+          position.quantity,
+          this.config.testMode,
+          profitLoss
+        );
+
+        // Remover posição após venda
+        this.openPositions.delete(position.tradeId);
+
+        // Registrar cooldown do par
+        this.pairCooldowns.set(position.symbol, Date.now());
+
+        // ===== COOLDOWN DINÂMICO: Atualizar contador de perdas =====
+        if (reason === "STOP_LOSS") {
+          const currentCount = this.pairLossCount.get(position.symbol) || 0;
+          this.pairLossCount.set(position.symbol, currentCount + 1);
+          console.log(`📉 Perda registrada para ${position.symbol} (total: ${currentCount + 1})`);
+        } else if (reason === "TAKE_PROFIT" || reason === "PROFIT_PROTECT" || reason === "STRATEGY_EXIT") {
+          // Reset contador de perdas ao ter sucesso
+          this.pairLossCount.set(position.symbol, 0);
+          console.log(`✅ Contador de perdas resetado para ${position.symbol}`);
+
+          // FASE 3: Registrar venda lucrativa para zona de recompra
+          this.lastProfitableSells.set(position.symbol, {
+            price: price,
+            time: Date.now()
+          });
+          console.log(`🔄 Zona de recompra ativada para ${position.symbol} (30s)`);
+        }
+
+        logService.addLog('SUCCESS',
+          `${reasonEmoji} Venda: ${position.symbol} @ $${price.toFixed(2)} | ${profitPercent > 0 ? "Lucro" : "Perda"}: ${profitPercent.toFixed(2)}%`
+        );
+
+        // Após venda, capital está disponível para reinvestimento automático
+        console.log(`💰 Capital liberado! Posições restantes: ${this.openPositions.size}/${this.MAX_POSITIONS}`);
       }
     } catch (error) {
-      console.error("Error in reinvestment monitoring:", error);
+      console.error("Error executing sell:", error);
+      logService.addLog('ERROR', `Erro ao executar venda: ${position.symbol}`);
     }
-  }, this.REINVEST_CHECK_INTERVAL);
-}
-
-  private async executeBuy(symbol: string, price: number, quantity: number): Promise < void> {
-  if(!this.config) return;
-
-  try {
-    console.log(`🟢 Executando COMPRA: ${symbol} @ $${price.toFixed(2)} (qty: ${quantity})`);
-
-    const result = await tradeService.executeTrade(
-      symbol,
-      "BUY",
-      quantity,
-      this.config.testMode
-    );
-
-    if(result && result.trade) {
-  this.openPositions.set(result.trade.id, {
-    tradeId: result.trade.id,
-    symbol: symbol,
-    buyPrice: price,
-    quantity: quantity,
-    timestamp: Date.now(),
-  });
-
-  logService.addLog('SUCCESS', `🚀 Compra: ${symbol} @ $${price.toFixed(2)}`);
-}
-    } catch (error: any) {
-  console.error("Error executing buy:", error);
-  logService.addLog('ERROR', "Erro ao executar compra", {
-    message: error?.message || 'Erro desconhecido',
-    stack: error?.stack
-  });
-}
   }
 
-  private async executeSell(position: Position, price: number, reason: string): Promise < void> {
-  if(!this.config) return;
-
-  try {
-    const profitPercent = ((price - position.buyPrice) / position.buyPrice) * 100;
-    const reasonEmoji = reason === "TAKE_PROFIT" ? "✅" : reason === "STOP_LOSS" ? "🛑" : "⚠️";
-
-    console.log(`[TradeService] [${this.config.testMode ? 'SIMULAÇÃO' : 'REAL'}] Executando ${position.symbol} @ $${price.toFixed(2)} | ${reason} (${profitPercent.toFixed(2)}%)`);
-
-    // Trava de segurança extra
-    if(this.config.testMode && !this.config.testMode === false) {
-  // redundância para garantir que nada passe
-}
-
-const result = await tradeService.executeTrade(
-  position.symbol,
-  "SELL",
-  position.quantity,
-  this.config.testMode
-);
-
-if (result) {
-  // Calculate profit/loss
-  const profitLoss = binanceService.calculateProfitLoss(
-    position.buyPrice,
-    price,
-    position.quantity
-  );
-
-  // Pass profit_loss to trade execution
-  await tradeService.executeTrade(
-    position.symbol,
-    "SELL",
-    position.quantity,
-    this.config.testMode,
-    profitLoss
-  );
-
-  // Remover posição após venda
-  this.openPositions.delete(position.tradeId);
-
-  // Registrar cooldown do par
-  this.pairCooldowns.set(position.symbol, Date.now());
-
-  // ===== COOLDOWN DINÂMICO: Atualizar contador de perdas =====
-  if (reason === "STOP_LOSS") {
-    const currentCount = this.pairLossCount.get(position.symbol) || 0;
-    this.pairLossCount.set(position.symbol, currentCount + 1);
-    console.log(`📉 Perda registrada para ${position.symbol} (total: ${currentCount + 1})`);
-  } else if (reason === "TAKE_PROFIT" || reason === "PROFIT_PROTECT" || reason === "STRATEGY_EXIT") {
-    // Reset contador de perdas ao ter sucesso
-    this.pairLossCount.set(position.symbol, 0);
-    console.log(`✅ Contador de perdas resetado para ${position.symbol}`);
-
-    // FASE 3: Registrar venda lucrativa para zona de recompra
-    this.lastProfitableSells.set(position.symbol, {
-      price: price,
-      time: Date.now()
-    });
-    console.log(`🔄 Zona de recompra ativada para ${position.symbol} (30s)`);
+  isActive(): boolean {
+    return this.isRunning;
   }
 
-  logService.addLog('SUCCESS',
-    `${reasonEmoji} Venda: ${position.symbol} @ $${price.toFixed(2)} | ${profitPercent > 0 ? "Lucro" : "Perda"}: ${profitPercent.toFixed(2)}%`
-  );
-
-  // Após venda, capital está disponível para reinvestimento automático
-  console.log(`💰 Capital liberado! Posições restantes: ${this.openPositions.size}/${this.MAX_POSITIONS}`);
-}
-    } catch (error) {
-  console.error("Error executing sell:", error);
-  logService.addLog('ERROR', `Erro ao executar venda: ${position.symbol}`);
-}
+  getOpenPositionsCount(): number {
+    return this.openPositions.size;
   }
 
-isActive(): boolean {
-  return this.isRunning;
-}
+  getWatchedPairsCount(): number {
+    return multiPairService.getWatchedPairsCount();
+  }
 
-getOpenPositionsCount(): number {
-  return this.openPositions.size;
-}
-
-getWatchedPairsCount(): number {
-  return multiPairService.getWatchedPairsCount();
-}
-
-getCapitalAllocations(): Map < string, CapitalAllocation > {
-  return this.capitalAllocations;
-}
+  getCapitalAllocations(): Map<string, CapitalAllocation> {
+    return this.capitalAllocations;
+  }
 
   /**
    * Retorna estado atual do circuit breaker
    */
-  async getCircuitBreakerState(): Promise < {
-  active: boolean;
-  minutesLeft: number;
-  reason: string;
-} > {
-  if(!this.config) {
-  return { active: false, minutesLeft: 0, reason: '' };
-}
+  async getCircuitBreakerState(): Promise<{
+    active: boolean;
+    minutesLeft: number;
+    reason: string;
+  }> {
+    if (!this.config) {
+      return { active: false, minutesLeft: 0, reason: '' };
+    }
 
-const opStats = await operationsStatsService.getTodayOperationsStats(this.config.userId);
-const cbCheck = operationsStatsService.shouldActivateCircuitBreaker(
-  opStats,
-  this.config.totalCapital
-);
+    const opStats = await operationsStatsService.getTodayOperationsStats(this.config.userId);
+    const cbCheck = operationsStatsService.shouldActivateCircuitBreaker(
+      opStats,
+      this.config.totalCapital
+    );
 
-return {
-  active: cbCheck.shouldPause,
-  minutesLeft: Math.ceil((cbCheck.pauseUntil - Date.now()) / 60000),
-  reason: cbCheck.reason,
-};
+    return {
+      active: cbCheck.shouldPause,
+      minutesLeft: Math.ceil((cbCheck.pauseUntil - Date.now()) / 60000),
+      reason: cbCheck.reason,
+    };
   }
 
   /**
    * Limpa circuit breaker (apenas em modo teste com confirmação)
    */
-  async clearCircuitBreaker(): Promise < boolean > {
-  if(!this.config) return false;
+  async clearCircuitBreaker(): Promise<boolean> {
+    if (!this.config) return false;
 
-  // Apenas permitido em modo teste
-  if(!this.config.testMode) {
-  console.warn('⚠️ Clear circuit breaker só permitido em modo teste');
-  return false;
-}
+    // Apenas permitido em modo teste
+    if (!this.config.testMode) {
+      console.warn('⚠️ Clear circuit breaker só permitido em modo teste');
+      return false;
+    }
 
-console.log('✅ Circuit breaker limpo manualmente (modo teste)');
-this.lastCBLogTime = 0;
-this.circuitBreakerUntil = 0;
+    console.log('✅ Circuit breaker limpo manualmente (modo teste)');
+    this.lastCBLogTime = 0;
+    this.circuitBreakerUntil = 0;
 
-// Log da ação
-const { logService } = await import("./botService");
-await logService.addLog(
-  'INFO',
-  'Circuit Breaker limpo manualmente (modo teste)',
-  { timestamp: new Date().toISOString() }
-);
+    // Log da ação
+    const { logService } = await import("./botService");
+    await logService.addLog(
+      'INFO',
+      'Circuit Breaker limpo manualmente (modo teste)',
+      { timestamp: new Date().toISOString() }
+    );
 
-return true;
+    return true;
   }
 }
 
