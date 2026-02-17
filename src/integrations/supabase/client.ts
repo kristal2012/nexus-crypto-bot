@@ -15,11 +15,11 @@ const getEnvVar = (key: string): string => {
 };
 
 const SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL');
-const SUPABASE_PUBLISHABLE_KEY = getEnvVar('VITE_SUPABASE_PUBLISHABLE_KEY');
+const SUPABASE_ANON_KEY = getEnvVar('VITE_SUPABASE_ANON_KEY');
 const SUPABASE_SERVICE_ROLE_KEY = getEnvVar('VITE_SUPABASE_SERVICE_ROLE_KEY');
 
-// Use Service Role Key if available (admin mode), otherwise use Publishable Key
-const FINAL_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_PUBLISHABLE_KEY;
+// Use Service Role Key if available (admin/Node.js mode), otherwise use Anon Key (browser)
+const FINAL_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
 
 // Safe initialization to avoid app crash if env vars are missing
 const safeSupabaseUrl = SUPABASE_URL || "https://placeholder.supabase.co";
