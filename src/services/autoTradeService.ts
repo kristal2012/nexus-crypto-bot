@@ -43,36 +43,68 @@ export interface AutoTradeError {
  */
 export const executeAutoTradeAnalysis = async (): Promise<AutoTradeResponse> => {
   if (IS_SIMULATION_MODE) {
-    console.log('🧪 [autoTradeService] Simulando análise IA...');
-    // Pequeno delay para simular processamento
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    console.log('🧪 [autoTradeService] Iniciando análise de ALTA FIDELIDADE baseada em dados reais...');
 
-    // Decidir aleatoriamente se haverá um trade (60% de chance)
-    const shouldTrade = Math.random() > 0.4;
-    const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'LINKUSDT'];
-    const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+    try {
+      // 1. Buscar dados reais da Binance (Simulando análise de múltiplos pares)
+      const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'LINKUSDT'];
+      // Selecionar um par aleatório para análise neste ciclo (para variar)
+      const symbol = symbols[Math.floor(Math.random() * symbols.length)];
 
-    if (shouldTrade) {
-      console.log(`🎰 [autoTradeService] Simulação: Oportunidade encontrada em ${randomSymbol}`);
+      console.log(`📡 [autoTradeService] Buscando candles reais para ${symbol}...`);
+      const { binanceService } = await import("./binanceService");
+      const { meanReversionStrategy } = await import("./strategies/meanReversionStrategy");
+
+      const candles = await binanceService.getCandles(symbol, '1m', 30);
+
+      if (!candles || candles.length < 20) {
+        return {
+          success: true,
+          message: `Dados insuficientes para análise de ${symbol}. Aguardando mercado...`,
+          executed_trades: []
+        };
+      }
+
+      const prices = candles.map(c => c.close);
+      const currentPrice = prices[prices.length - 1];
+
+      // 2. Executar Estratégia Real
+      const signal = meanReversionStrategy.analyzeBuyOpportunity(prices);
+
+      // Pequeno delay para simular o tempo de "pensamento" da IA
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      if (signal.action === 'buy' && signal.confidence >= 0.7) {
+        console.log(`🎯 [autoTradeService] Simulação: Oportunidade REAL encontrada em ${symbol}!`);
+        return {
+          success: true,
+          message: `[SIMULAÇÃO REAL] ${signal.reason}`,
+          executed_trades: [{
+            symbol: symbol,
+            side: 'BUY',
+            quantity: 0.1,
+            price: currentPrice,
+            is_demo: true,
+            executed_at: new Date().toISOString(),
+            confidence: signal.confidence
+          }]
+        };
+      }
+
+      console.log(`⚖️ [autoTradeService] Simulação: Mercado neutro para ${symbol}. Analisando condições...`);
       return {
         success: true,
-        message: `[SIMULAÇÃO] Executada operação de COMPRA em ${randomSymbol} com 89.5% de confiança.`,
-        executed_trades: [{
-          symbol: randomSymbol,
-          side: 'BUY',
-          quantity: 0.1,
-          price: 50000,
-          is_demo: true,
-          executed_at: new Date().toISOString()
-        }]
+        message: `Análise real concluída para ${symbol}. Motivo: ${signal.reason}`,
+        executed_trades: []
+      };
+    } catch (error) {
+      console.error('❌ Erro na simulação de alta fidelidade:', error);
+      return {
+        success: true,
+        message: "Erro ao processar dados reais. Mantendo robô em standby...",
+        executed_trades: []
       };
     }
-
-    return {
-      success: true,
-      message: "Análise simulada concluída. Nenhuma oportunidade de alto risco encontrada no momento.",
-      executed_trades: []
-    };
   }
 
   try {
