@@ -38,10 +38,11 @@ class MeanReversionStrategy {
   private readonly MEDIUM_CONFIDENCE = 0.7;
   private readonly LOW_CONFIDENCE = 0.5;
 
+
   /**
    * Analisa oportunidade de COMPRA
    */
-  analyzeBuyOpportunity(prices: number[]): MeanReversionSignal {
+  analyzeBuyOpportunity(prices: number[], isTestMode: boolean = false): MeanReversionSignal {
     if (prices.length < Math.max(this.BB_PERIOD, this.RSI_PERIOD + 1)) {
       return {
         action: 'hold',
@@ -62,51 +63,59 @@ class MeanReversionStrategy {
       };
     }
 
+    // PARAMETROS DINÂMICOS (Relaxados em modo teste para demonstração)
+    const RSI_THRESHOLD = isTestMode ? 60 : this.RSI_OVERSOLD; // 45 -> 60 em teste
+    const BB_MARGIN = isTestMode ? 1.05 : 1.015; // 1.5% -> 5% em teste
+
     // CONDIÇÃO 1: Preço abaixo da Lower Band + RSI Oversold
-    const isPriceNearLowerBand = currentPrice <= bb.lower * 1.015; // 1.5% de margem (relaxado)
-    const isRSIOversold = rsi.value < this.RSI_OVERSOLD;
+    const isPriceNearLowerBand = currentPrice <= bb.lower * BB_MARGIN; 
+    const isRSIOversold = rsi.value < RSI_THRESHOLD;
 
     if (isPriceNearLowerBand && isRSIOversold) {
       return {
         action: 'buy',
         confidence: this.HIGH_CONFIDENCE,
-        reason: `MEAN REVERSION: Preço ($${currentPrice.toFixed(2)}) abaixo da Lower Band ($${bb.lower.toFixed(2)}) + RSI oversold (${rsi.value.toFixed(1)})`,
+        reason: isTestMode 
+          ? `[SIMULAÇÃO] SINAL ACELERADO: Preço ($${currentPrice.toFixed(2)}) na zona de compra + RSI ${rsi.value.toFixed(1)}`
+          : `MEAN REVERSION: Preço ($${currentPrice.toFixed(2)}) abaixo da Lower Band ($${bb.lower.toFixed(2)}) + RSI oversold (${rsi.value.toFixed(1)})`,
         indicators: { bollingerBands: bb, rsi, currentPrice }
       };
     }
 
-    // CONDIÇÃO 2: RSI muito oversold (< 28)
-    if (rsi.value < this.RSI_EXTREME_OVERSOLD && currentPrice <= bb.middle) {
+    // CONDIÇÃO 2: RSI muito oversold
+    const EXTREME_RSI = isTestMode ? 45 : this.RSI_EXTREME_OVERSOLD;
+    if (rsi.value < EXTREME_RSI && currentPrice <= bb.middle) {
       return {
         action: 'buy',
         confidence: this.MEDIUM_CONFIDENCE,
-        reason: `RSI EXTREMO: RSI muito baixo (${rsi.value.toFixed(1)}) + preço abaixo da média ($${bb.middle.toFixed(2)})`,
+        reason: `RSI EXTREMO: RSI baixo (${rsi.value.toFixed(1)}) + preço abaixo da média`,
         indicators: { bollingerBands: bb, rsi, currentPrice }
       };
     }
 
-    // CONDIÇÃO 3 (NOVA): RSI oversold em mercado sideways
+    // CONDIÇÃO 3 (NOVA): Mercado Lateral
     const bandwidth = ((bb.upper - bb.lower) / bb.middle) * 100;
-    if (rsi.value < this.RSI_OVERSOLD && bandwidth < 3 && currentPrice <= bb.middle * 1.002) {
+    if (rsi.value < RSI_THRESHOLD && bandwidth < 3 && currentPrice <= bb.middle * 1.002) {
       return {
         action: 'buy',
         confidence: this.LOW_CONFIDENCE,
-        reason: `RANGE TRADING: RSI oversold (${rsi.value.toFixed(1)}) em mercado sideways (bandwidth ${bandwidth.toFixed(1)}%)`,
+        reason: `RANGE TRADING: RSI oversold (${rsi.value.toFixed(1)}) em mercado sideways`,
         indicators: { bollingerBands: bb, rsi, currentPrice }
       };
     }
 
     // Calcular distância até sinal
     const distanceToBand = ((currentPrice - bb.lower) / bb.lower) * 100;
-    const rsiGap = rsi.value - this.RSI_OVERSOLD;
+    const rsiGap = rsi.value - RSI_THRESHOLD;
 
     return {
       action: 'hold',
       confidence: 0,
-      reason: `Aguardando sinal: Preço $${currentPrice.toFixed(2)} (${distanceToBand.toFixed(1)}% acima da Lower Band $${bb.lower.toFixed(2)}) | RSI ${rsi.value.toFixed(1)} (falta ${rsiGap.toFixed(0)} pts para oversold)`,
+      reason: `Aguardando sinal: Preço $${currentPrice.toFixed(2)} (${distanceToBand.toFixed(1)}% acima da Lower Band) | RSI ${rsi.value.toFixed(1)} (Meta: < ${RSI_THRESHOLD})`,
       indicators: { bollingerBands: bb, rsi, currentPrice }
     };
   }
+
 
   /**
    * Analisa oportunidade de VENDA

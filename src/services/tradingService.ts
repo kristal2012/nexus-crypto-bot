@@ -44,6 +44,7 @@ class TradingService {
   private lastCBLogTime: number = 0; // Track last circuit breaker log time
   private currentAdaptiveParams: AdaptiveRiskParams | null = null; // Parâmetros adaptativos atuais
   private lastLossStreak: number = 0; // Loss streak anterior (para detectar mudanças)
+  private lastAnalysisLogTime: number = 0; // Timestamp do último log de análise geral
 
   // FASE 3: Zona de recompra rápida
   private lastProfitableSells: Map<string, { price: number; time: number }> = new Map();
@@ -234,6 +235,10 @@ class TradingService {
 
   private async analyzeMarketAndTrade(): Promise<void> {
     if (!this.config) return;
+
+    // Array para coletar resumo da análise (feedback periódico)
+    const analysisSummary: string[] = [];
+    const shouldLogAnalysis = Date.now() - this.lastAnalysisLogTime > 300000; // 5 minutos
 
     // ===== ESTRATÉGIA ADAPTATIVA (antes do Circuit Breaker) =====
     // 1. Buscar stats e aplicar estratégia adaptativa ANTES do circuit breaker
@@ -455,6 +460,13 @@ class TradingService {
           console.log(`📊 ${symbol} | ${signal.reason}`);
         }
 
+        // FEEDBACK: Coletar dados para log periódico
+        if (shouldLogAnalysis) {
+          const status = signal.confidence > 0 ? 'SINAL' : 'AGUARDA';
+          // Usar reason pois indicators não está exposto na interface MomentumSignal
+          analysisSummary.push(`${symbol}: ${status} [${signal.reason}]`);
+        }
+
         // Debug: Verificar por que sinais não estão sendo aceitos
         console.log(`🔍 DEBUG ${symbol}: shouldBuy=${signal.shouldBuy}, confidence=${signal.confidence.toFixed(2)}, openPositions=${this.openPositions.size}/${maxPositions}, candles=${candles.length}`);
 
@@ -465,19 +477,21 @@ class TradingService {
         // [FIX] Verificar se já existe posição aberta para este símbolo (usando símbolo, não tradeId)
         const hasOpenPositionForSymbol = Array.from(this.openPositions.values())
           .some(pos => pos.symbol === symbol);
-        
+
         // Calcular capital já alocado em posições abertas
         const allocatedCapital = Array.from(this.openPositions.values())
           .reduce((sum, pos) => sum + (pos.buyPrice * pos.quantity), 0);
-        
+
         const availableCapital = this.config.totalCapital - allocatedCapital;
+
+        const allocation = this.capitalAllocations.get(symbol);
         const tradeCost = allocation ? allocation.quantity * currentPrice : 0;
 
-        if (signal.shouldBuy && 
-            this.openPositions.size < maxPositions && 
-            !hasOpenPositionForSymbol &&
-            availableCapital >= tradeCost) {
-          const allocation = this.capitalAllocations.get(symbol);
+        if (signal.shouldBuy &&
+          this.openPositions.size < maxPositions &&
+          !hasOpenPositionForSymbol &&
+          availableCapital >= tradeCost) {
+
           if (allocation && tradeCost > 0) {
             // Ajustar quantidade baseado em alocação adaptativa
             const adaptiveAllocationPercent = this.currentAdaptiveParams?.maxAllocationPerPairPercent || RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT;
