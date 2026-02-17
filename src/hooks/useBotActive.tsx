@@ -36,6 +36,15 @@ export const useBotActive = () => {
 
     fetchBotStatus();
 
+    // Event listener for global sync
+    const handleGlobalStatusChange = (event: any) => {
+      if (event.detail?.userId === FIXED_USER_ID) {
+        setIsActive(event.detail.isActive);
+      }
+    };
+
+    window.addEventListener('bot-status-changed', handleGlobalStatusChange);
+
     // Realtime subscription para mudanças
     const channel = supabase
       .channel('bot-active-changes')
@@ -48,13 +57,20 @@ export const useBotActive = () => {
           filter: `user_id=eq.${FIXED_USER_ID}`
         },
         (payload) => {
-          setIsActive((payload.new as any).is_active || false);
+          const newStatus = (payload.new as any).is_active || false;
+          setIsActive(newStatus);
+
+          // Emit event for local sync
+          window.dispatchEvent(new CustomEvent('bot-status-changed', {
+            detail: { userId: FIXED_USER_ID, isActive: newStatus }
+          }));
         }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('bot-status-changed', handleGlobalStatusChange);
     };
   }, []);
 
@@ -85,6 +101,11 @@ export const useBotActive = () => {
 
       // Persist in localStorage as a temporary cache/fallback
       localStorage.setItem(`bot_active_${FIXED_USER_ID}`, newValue ? 'true' : 'false');
+
+      // Dispatch global event for instant UI sync across all components
+      window.dispatchEvent(new CustomEvent('bot-status-changed', {
+        detail: { userId: FIXED_USER_ID, isActive: newValue }
+      }));
     } catch (err) {
       console.error('Error toggling bot active:', err);
       // Revert if error? For now keeping it optimistic for better UX

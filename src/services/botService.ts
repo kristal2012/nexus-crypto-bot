@@ -52,7 +52,7 @@ const TradeRequestSchema = z.object({
       z.string().regex(/^[A-Z0-9]{1,20}USDT$/, "Símbolo inválido. Use pares USDT, ex: BTCUSDT")
     ),
   side: z.enum(["BUY", "SELL"]),
-  quantity: z.number().positive().max(10000),
+  quantity: z.number().positive().max(1000),
   type: z.enum(["MARKET", "LIMIT"]).default("MARKET"),
   testMode: z.boolean().default(true),
 });

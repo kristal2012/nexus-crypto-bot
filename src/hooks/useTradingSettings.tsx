@@ -17,7 +17,7 @@ export const useTradingSettings = () => {
 
     try {
 
-      let { data, error } = await supabase
+      let { data, error } = await (supabase as any)
         .from("trading_settings")
         .select("*")
         .eq("user_id", FIXED_USER_ID)
@@ -27,12 +27,12 @@ export const useTradingSettings = () => {
 
       // Create default settings if none exist
       if (!data) {
-        const { data: newSettings, error: insertError } = await supabase
+        const { data: newSettings, error: insertError } = await (supabase as any)
           .from("trading_settings")
           .insert({
             user_id: FIXED_USER_ID,
             trading_mode: "DEMO",
-            demo_balance: 10000,
+            demo_balance: 1000,
           })
           .select()
           .single();
@@ -70,7 +70,7 @@ export const useTradingSettings = () => {
         updateData.real_mode_confirmed_at = new Date().toISOString();
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("trading_settings")
         .update(updateData)
         .eq("user_id", FIXED_USER_ID);
@@ -95,7 +95,7 @@ export const useTradingSettings = () => {
 
   const updateDemoBalance = async (amount: number) => {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("trading_settings")
         .update({ demo_balance: amount })
         .eq("user_id", FIXED_USER_ID);
@@ -115,7 +115,7 @@ export const useTradingSettings = () => {
   return {
     settings: isSimulation ? {
       trading_mode: "DEMO" as const,
-      demo_balance: settings?.demo_balance || 10000
+      demo_balance: settings?.demo_balance || 1000
     } : settings,
     loading,
     updateTradingMode,

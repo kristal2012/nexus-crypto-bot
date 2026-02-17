@@ -58,7 +58,7 @@ export const getTradingModeState = async (): Promise<TradingModeState | null> =>
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data: settings, error } = await supabase
+    const { data: settings, error } = await (supabase as any)
       .from("trading_settings")
       .select("trading_mode, demo_balance, real_mode_confirmed_at")
       .eq("user_id", user.id)
@@ -71,12 +71,12 @@ export const getTradingModeState = async (): Promise<TradingModeState | null> =>
 
     if (!settings) {
       // Create default DEMO mode if none exists
-      const { data: newSettings, error: createError } = await supabase
+      const { data: newSettings, error: createError } = await (supabase as any)
         .from("trading_settings")
         .insert({
           user_id: user.id,
           trading_mode: "DEMO",
-          demo_balance: 10000,
+          demo_balance: 1000,
         })
         .select()
         .single();
@@ -88,7 +88,7 @@ export const getTradingModeState = async (): Promise<TradingModeState | null> =>
 
       return {
         mode: "DEMO",
-        demoBalance: 10000,
+        demoBalance: 1000,
         realModeConfirmedAt: null,
         isRealModeValid: false,
       };
@@ -99,8 +99,8 @@ export const getTradingModeState = async (): Promise<TradingModeState | null> =>
 
     return {
       mode,
-      demoBalance: typeof settings.demo_balance === 'string' 
-        ? parseFloat(settings.demo_balance) 
+      demoBalance: typeof settings.demo_balance === 'string'
+        ? parseFloat(settings.demo_balance)
         : settings.demo_balance,
       realModeConfirmedAt: settings.real_mode_confirmed_at,
       isRealModeValid: validation.isValid,
