@@ -1,17 +1,23 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "./types";
 
-// Universal environment variable access (Vite or Node.js)
+// Node.js environment check
+const isNode = typeof process !== 'undefined' && process.env && !((process as any).browser);
+
+// Force load env for Node.js
+if (isNode) {
+    try {
+        require('dotenv').config();
+    } catch (e) {
+        // Dotenv might be missing in some builds, but expected in local execution
+    }
+}
+
 const getEnvVar = (key: string): string => {
-    // Browser/Vite environment
     if (typeof import.meta !== 'undefined' && import.meta.env) {
         return import.meta.env[key] || '';
     }
-    // Node.js environment
-    if (typeof process !== 'undefined' && process.env) {
-        return process.env[key] || '';
-    }
-    return '';
+    return process.env[key] || '';
 };
 
 const SUPABASE_URL = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_URL : (typeof process !== 'undefined' ? process.env.VITE_SUPABASE_URL : '');

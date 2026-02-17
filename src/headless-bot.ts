@@ -69,7 +69,7 @@ async function startHeadlessBot() {
     // 3. Heartbeat Loop (Cloud Monitor)
     setInterval(() => {
         supabaseSync.heartbeat();
-    }, 300000); // Check every 5 mins
+    }, 30000); // Check every 30s
 
     // 4. Remote Config Polling Loop (Control via Vercel Dashboard)
     setInterval(async () => {

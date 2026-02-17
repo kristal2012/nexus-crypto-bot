@@ -21,24 +21,47 @@ class SupabaseSyncService {
 
     async initialize() {
         try {
-            // Check if we have a Service Role Key (Admin Mode)
-            const serviceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+            console.log('📡 [SupabaseSync] Iniciando sincronização...');
+
+            // Forçar carregamento do dotenv se estivermos em Node
+            if (isNode) {
+                try {
+                    const dotenv = await import('dotenv');
+                    dotenv.config();
+                    console.log('✅ [SupabaseSync] Dotenv carregado.');
+                } catch (e) {
+                    console.warn('⚠️ [SupabaseSync] Falha ao carregar dotenv opcional.');
+                }
+            }
+
+            // Corrigir ordem: Dotenv deve vir antes de ler as vars
+            const serviceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+            const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+
+            console.log('🔍 [SupabaseSync] Verificação de Env:', {
+                hasUrl: !!supabaseUrl,
+                urlPrefix: supabaseUrl ? supabaseUrl.substring(0, 15) : 'none',
+                hasServiceKey: !!serviceKey,
+                isNode: isNode
+            });
 
             if (serviceKey && isNode) {
-                console.log('📡 Supabase sync: Initializing in ADMIN mode.');
+                console.log('📡 [SupabaseSync] Modo ADMIN (Service Role) detectado.');
                 this.syncEnabled = true;
 
-                // For admin mode, we need a target user_id. 
-                // We'll use the one from localDb or a static one if not found.
                 const localConfig = localDb.getConfig();
-                this.userId = localConfig.user_id || '00000000-0000-0000-0000-000000000000';
+                this.userId = localConfig.user_id || DEFAULT_USER_ID;
+            } else if (isNode) {
+                console.warn('⚠️ [SupabaseSync] Service Role Key não encontrada no ambiente Node!');
+                // No Node sem Service Key, tentamos usar a Anon Key se disponível
+                this.syncEnabled = !!process.env.VITE_SUPABASE_ANON_KEY;
+                this.userId = DEFAULT_USER_ID;
             } else {
-                // Browser or No Service Key: Use Default ID (Auth Disabled)
-                console.log('📡 Supabase sync: Using default local-user (Auth Disabled)');
+                // Browser: Use Default ID
+                console.log('📡 [SupabaseSync] Modo CLIENTE (Browser) detectado.');
                 this.userId = DEFAULT_USER_ID;
                 this.syncEnabled = true;
 
-                // No Browser (Client), vamos forçar um sync inicial do que está no cloud para o LocalStorage
                 if (!isNode) {
                     this.initClientSync();
                 }
@@ -357,8 +380,8 @@ class SupabaseSyncService {
             if (error) {
                 console.error('⚠️ Failed to sync log to Supabase:', error);
             }
-        } catch (error) {
-            console.error('❌ Supabase log sync error:', error);
+        } catch (error: any) {
+            console.error('❌ Supabase log sync error:', error?.message || error);
         }
     }
 

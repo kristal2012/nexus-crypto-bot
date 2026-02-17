@@ -69,34 +69,34 @@ class AdaptiveStrategyService {
     // Modo Cauteloso (2 perdas): Critérios mais rigorosos
     if (lossStreak === 2) {
       return {
-        stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT * 0.8,
-        takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT * 1.2,
+        stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT * 0.9, // Apenas -10% (0.9% se base for 1.0%)
+        takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT * 1.1,
         maxAllocationPerPairPercent: RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT * 0.8,
         safetyReservePercent: RISK_SETTINGS.SAFETY_RESERVE_PERCENT * 1.5,
-        momentumBuyThreshold: RISK_SETTINGS.MOMENTUM_BUY_THRESHOLD * 1.5,
+        momentumBuyThreshold: RISK_SETTINGS.MOMENTUM_BUY_THRESHOLD * 2.0, // Dobra a seletividade
         minVolumeRatio: RISK_SETTINGS.MIN_VOLUME_RATIO * 1.3,
         minQuoteVolume24hUsdt: RISK_SETTINGS.MIN_QUOTE_VOLUME_24H_USDT * 1.5,
         priceVelocityThreshold: RISK_SETTINGS.PRICE_VELOCITY_THRESHOLD * 1.3,
         pairCooldownSeconds: RISK_SETTINGS.PAIR_COOLDOWN_SECONDS * 1.5,
-        profitProtectThreshold: RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD * 0.8,
+        profitProtectThreshold: RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD * 0.9,
         minVolatilityPercent: RISK_SETTINGS.MIN_VOLATILITY_PERCENT * 1.3,
         mode: 'cautious',
         reason: '2 perdas consecutivas - modo cauteloso ativado',
       };
     }
 
-    // Modo Defensivo (3+ perdas): Máxima proteção ANTES do Circuit Breaker
+    // Modo Defensivo (3+ perdas): Máxima seletividade ANTES do Circuit Breaker
     return {
-      stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT * 0.6,
-      takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT * 1.4,
-      maxAllocationPerPairPercent: RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT * 0.6,
+      stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT * 0.8, // Não cai abaixo de 80% do original
+      takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT * 1.25,
+      maxAllocationPerPairPercent: RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT * 0.5,
       safetyReservePercent: RISK_SETTINGS.SAFETY_RESERVE_PERCENT * 2,
-      momentumBuyThreshold: RISK_SETTINGS.MOMENTUM_BUY_THRESHOLD * 2,
+      momentumBuyThreshold: RISK_SETTINGS.MOMENTUM_BUY_THRESHOLD * 3.0, // Triplica a seletividade
       minVolumeRatio: RISK_SETTINGS.MIN_VOLUME_RATIO * 1.5,
       minQuoteVolume24hUsdt: RISK_SETTINGS.MIN_QUOTE_VOLUME_24H_USDT * 2,
       priceVelocityThreshold: RISK_SETTINGS.PRICE_VELOCITY_THRESHOLD * 1.5,
       pairCooldownSeconds: RISK_SETTINGS.PAIR_COOLDOWN_SECONDS * 2,
-      profitProtectThreshold: RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD * 0.7,
+      profitProtectThreshold: RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD * 0.8,
       minVolatilityPercent: RISK_SETTINGS.MIN_VOLATILITY_PERCENT * 1.5,
       mode: 'defensive',
       reason: `${lossStreak} perdas consecutivas - modo DEFENSIVO ativado`,
@@ -112,11 +112,11 @@ class AdaptiveStrategyService {
   getAdjustmentSummary(params: AdaptiveRiskParams): string {
     const adjustments: string[] = [];
     if (params.mode === 'cautious') {
-      adjustments.push('🟡 Stop Loss: -20%');
-      adjustments.push('🟡 Alocação: -20%');
+      adjustments.push('🟡 Stop Loss: -10%');
+      adjustments.push('🟡 Seletividade: +100%');
     } else if (params.mode === 'defensive') {
-      adjustments.push('🔴 Stop Loss: -40%');
-      adjustments.push('🔴 Alocação: -40%');
+      adjustments.push('🔴 Stop Loss: -20%');
+      adjustments.push('🔴 Seletividade: +200%');
     }
     return adjustments.join(' | ');
   }

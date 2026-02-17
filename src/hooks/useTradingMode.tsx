@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FIXED_USER_ID } from '@/config/userConfig';
+import { IS_SIMULATION } from '@/utils/env';
 
 export const useTradingMode = () => {
   const [tradingMode, setTradingMode] = useState<'DEMO' | 'REAL'>('DEMO');
@@ -16,7 +17,7 @@ export const useTradingMode = () => {
   useEffect(() => {
     const fetchTradingMode = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('trading_settings')
           .select('trading_mode')
           .eq('user_id', FIXED_USER_ID)
@@ -52,16 +53,14 @@ export const useTradingMode = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      (supabase as any).removeChannel(channel);
     };
   }, []);
 
-  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
 
   return {
-    tradingMode: isSimulation ? 'DEMO' : tradingMode,
-    isDemoMode: isSimulation ? true : tradingMode === 'DEMO',
+    tradingMode: IS_SIMULATION ? 'DEMO' : tradingMode,
+    isDemoMode: IS_SIMULATION ? true : tradingMode === 'DEMO',
     loading
   };
 };

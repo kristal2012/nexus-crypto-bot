@@ -63,27 +63,25 @@ class MeanReversionStrategy {
       };
     }
 
-    // PARAMETROS DINÂMICOS (Relaxados em modo teste para demonstração)
-    const RSI_THRESHOLD = isTestMode ? 60 : this.RSI_OVERSOLD; // 45 -> 60 em teste
-    const BB_MARGIN = isTestMode ? 1.05 : 1.015; // 1.5% -> 5% em teste
+    // PARAMETROS GERAIS (Garantir seletividade em todos os modos)
+    const RSI_THRESHOLD = this.RSI_OVERSOLD;
+    const BB_MARGIN = 1.015; // 1.5% de tolerância
 
     // CONDIÇÃO 1: Preço abaixo da Lower Band + RSI Oversold
-    const isPriceNearLowerBand = currentPrice <= bb.lower * BB_MARGIN; 
+    const isPriceNearLowerBand = currentPrice <= bb.lower * BB_MARGIN;
     const isRSIOversold = rsi.value < RSI_THRESHOLD;
 
     if (isPriceNearLowerBand && isRSIOversold) {
       return {
         action: 'buy',
         confidence: this.HIGH_CONFIDENCE,
-        reason: isTestMode 
-          ? `[SIMULAÇÃO] SINAL ACELERADO: Preço ($${currentPrice.toFixed(2)}) na zona de compra + RSI ${rsi.value.toFixed(1)}`
-          : `MEAN REVERSION: Preço ($${currentPrice.toFixed(2)}) abaixo da Lower Band ($${bb.lower.toFixed(2)}) + RSI oversold (${rsi.value.toFixed(1)})`,
+        reason: `MEAN REVERSION: Preço ($${currentPrice.toFixed(2)}) abaixo da Lower Band ($${bb.lower.toFixed(2)}) + RSI oversold (${rsi.value.toFixed(1)})`,
         indicators: { bollingerBands: bb, rsi, currentPrice }
       };
     }
 
     // CONDIÇÃO 2: RSI muito oversold
-    const EXTREME_RSI = isTestMode ? 45 : this.RSI_EXTREME_OVERSOLD;
+    const EXTREME_RSI = this.RSI_EXTREME_OVERSOLD;
     if (rsi.value < EXTREME_RSI && currentPrice <= bb.middle) {
       return {
         action: 'buy',

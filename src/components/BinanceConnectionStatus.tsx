@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { validateBinanceApiKeys, formatUSDT, type BinanceApiKeyStatus } from "@/services/binanceService";
+import { IS_SIMULATION } from "@/utils/env";
 
 export const BinanceConnectionStatus = () => {
   const [status, setStatus] = useState<BinanceApiKeyStatus | null>(null);
@@ -26,11 +27,8 @@ export const BinanceConnectionStatus = () => {
     // 🔧 FASE 2: Só valida se usuário já tentou configurar chaves OU se está em modo simulação
     const hasAttemptedConfig = localStorage.getItem('binance_config_attempted');
 
-    // Verificar se estamos em modo simulação para bypass total
-    const isSimulation = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TRADING_MODE === 'test') ||
-      (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test');
 
-    if (isSimulation || hasAttemptedConfig) {
+    if (IS_SIMULATION || hasAttemptedConfig) {
       checkConnection();
     } else {
       // Usuário novo - não valida ainda, apenas mostra mensagem informativa

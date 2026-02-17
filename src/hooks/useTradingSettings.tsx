@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { FIXED_USER_ID } from "@/config/userConfig";
+import { IS_SIMULATION } from "@/utils/env";
 
 interface TradingSettings {
   trading_mode: "REAL" | "DEMO";
@@ -109,11 +110,9 @@ export const useTradingSettings = () => {
     }
   };
 
-  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
 
   return {
-    settings: isSimulation ? {
+    settings: IS_SIMULATION ? {
       trading_mode: "DEMO" as const,
       demo_balance: settings?.demo_balance || 1000
     } : settings,

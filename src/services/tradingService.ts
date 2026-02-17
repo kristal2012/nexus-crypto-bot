@@ -238,7 +238,7 @@ class TradingService {
 
     // Array para coletar resumo da análise (feedback periódico)
     const analysisSummary: string[] = [];
-    const shouldLogAnalysis = Date.now() - this.lastAnalysisLogTime > 300000; // 5 minutos
+    const shouldLogAnalysis = Date.now() - this.lastAnalysisLogTime > 30000; // 30 segundos
 
     // ===== ESTRATÉGIA ADAPTATIVA (antes do Circuit Breaker) =====
     // 1. Buscar stats e aplicar estratégia adaptativa ANTES do circuit breaker
@@ -679,30 +679,22 @@ class TradingService {
         // redundância para garantir que nada passe
       }
 
+      // Calculate profit/loss
+      const profitLoss = binanceService.calculateProfitLoss(
+        position.buyPrice,
+        price,
+        position.quantity
+      );
+
       const result = await tradeService.executeTrade(
         position.symbol,
         "SELL",
         position.quantity,
-        this.config.testMode
+        this.config.testMode,
+        profitLoss
       );
 
       if (result) {
-        // Calculate profit/loss
-        const profitLoss = binanceService.calculateProfitLoss(
-          position.buyPrice,
-          price,
-          position.quantity
-        );
-
-        // Pass profit_loss to trade execution
-        await tradeService.executeTrade(
-          position.symbol,
-          "SELL",
-          position.quantity,
-          this.config.testMode,
-          profitLoss
-        );
-
         // Remover posição após venda
         this.openPositions.delete(position.tradeId);
 
