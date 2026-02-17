@@ -58,7 +58,7 @@ export const checkCircuitBreaker = (metrics: TradeMetrics): CircuitBreakerStatus
   }
 
   const winRate = (winningTrades / totalTrades) * 100;
-  const dailyLossPercent = Math.abs(totalProfitLoss / 10000) * 100; // assumindo 10k de capital inicial
+  const dailyLossPercent = Math.abs(totalProfitLoss / 1000) * 100; // assumindo 1k de capital inicial (antes era 10k)
 
   // CRITICAL: Win rate abaixo do mínimo aceitável
   if (winRate < THRESHOLDS.CRITICAL_WIN_RATE) {

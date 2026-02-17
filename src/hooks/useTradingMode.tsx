@@ -56,9 +56,12 @@ export const useTradingMode = () => {
     };
   }, []);
 
+  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
+
   return {
-    tradingMode,
-    isDemoMode: tradingMode === 'DEMO',
+    tradingMode: isSimulation ? 'DEMO' : tradingMode,
+    isDemoMode: isSimulation ? true : tradingMode === 'DEMO',
     loading
   };
 };

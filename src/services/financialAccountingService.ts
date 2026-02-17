@@ -22,6 +22,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { IS_SIMULATION_MODE } from "@/config/userConfig";
 
 // ============================================================================
 // INTERFACES
@@ -30,19 +31,19 @@ import { supabase } from "@/integrations/supabase/client";
 export interface FinancialSnapshot {
   // SSOT: Valor total atual (inclui tudo)
   totalBalance: number;              // = freeBalance + allocatedCapital + unrealizedPnL
-  
+
   // Componentes do saldo
   freeBalance: number;               // Capital disponível para novas trades
   allocatedCapital: number;          // Capital em posições abertas
   unrealizedPnL: number;             // Lucro/prejuízo não realizado
-  
+
   // Saldo inicial (referência fixa do dia)
   initialBalance: number;            // Saldo no início do dia
-  
+
   // Lucros
   dailyProfit: number;               // totalBalance - initialBalance
   monthlyProfit: number;             // totalBalance - saldo início do mês
-  
+
   // Metadados
   activePositionsCount: number;
   dailyTradesCount: number;
@@ -67,50 +68,66 @@ interface Position {
  * Esta é a ÚNICA função que deve ser usada para ler dados financeiros
  */
 export const getFinancialSnapshot = async (userId: string): Promise<FinancialSnapshot> => {
+  // BYPASS PARA MODO SIMULAÇÃO
+  if (IS_SIMULATION_MODE) {
+    return {
+      totalBalance: 1000,
+      freeBalance: 1000,
+      allocatedCapital: 0,
+      unrealizedPnL: 0,
+      initialBalance: 1000,
+      dailyProfit: 0,
+      monthlyProfit: 0,
+      activePositionsCount: 0,
+      dailyTradesCount: 0,
+      isDemo: true
+    };
+  }
+
   console.log('📊 [FINANCIAL V2] Calculando snapshot...');
-  
+
   // 1. Modo de trading
-  const { data: settings } = await supabase
+  const { data: settings } = await (supabase as any)
     .from('trading_settings')
     .select('trading_mode')
     .eq('user_id', userId)
     .single();
-  
+
   const isDemo = settings?.trading_mode === 'DEMO';
-  
+
   // 2. Buscar estatísticas diárias - SSOT
   const today = new Date().toISOString().split('T')[0];
-  const { data: dailyStats } = await supabase
+  const { data: dailyStats } = await (supabase as any)
     .from('bot_daily_stats')
     .select('starting_balance, current_balance, trades_count')
     .eq('user_id', userId)
     .eq('date', today)
     .eq('is_active', true)
     .maybeSingle();
-  
+
   if (!dailyStats) {
     throw new Error('Daily stats not found - cannot calculate financial snapshot');
   }
-  
+
   // SSOT: current_balance é a verdade absoluta
   const currentBalance = dailyStats.current_balance;
   const initialBalance = dailyStats.starting_balance;
-  
+
   // 3. Calcular capital alocado e PnL não realizado
-  const { allocatedCapital, unrealizedPnL, positionsCount } = 
+  const { allocatedCapital, unrealizedPnL, positionsCount } =
     await calculatePositionsValue(userId, isDemo);
-  
+
   // 4. Calcular saldo livre
   // Saldo livre = Total - Capital alocado
   const freeBalance = currentBalance - allocatedCapital;
-  
+
   // 5. Saldo total (recalculado para incluir PnL não realizado atualizado)
   const totalBalance = freeBalance + allocatedCapital + unrealizedPnL;
-  
+
   // 6. Lucros
   const dailyProfit = totalBalance - initialBalance;
   const monthlyProfit = await calculateMonthlyProfit(userId, totalBalance);
-  
+
   const snapshot: FinancialSnapshot = {
     totalBalance,
     freeBalance,
@@ -123,7 +140,7 @@ export const getFinancialSnapshot = async (userId: string): Promise<FinancialSna
     dailyTradesCount: dailyStats.trades_count,
     isDemo
   };
-  
+
   console.log('✅ [FINANCIAL V2] Snapshot:', {
     total: snapshot.totalBalance.toFixed(2),
     livre: snapshot.freeBalance.toFixed(2),
@@ -132,7 +149,7 @@ export const getFinancialSnapshot = async (userId: string): Promise<FinancialSna
     lucro_dia: snapshot.dailyProfit.toFixed(2),
     posicoes: snapshot.activePositionsCount
   });
-  
+
   return snapshot;
 };
 
@@ -144,47 +161,47 @@ export const getFinancialSnapshot = async (userId: string): Promise<FinancialSna
  * Calcula capital alocado e PnL não realizado
  */
 async function calculatePositionsValue(
-  userId: string, 
+  userId: string,
   isDemo: boolean
 ): Promise<{ allocatedCapital: number; unrealizedPnL: number; positionsCount: number }> {
-  
-  const { data: positions } = await supabase
+
+  const { data: positions } = await (supabase as any)
     .from('positions')
     .select('id, symbol, quantity, entry_price, current_price, side')
     .eq('user_id', userId)
     .eq('is_demo', isDemo);
-  
+
   if (!positions || positions.length === 0) {
     return { allocatedCapital: 0, unrealizedPnL: 0, positionsCount: 0 };
   }
-  
+
   // Buscar preços atuais da Binance
   const positionsWithPrices = await enrichPositionsWithCurrentPrices(positions);
-  
+
   let allocatedCapital = 0;
   let unrealizedPnL = 0;
-  
+
   for (const pos of positionsWithPrices) {
     // Capital alocado = preço de entrada × quantidade
     const positionCost = pos.entry_price * pos.quantity;
     allocatedCapital += positionCost;
-    
+
     // PnL não realizado = (preço atual - preço entrada) × quantidade
     if (pos.current_price) {
       const pnl = (pos.current_price - pos.entry_price) * pos.quantity;
       unrealizedPnL += pnl;
-      
+
       console.log(`  📍 ${pos.symbol}: ${pos.quantity.toFixed(4)} @ ${pos.entry_price.toFixed(4)} → ${pos.current_price.toFixed(4)} = ${pnl.toFixed(2)} USDT`);
     }
   }
-  
+
   console.log(`💼 Capital alocado: ${allocatedCapital.toFixed(2)} USDT`);
   console.log(`📈 PnL não realizado: ${unrealizedPnL.toFixed(2)} USDT`);
-  
-  return { 
-    allocatedCapital, 
-    unrealizedPnL, 
-    positionsCount: positions.length 
+
+  return {
+    allocatedCapital,
+    unrealizedPnL,
+    positionsCount: positions.length
   };
 }
 
@@ -193,17 +210,17 @@ async function calculatePositionsValue(
  */
 async function enrichPositionsWithCurrentPrices(positions: Position[]): Promise<Position[]> {
   const symbols = [...new Set(positions.map(p => p.symbol))];
-  
+
   try {
     const pricesPromises = symbols.map(async (symbol) => {
       const response = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`);
       const data = await response.json();
       return { symbol, price: parseFloat(data.price) };
     });
-    
+
     const prices = await Promise.all(pricesPromises);
     const priceMap = new Map(prices.map(p => [p.symbol, p.price]));
-    
+
     return positions.map(pos => ({
       ...pos,
       current_price: priceMap.get(pos.symbol) || pos.entry_price
@@ -225,8 +242,8 @@ async function calculateMonthlyProfit(
   firstDayOfMonth.setDate(1);
   firstDayOfMonth.setHours(0, 0, 0, 0);
   const monthStart = firstDayOfMonth.toISOString().split('T')[0];
-  
-  const { data: firstDayStats } = await supabase
+
+  const { data: firstDayStats } = await (supabase as any)
     .from('bot_daily_stats')
     .select('starting_balance')
     .eq('user_id', userId)
@@ -234,12 +251,12 @@ async function calculateMonthlyProfit(
     .order('date', { ascending: true })
     .limit(1)
     .maybeSingle();
-  
-  const monthlyStartBalance = firstDayStats?.starting_balance || 10000;
+
+  const monthlyStartBalance = firstDayStats?.starting_balance || 1000;
   const monthlyProfit = currentTotalBalance - monthlyStartBalance;
-  
+
   console.log(`📅 Lucro mensal: ${currentTotalBalance.toFixed(2)} - ${monthlyStartBalance.toFixed(2)} = ${monthlyProfit.toFixed(2)}`);
-  
+
   return monthlyProfit;
 }
 
@@ -259,23 +276,23 @@ export const updateBalanceAfterTrade = async (
   profitLoss: number | null
 ): Promise<void> => {
   const today = new Date().toISOString().split('T')[0];
-  
+
   // Buscar saldo atual
-  const { data: stats } = await supabase
+  const { data: stats } = await (supabase as any)
     .from('bot_daily_stats')
     .select('current_balance, starting_balance')
     .eq('user_id', userId)
     .eq('date', today)
     .eq('is_active', true)
     .single();
-  
+
   if (!stats) {
     console.error('❌ Daily stats não encontrado');
     return;
   }
-  
+
   let newBalance = stats.current_balance;
-  
+
   if (side === 'BUY') {
     // AO COMPRAR: Deduz apenas comissão (capital vai para "alocado")
     newBalance -= commission;
@@ -285,9 +302,9 @@ export const updateBalanceAfterTrade = async (
     newBalance += (profitLoss || 0) - commission;
     console.log(`💰 SELL: P&L ${(profitLoss || 0).toFixed(2)} - comissão ${commission.toFixed(2)} USDT`);
   }
-  
+
   // Atualizar current_balance
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('bot_daily_stats')
     .update({
       current_balance: newBalance,
@@ -297,7 +314,7 @@ export const updateBalanceAfterTrade = async (
     .eq('user_id', userId)
     .eq('date', today)
     .eq('is_active', true);
-  
+
   if (error) {
     console.error('❌ Erro ao atualizar saldo:', error);
   } else {
@@ -310,12 +327,12 @@ export const updateBalanceAfterTrade = async (
  */
 export const syncDemoBalance = async (userId: string): Promise<void> => {
   const snapshot = await getFinancialSnapshot(userId);
-  
+
   // Atualiza demo_balance para refletir o saldo livre
-  await supabase
+  await (supabase as any)
     .from('trading_settings')
     .update({ demo_balance: snapshot.freeBalance })
     .eq('user_id', userId);
-  
+
   console.log(`🔄 Demo balance sincronizado: ${snapshot.freeBalance.toFixed(2)} USDT`);
 };

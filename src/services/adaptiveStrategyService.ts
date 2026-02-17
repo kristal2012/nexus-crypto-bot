@@ -5,6 +5,8 @@
  */
 
 import { RISK_SETTINGS } from './riskService';
+import { supabase } from "@/integrations/supabase/client";
+import { TRADING_STRATEGIES } from "./tradingStrategyService";
 
 export interface AdaptiveRiskParams {
   // Risk management
@@ -18,7 +20,7 @@ export interface AdaptiveRiskParams {
   minVolumeRatio: number;
   minQuoteVolume24hUsdt: number;
   priceVelocityThreshold: number;
-  minConfidence?: number; // Novo campo
+  minConfidence?: number;
 
   // Cooldowns and protection
   pairCooldownSeconds: number;
@@ -32,13 +34,17 @@ export interface AdaptiveRiskParams {
   reason: string;
 }
 
+export interface ConsecutiveLossAnalysis {
+  consecutiveLosses: number;
+  shouldAdjust: boolean;
+  recommendedStrategy: 'conservative' | 'moderate' | 'aggressive';
+  reason: string;
+}
+
 class AdaptiveStrategyService {
   /**
    * Retorna parâmetros ajustados baseado no loss streak atual
    * Estratégia: Progressivamente mais conservador conforme perdas aumentam
-   * 
-   * @param lossStreak - Número de perdas consecutivas
-   * @returns Parâmetros de risco ajustados
    */
   getAdaptiveParams(lossStreak: number): AdaptiveRiskParams {
     // Modo Normal (0-1 perdas): Parâmetros padrão
@@ -63,17 +69,17 @@ class AdaptiveStrategyService {
     // Modo Cauteloso (2 perdas): Critérios mais rigorosos
     if (lossStreak === 2) {
       return {
-        stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT * 0.8, // 2.0% (mais apertado)
-        takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT * 1.2, // 6.0% (buscar ganhos maiores)
-        maxAllocationPerPairPercent: RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT * 0.8, // 4% (menos capital por par)
-        safetyReservePercent: RISK_SETTINGS.SAFETY_RESERVE_PERCENT * 1.5, // 7.5% (mais reserva)
-        momentumBuyThreshold: RISK_SETTINGS.MOMENTUM_BUY_THRESHOLD * 1.5, // 0.45% (mais seletivo)
-        minVolumeRatio: RISK_SETTINGS.MIN_VOLUME_RATIO * 1.3, // 1.5x volume (mais liquidez)
-        minQuoteVolume24hUsdt: RISK_SETTINGS.MIN_QUOTE_VOLUME_24H_USDT * 1.5, // 7.5M (pares maiores)
-        priceVelocityThreshold: RISK_SETTINGS.PRICE_VELOCITY_THRESHOLD * 1.3, // Velocidade maior
-        pairCooldownSeconds: RISK_SETTINGS.PAIR_COOLDOWN_SECONDS * 1.5, // 67s (mais espera)
-        profitProtectThreshold: RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD * 0.8, // 1.2% (proteger antes)
-        minVolatilityPercent: RISK_SETTINGS.MIN_VOLATILITY_PERCENT * 1.3, // 0.33% (evitar chop)
+        stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT * 0.8,
+        takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT * 1.2,
+        maxAllocationPerPairPercent: RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT * 0.8,
+        safetyReservePercent: RISK_SETTINGS.SAFETY_RESERVE_PERCENT * 1.5,
+        momentumBuyThreshold: RISK_SETTINGS.MOMENTUM_BUY_THRESHOLD * 1.5,
+        minVolumeRatio: RISK_SETTINGS.MIN_VOLUME_RATIO * 1.3,
+        minQuoteVolume24hUsdt: RISK_SETTINGS.MIN_QUOTE_VOLUME_24H_USDT * 1.5,
+        priceVelocityThreshold: RISK_SETTINGS.PRICE_VELOCITY_THRESHOLD * 1.3,
+        pairCooldownSeconds: RISK_SETTINGS.PAIR_COOLDOWN_SECONDS * 1.5,
+        profitProtectThreshold: RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD * 0.8,
+        minVolatilityPercent: RISK_SETTINGS.MIN_VOLATILITY_PERCENT * 1.3,
         mode: 'cautious',
         reason: '2 perdas consecutivas - modo cauteloso ativado',
       };
@@ -81,50 +87,37 @@ class AdaptiveStrategyService {
 
     // Modo Defensivo (3+ perdas): Máxima proteção ANTES do Circuit Breaker
     return {
-      stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT * 0.6, // 1.5% (muito apertado)
-      takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT * 1.4, // 7.0% (só entrar em oportunidades excelentes)
-      maxAllocationPerPairPercent: RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT * 0.6, // 3% (exposição mínima)
-      safetyReservePercent: RISK_SETTINGS.SAFETY_RESERVE_PERCENT * 2, // 10% (reserva máxima)
-      momentumBuyThreshold: RISK_SETTINGS.MOMENTUM_BUY_THRESHOLD * 2, // 0.6% (extremamente seletivo)
-      minVolumeRatio: RISK_SETTINGS.MIN_VOLUME_RATIO * 1.5, // 1.7x volume (liquidez premium)
-      minQuoteVolume24hUsdt: RISK_SETTINGS.MIN_QUOTE_VOLUME_24H_USDT * 2, // 10M (apenas pares grandes)
-      priceVelocityThreshold: RISK_SETTINGS.PRICE_VELOCITY_THRESHOLD * 1.5, // Velocidade alta
-      pairCooldownSeconds: RISK_SETTINGS.PAIR_COOLDOWN_SECONDS * 2, // 90s (cooldown dobrado)
-      profitProtectThreshold: RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD * 0.7, // 1.05% (proteger cedo)
-      minVolatilityPercent: RISK_SETTINGS.MIN_VOLATILITY_PERCENT * 1.5, // 0.375% (só mercados ativos)
+      stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT * 0.6,
+      takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT * 1.4,
+      maxAllocationPerPairPercent: RISK_SETTINGS.MAX_ALLOCATION_PER_PAIR_PERCENT * 0.6,
+      safetyReservePercent: RISK_SETTINGS.SAFETY_RESERVE_PERCENT * 2,
+      momentumBuyThreshold: RISK_SETTINGS.MOMENTUM_BUY_THRESHOLD * 2,
+      minVolumeRatio: RISK_SETTINGS.MIN_VOLUME_RATIO * 1.5,
+      minQuoteVolume24hUsdt: RISK_SETTINGS.MIN_QUOTE_VOLUME_24H_USDT * 2,
+      priceVelocityThreshold: RISK_SETTINGS.PRICE_VELOCITY_THRESHOLD * 1.5,
+      pairCooldownSeconds: RISK_SETTINGS.PAIR_COOLDOWN_SECONDS * 2,
+      profitProtectThreshold: RISK_SETTINGS.PROFIT_PROTECT_THRESHOLD * 0.7,
+      minVolatilityPercent: RISK_SETTINGS.MIN_VOLATILITY_PERCENT * 1.5,
       mode: 'defensive',
-      reason: `${lossStreak} perdas consecutivas - modo DEFENSIVO ativado (proteção máxima)`,
+      reason: `${lossStreak} perdas consecutivas - modo DEFENSIVO ativado`,
     };
   }
 
-  /**
-   * Verifica se houve mudança de modo desde o último check
-   */
   hasStrategyChanged(previousStreak: number, currentStreak: number): boolean {
-    const prevMode = this.getAdaptiveParams(previousStreak).mode;
-    const currMode = this.getAdaptiveParams(currentStreak).mode;
-    return prevMode !== currMode;
+    const prevParams = this.getAdaptiveParams(previousStreak);
+    const currParams = this.getAdaptiveParams(currentStreak);
+    return prevParams.mode !== currParams.mode;
   }
 
-  /**
-   * Retorna descrição amigável dos ajustes aplicados
-   */
   getAdjustmentSummary(params: AdaptiveRiskParams): string {
     const adjustments: string[] = [];
-
     if (params.mode === 'cautious') {
       adjustments.push('🟡 Stop Loss: -20%');
       adjustments.push('🟡 Alocação: -20%');
-      adjustments.push('🟡 Seletividade: +50%');
-      adjustments.push('🟡 Volume mínimo: +50%');
     } else if (params.mode === 'defensive') {
       adjustments.push('🔴 Stop Loss: -40%');
       adjustments.push('🔴 Alocação: -40%');
-      adjustments.push('🔴 Seletividade: +100%');
-      adjustments.push('🔴 Volume mínimo: +100%');
-      adjustments.push('🔴 Cooldown: +100%');
     }
-
     return adjustments.join(' | ');
   }
 }
@@ -132,21 +125,55 @@ class AdaptiveStrategyService {
 export const adaptiveStrategyService = new AdaptiveStrategyService();
 
 /**
- * Helper: Retorna o nome da estratégia atual baseado no loss streak
+ * [WEB-ONLY] Obtém o nome da estratégia atual baseado nos parâmetros
  */
-export const getCurrentStrategyName = (lossStreak: number = 0): string => {
-  const params = adaptiveStrategyService.getAdaptiveParams(lossStreak);
-  switch (params.mode) {
-    case 'normal': return 'Normal';
-    case 'cautious': return 'Cautelosa';
-    case 'defensive': return 'Defensiva';
-    default: return 'Normal';
+export const getCurrentStrategyName = (config: any): string => {
+  if (!config) return 'Desconhecida';
+
+  const leverage = config.leverage || 0;
+  const stopLoss = config.stopLoss || config.stop_loss || 0;
+  const takeProfit = config.takeProfit || config.take_profit || 0;
+
+  for (const [name, strategy] of Object.entries(TRADING_STRATEGIES)) {
+    if (
+      Math.abs(strategy.leverage - leverage) <= 1 &&
+      Math.abs(strategy.stopLoss - stopLoss) <= 0.5 &&
+      Math.abs(strategy.takeProfit - takeProfit) <= 0.5
+    ) {
+      return strategy.name;
+    }
   }
+  return 'Personalizada';
 };
 
 /**
- * Helper: Verifica se a estratégia mudou desde o último round
+ * [WEB-ONLY] Verifica se houve mudança de estratégia desde a última rodada
  */
-export const hasStrategyChangedSinceLastRound = (previousStreak: number = 0, currentStreak: number = 0): boolean => {
-  return adaptiveStrategyService.hasStrategyChanged(previousStreak, currentStreak);
+export const hasStrategyChangedSinceLastRound = async (userId: string) => {
+  try {
+    // Cast to any to bypass missing table in current types.ts
+    const { data: config, error } = await (supabase
+      .from('auto_trading_config' as any)
+      .select('leverage, stop_loss, take_profit, min_confidence, strategy_adjusted_at')
+      .eq('user_id', userId)
+      .maybeSingle() as any);
+
+    if (error || !config || !config.strategy_adjusted_at) {
+      return { changed: false };
+    }
+
+    const currentStrategyName = getCurrentStrategyName(config);
+    const adjustedAt = new Date(config.strategy_adjusted_at);
+    const now = Date.now();
+    const hoursSince = (now - adjustedAt.getTime()) / (1000 * 60 * 60);
+
+    return {
+      changed: hoursSince < 24,
+      currentStrategy: currentStrategyName,
+      changeDate: config.strategy_adjusted_at
+    };
+  } catch (e) {
+    console.error('Error checking strategy change:', e);
+    return { changed: false };
+  }
 };

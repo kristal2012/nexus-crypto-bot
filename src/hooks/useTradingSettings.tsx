@@ -14,10 +14,10 @@ export const useTradingSettings = () => {
   const { toast } = useToast();
 
   const fetchSettings = async () => {
-    
+
     try {
 
-      let { data, error } = await supabase
+      let { data, error } = await (supabase as any)
         .from("trading_settings")
         .select("*")
         .eq("user_id", FIXED_USER_ID)
@@ -27,12 +27,12 @@ export const useTradingSettings = () => {
 
       // Create default settings if none exist
       if (!data) {
-        const { data: newSettings, error: insertError } = await supabase
+        const { data: newSettings, error: insertError } = await (supabase as any)
           .from("trading_settings")
           .insert({
             user_id: FIXED_USER_ID,
             trading_mode: "DEMO",
-            demo_balance: 10000,
+            demo_balance: 1000,
           })
           .select()
           .single();
@@ -70,7 +70,7 @@ export const useTradingSettings = () => {
         updateData.real_mode_confirmed_at = new Date().toISOString();
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("trading_settings")
         .update(updateData)
         .eq("user_id", FIXED_USER_ID);
@@ -78,7 +78,7 @@ export const useTradingSettings = () => {
       if (error) throw error;
 
       setSettings((prev) => prev ? { ...prev, trading_mode: mode } : null);
-      
+
       toast({
         title: "Modo alterado",
         description: `Modo de trading alterado para ${mode === "DEMO" ? "Demonstração" : "Real"}`,
@@ -95,7 +95,7 @@ export const useTradingSettings = () => {
 
   const updateDemoBalance = async (amount: number) => {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("trading_settings")
         .update({ demo_balance: amount })
         .eq("user_id", FIXED_USER_ID);
@@ -109,8 +109,14 @@ export const useTradingSettings = () => {
     }
   };
 
+  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
+
   return {
-    settings,
+    settings: isSimulation ? {
+      trading_mode: "DEMO" as const,
+      demo_balance: settings?.demo_balance || 1000
+    } : settings,
     loading,
     updateTradingMode,
     updateDemoBalance,

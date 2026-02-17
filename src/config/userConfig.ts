@@ -6,3 +6,11 @@
  */
 
 export const FIXED_USER_ID = '00000000-0000-0000-0000-000000000000';
+
+export const IS_SIMULATION_MODE = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test') ||
+    (typeof window !== 'undefined' && (
+        window.location.hostname === 'nexus-crypto-bot.vercel.app' ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1'
+    ) && !localStorage.getItem('binance_api_key_status'));

@@ -1,3 +1,4 @@
+import { localDb } from "./localDbService";
 export interface PriceData {
   symbol: string;
   price: number;
@@ -24,8 +25,9 @@ export interface Candle {
 
 // 🚀 Prioridade para Futures Mirrors e Regionais (Seguro para Geoblocks)
 const BINANCE_BASE_URLS = [
+  'https://fapi.binance.me',  // Futures Proxy Me (Prioridade para VPS)
   'https://fapi.binance.com', // Futures Principal
-  'https://fapi.binance.me',  // Futures Proxy Me
+  'https://api.binance.me',   // Spot Proxy Me
   'https://api.binance.com',
   'https://api1.binance.com',
 ];
@@ -38,13 +40,14 @@ const API_BASE_URL = isBrowser ? '' : 'https://fapi.binance.com';
 
 // Serviço para interação com a Binance API
 export const binanceService = {
-  async fetchWithRetry(path: string): Promise<any> {
+  async fetchWithRetry(path: string, method: string = 'GET'): Promise<any> {
     // 1. Prioridade: Proxy Vercel (Seguro para VPS e Browser)
     try {
       const cleanPath = path.startsWith('/') ? path : `/${path}`;
       const [apiPath, query] = cleanPath.split('?');
       const proxyUrl = new URL(VERCEL_PROXY);
       proxyUrl.searchParams.append('path', apiPath);
+      if (method !== 'GET') proxyUrl.searchParams.append('method', method);
 
       if (query) {
         const queryParams = new URLSearchParams(query);
@@ -53,8 +56,17 @@ export const binanceService = {
         });
       }
 
-      console.log(`📡 [BinanceService] Enviando via Proxy: ${proxyUrl.toString()}`);
-      const response = await fetch(proxyUrl.toString());
+      const config = localDb.getConfig();
+      const apiKey = config.api_key_encrypted;
+
+      console.log(`📡 [BinanceService] Enviando (${method}) via Proxy: ${proxyUrl.toString()}`);
+      const response = await fetch(proxyUrl.toString(), {
+        method,
+        headers: {
+          ...(method === 'POST' ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
+          ...(apiKey ? { 'X-MBX-APIKEY': apiKey } : {})
+        }
+      });
       if (response.ok) return await response.json();
 
       console.warn(`⚠️ Vercel Proxy retornou status ${response.status}. Tentando mirrors diretos como fallback...`);
@@ -80,6 +92,18 @@ export const binanceService = {
     }
 
     throw new Error('Todos os mirrors da Binance e o Vercel Proxy falharam.');
+  },
+
+  async setLeverage(symbol: string, leverage: number): Promise<any> {
+    try {
+      const timestamp = Date.now();
+      const query = `symbol=${symbol}&leverage=${leverage}&timestamp=${timestamp}`;
+      // Nota: No futuro, adicionar lógica de assinatura se o proxy não lidar com isso
+      return await this.fetchWithRetry(`/fapi/v1/leverage?${query}`, 'POST');
+    } catch (error) {
+      console.error('Exception in setLeverage:', error);
+      return null;
+    }
   },
 
   async getPrice(symbol: string): Promise<PriceData | null> {
@@ -173,12 +197,6 @@ export const binanceService = {
   }
 };
 
-// ============================
-// Exports auxiliares para UI/Dashboard
-// ============================
-
-import { supabase } from "@/integrations/supabase/client";
-
 export interface BinanceApiKeyStatus {
   isConfigured: boolean;
   hasPermissions: boolean;
@@ -187,135 +205,95 @@ export interface BinanceApiKeyStatus {
   balance?: number;
 }
 
-export interface BinanceAccountInfo {
-  totalWalletBalance: string;
-  availableBalance: string;
-  totalUnrealizedProfit: string;
-  positions: any[];
-}
-
-// Cache de validação para evitar chamadas repetidas
-let validationCache: { result: BinanceApiKeyStatus; timestamp: number } | null = null;
-const CACHE_TTL = 60000; // 1 minuto
-
-/**
- * Limpa o cache de validação da API da Binance
- */
-export const clearBinanceValidationCache = () => {
-  validationCache = null;
-  console.log('🛡️ Binance validation cache cleared');
-};
+// CACHE & THROTTLE para Validação (Web)
+let validationCache: { data: BinanceApiKeyStatus; timestamp: number } | null = null;
+let validationPromise: Promise<BinanceApiKeyStatus> | null = null;
+const CACHE_DURATION = 30000;
 
 /**
  * Valida se as API keys estão configuradas e têm as permissões corretas
+ * [WEB-ONLY] Chamada via Supabase Edge Function
  */
 export const validateBinanceApiKeys = async (): Promise<BinanceApiKeyStatus> => {
-  // Verificar cache
-  if (validationCache && Date.now() - validationCache.timestamp < CACHE_TTL) {
-    console.log('📋 Using cached Binance validation result');
-    return validationCache.result;
-  }
+  // BYPASS PARA MODO SIMULAÇÃO
+  const isSimulation = (typeof process !== 'undefined' && process.env?.VITE_TRADING_MODE === 'test') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TRADING_MODE === 'test');
 
-  try {
-    const { data, error } = await supabase.functions.invoke('binance-account');
-
-    if (error) {
-      const errorMessage = error.message || '';
-
-      if (errorMessage.includes('not configured')) {
-        const result: BinanceApiKeyStatus = {
-          isConfigured: false, hasPermissions: false, canTradeFutures: false,
-          error: 'API keys não configuradas. Configure suas chaves da Binance primeiro.'
-        };
-        validationCache = { result, timestamp: Date.now() };
-        return result;
-      }
-
-      if (errorMessage.includes('Invalid API key') || errorMessage.includes('-2015')) {
-        const result: BinanceApiKeyStatus = {
-          isConfigured: true, hasPermissions: false, canTradeFutures: false,
-          error: '⚠️ API Key inválida ou sem permissões. Verifique e reconfigure suas credenciais.'
-        };
-        validationCache = { result, timestamp: Date.now() };
-        return result;
-      }
-
-      if (errorMessage.includes('Too Man')) {
-        const result: BinanceApiKeyStatus = {
-          isConfigured: true, hasPermissions: false, canTradeFutures: false,
-          error: 'Credenciais corrompidas. Remova e reconfigure suas credenciais.'
-        };
-        validationCache = { result, timestamp: Date.now() };
-        return result;
-      }
-
-      const result: BinanceApiKeyStatus = {
-        isConfigured: true, hasPermissions: false, canTradeFutures: false,
-        error: `Erro ao validar API key: ${errorMessage}`
-      };
-      validationCache = { result, timestamp: Date.now() };
-      return result;
-    }
-
-    const balance = parseFloat(data.totalWalletBalance || '0');
-    const result: BinanceApiKeyStatus = {
-      isConfigured: true, hasPermissions: true, canTradeFutures: true, balance
-    };
-    // Cache apenas se for sucesso
-    validationCache = { result, timestamp: Date.now() };
-    return result;
-  } catch (error) {
-    console.error('Unexpected error validating Binance API:', error);
+  if (isSimulation) {
     return {
-      isConfigured: false, hasPermissions: false, canTradeFutures: false,
-      error: 'Erro inesperado ao validar API keys'
+      isConfigured: true,
+      hasPermissions: true,
+      canTradeFutures: true,
+      balance: 1000, // Saldo fictício de simulação
+      error: undefined
     };
   }
-};
 
-/**
- * Busca informações da conta Binance Futures
- */
-export const getBinanceAccountInfo = async (): Promise<BinanceAccountInfo | null> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('binance-account');
-    if (error) { console.error('Error fetching Binance account:', error); return null; }
-    return data;
-  } catch (error) {
-    console.error('Unexpected error fetching Binance account:', error);
-    return null;
+  if (validationCache && (Date.now() - validationCache.timestamp) < CACHE_DURATION) {
+    return validationCache.data;
   }
-};
 
-/**
- * Busca preço atual de um símbolo (API pública Futures)
- */
-export const getCurrentPrice = async (symbol: string): Promise<number | null> => {
-  try {
-    const response = await fetch(`https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${symbol}`);
-    if (!response.ok) { console.error(`Error fetching price for ${symbol}`); return null; }
-    const data = await response.json();
-    return parseFloat(data.lastPrice);
-  } catch (error) {
-    console.error(`Error fetching price for ${symbol}:`, error);
-    return null;
+  if (validationPromise) return validationPromise;
+
+  validationPromise = (async () => {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.functions.invoke('binance-account');
+
+      if (error || data?.error) {
+        return {
+          isConfigured: !!data?.isConfigured,
+          hasPermissions: false,
+          canTradeFutures: false,
+          error: data?.error || error?.message || 'Erro na validação'
+        };
+      }
+
+      return {
+        isConfigured: true,
+        hasPermissions: true,
+        canTradeFutures: true,
+        balance: parseFloat(data.totalWalletBalance || '0')
+      };
+    } catch (e) {
+      return {
+        isConfigured: false,
+        hasPermissions: false,
+        canTradeFutures: false,
+        error: 'Erro de conexão com o servidor'
+      };
+    } finally {
+      validationPromise = null;
+    }
+  })();
+
+  const result = await validationPromise;
+  if (result.isConfigured && !result.error) {
+    validationCache = { data: result, timestamp: Date.now() };
   }
+  return result;
 };
 
 /**
  * Formata valores USDT
  */
 export const formatUSDT = (value: number): string => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency', currency: 'USD',
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value);
 };
 
 /**
- * Formata percentual
+ * [WEB-ONLY] Limpa o cache de validação da API para forçar revalidação no frontend
  */
-export const formatPercent = (value: number): string => {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+export const clearBinanceValidationCache = () => {
+  validationCache = null;
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('binance_validation_status');
+    localStorage.removeItem('binance_api_validated');
+  }
+  console.log('🧹 [BinanceService] Cache de validação limpo.');
 };
-
