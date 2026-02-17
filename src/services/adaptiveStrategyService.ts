@@ -130,3 +130,23 @@ class AdaptiveStrategyService {
 }
 
 export const adaptiveStrategyService = new AdaptiveStrategyService();
+
+/**
+ * Helper: Retorna o nome da estratégia atual baseado no loss streak
+ */
+export const getCurrentStrategyName = (lossStreak: number = 0): string => {
+  const params = adaptiveStrategyService.getAdaptiveParams(lossStreak);
+  switch (params.mode) {
+    case 'normal': return 'Normal';
+    case 'cautious': return 'Cautelosa';
+    case 'defensive': return 'Defensiva';
+    default: return 'Normal';
+  }
+};
+
+/**
+ * Helper: Verifica se a estratégia mudou desde o último round
+ */
+export const hasStrategyChangedSinceLastRound = (previousStreak: number = 0, currentStreak: number = 0): boolean => {
+  return adaptiveStrategyService.hasStrategyChanged(previousStreak, currentStreak);
+};

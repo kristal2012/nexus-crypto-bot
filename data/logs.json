@@ -1,65 +1,5 @@
 [
   {
-    "id": "1okqm2vu8",
-    "created_at": "2026-02-15T08:20:14.360Z",
-    "level": "INFO",
-    "message": "Bot Heartbeat: System is healthy and monitoring.",
-    "details": {
-      "timestamp": "2026-02-15T08:20:14.359Z",
-      "platform": "win32",
-      "uptime": 30901
-    }
-  },
-  {
-    "id": "jmyhgvk2h",
-    "created_at": "2026-02-15T08:25:13.946Z",
-    "level": "INFO",
-    "message": "AI/Remote updated trading parameters",
-    "details": {
-      "params": {
-        "STOP_LOSS_PERCENT": 0.8,
-        "TAKE_PROFIT_PERCENT": 1.5,
-        "MAX_HOLD_MINUTES": 30,
-        "CAPITAL_PER_ROUND_PERCENT": 25,
-        "MAX_ALLOCATION_PER_PAIR_PERCENT": 15,
-        "SAFETY_RESERVE_PERCENT": 5,
-        "MAX_POSITIONS": 5,
-        "LEVERAGE": 5,
-        "TRADE_QUANTITY_USDT": 50,
-        "MOMENTUM_BUY_THRESHOLD": 0.2,
-        "MIN_VOLUME_RATIO": 1.05,
-        "PRICE_VELOCITY_THRESHOLD": 0.1,
-        "PAIR_COOLDOWN_SECONDS": 30,
-        "PROFIT_PROTECT_THRESHOLD": 0.8,
-        "AUTO_REINVEST": true,
-        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
-        "MIN_VOLATILITY_PERCENT": 0.15,
-        "VOLATILITY_WINDOW_TICKS": 20,
-        "LOSS_STREAK_LIMIT": 4,
-        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
-        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
-        "LOSS_COOLDOWN_BASE_MINUTES": 5,
-        "LOSS_COOLDOWN_MULTIPLIER": 1,
-        "takeProfitPercent": 1.5,
-        "stopLossPercent": 0.8,
-        "maxPositions": 5,
-        "momentumBuyThreshold": 0.2,
-        "minConfidence": 0.6
-      }
-    }
-  },
-  {
-    "id": "gcsjg1t2z",
-    "created_at": "2026-02-15T08:25:14.356Z",
-    "level": "INFO",
-    "message": "Bot Heartbeat: System is healthy and monitoring.",
-    "details": {
-      "timestamp": "2026-02-15T08:25:14.355Z",
-      "platform": "win32",
-      "uptime": 31201
-    }
-  },
-  {
     "id": "r8mov3l31",
     "created_at": "2026-02-15T08:30:14.357Z",
     "level": "INFO",
@@ -10117,6 +10057,114 @@
         "stopLossPercent": 0.9,
         "maxPositions": 4,
         "momentumBuyThreshold": 0.15,
+        "minConfidence": 0.6
+      }
+    }
+  },
+  {
+    "id": "u6hdka3e0",
+    "created_at": "2026-02-17T01:59:30.160Z",
+    "level": "INFO",
+    "message": "AI/Remote updated trading parameters",
+    "details": {
+      "params": {
+        "STOP_LOSS_PERCENT": 0.9,
+        "TAKE_PROFIT_PERCENT": 1.2,
+        "MAX_HOLD_MINUTES": 10,
+        "CAPITAL_PER_ROUND_PERCENT": 20,
+        "MAX_ALLOCATION_PER_PAIR_PERCENT": 10,
+        "SAFETY_RESERVE_PERCENT": 10,
+        "MAX_POSITIONS": 5,
+        "MOMENTUM_BUY_THRESHOLD": 0.15,
+        "MIN_VOLUME_RATIO": 1.02,
+        "PRICE_VELOCITY_THRESHOLD": 0.01,
+        "PAIR_COOLDOWN_SECONDS": 60,
+        "PROFIT_PROTECT_THRESHOLD": 1,
+        "AUTO_REINVEST": true,
+        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
+        "MIN_VOLATILITY_PERCENT": 0.005,
+        "VOLATILITY_WINDOW_TICKS": 20,
+        "LOSS_STREAK_LIMIT": 4,
+        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
+        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
+        "LOSS_COOLDOWN_BASE_MINUTES": 3,
+        "LOSS_COOLDOWN_MULTIPLIER": 1,
+        "takeProfitPercent": 1.2,
+        "stopLossPercent": 0.6,
+        "maxPositions": 3,
+        "momentumBuyThreshold": 0.2,
+        "minConfidence": 0.6
+      }
+    }
+  },
+  {
+    "id": "3xlv3i0au",
+    "created_at": "2026-02-17T02:09:30.160Z",
+    "level": "INFO",
+    "message": "AI/Remote updated trading parameters",
+    "details": {
+      "params": {
+        "STOP_LOSS_PERCENT": 0.6,
+        "TAKE_PROFIT_PERCENT": 1.2,
+        "MAX_HOLD_MINUTES": 10,
+        "CAPITAL_PER_ROUND_PERCENT": 20,
+        "MAX_ALLOCATION_PER_PAIR_PERCENT": 10,
+        "SAFETY_RESERVE_PERCENT": 10,
+        "MAX_POSITIONS": 5,
+        "MOMENTUM_BUY_THRESHOLD": 0.2,
+        "MIN_VOLUME_RATIO": 1.02,
+        "PRICE_VELOCITY_THRESHOLD": 0.01,
+        "PAIR_COOLDOWN_SECONDS": 60,
+        "PROFIT_PROTECT_THRESHOLD": 1,
+        "AUTO_REINVEST": true,
+        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
+        "MIN_VOLATILITY_PERCENT": 0.005,
+        "VOLATILITY_WINDOW_TICKS": 20,
+        "LOSS_STREAK_LIMIT": 4,
+        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
+        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
+        "LOSS_COOLDOWN_BASE_MINUTES": 3,
+        "LOSS_COOLDOWN_MULTIPLIER": 1,
+        "takeProfitPercent": 1.5,
+        "stopLossPercent": 0.8,
+        "maxPositions": 5,
+        "momentumBuyThreshold": 0.2,
+        "minConfidence": 0.6
+      }
+    }
+  },
+  {
+    "id": "bpqne5pu4",
+    "created_at": "2026-02-17T02:19:30.157Z",
+    "level": "INFO",
+    "message": "AI/Remote updated trading parameters",
+    "details": {
+      "params": {
+        "STOP_LOSS_PERCENT": 0.8,
+        "TAKE_PROFIT_PERCENT": 1.5,
+        "MAX_HOLD_MINUTES": 10,
+        "CAPITAL_PER_ROUND_PERCENT": 20,
+        "MAX_ALLOCATION_PER_PAIR_PERCENT": 10,
+        "SAFETY_RESERVE_PERCENT": 10,
+        "MAX_POSITIONS": 5,
+        "MOMENTUM_BUY_THRESHOLD": 0.2,
+        "MIN_VOLUME_RATIO": 1.02,
+        "PRICE_VELOCITY_THRESHOLD": 0.01,
+        "PAIR_COOLDOWN_SECONDS": 60,
+        "PROFIT_PROTECT_THRESHOLD": 1,
+        "AUTO_REINVEST": true,
+        "MIN_QUOTE_VOLUME_24H_USDT": 2000000,
+        "MIN_VOLATILITY_PERCENT": 0.005,
+        "VOLATILITY_WINDOW_TICKS": 20,
+        "LOSS_STREAK_LIMIT": 4,
+        "DAILY_MAX_DRAWDOWN_PERCENT": 5,
+        "CIRCUIT_BREAKER_PAUSE_MINUTES": 30,
+        "LOSS_COOLDOWN_BASE_MINUTES": 3,
+        "LOSS_COOLDOWN_MULTIPLIER": 1,
+        "takeProfitPercent": 1.2,
+        "stopLossPercent": 0.6,
+        "maxPositions": 4,
+        "momentumBuyThreshold": 0.2,
         "minConfidence": 0.6
       }
     }

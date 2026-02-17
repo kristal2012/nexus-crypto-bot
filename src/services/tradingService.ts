@@ -243,8 +243,18 @@ class TradingService {
     const intel = moltBotIntelService.getLatestIntel();
     if (intel) {
       console.info(`🧠 [MoltBot Intel] Relatório de ${new Date(intel.date).toLocaleTimeString()} carregado.`);
-      // O moltBotIntelService.applyIntelToRisk ajusta parâmetros em tempo real
-      // Aqui poderíamos injetar modificadores na estratégia adaptive
+
+      // Aplicar inteligência aos parâmetros de risco
+      const updatedRisk = moltBotIntelService.applyIntelToRisk({
+        stopLossPercent: this.config.stopLossPercent || RISK_SETTINGS.STOP_LOSS_PERCENT,
+        takeProfitPercent: this.config.takeProfitPercent || RISK_SETTINGS.TAKE_PROFIT_PERCENT,
+        maxPositions: this.config.maxPositions || RISK_SETTINGS.MAX_POSITIONS,
+        momentumBuyThreshold: RISK_SETTINGS.MOMENTUM_BUY_THRESHOLD,
+        minConfidence: momentumStrategyService.MIN_CONFIDENCE
+      });
+
+      // Sobrescrever parâmetros em tempo real com sugestões da IA
+      this.updateParameters(updatedRisk);
     }
 
     // ===== CIRCUIT BREAKER (após ajustes adaptativos) =====
