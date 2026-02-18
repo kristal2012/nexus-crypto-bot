@@ -22,10 +22,16 @@ async function startHeadlessBot() {
     // 0. Initialize Local DB (Node Environment)
     console.log('📂 Initializing Local Database...');
     await localDb.initialize();
+    console.log('✅ Local Database initialized.');
 
     // 1. Initialize Supabase Cloud Sync
     console.log('📡 Initializing Supabase cloud sync...');
-    await supabaseSync.initialize();
+    const syncResult = await supabaseSync.initialize();
+    if (syncResult) {
+        console.log('✅ Supabase cloud sync initialized successfully.');
+    } else {
+        console.warn('⚠️ Supabase sync failed to initialize (Offline mode).');
+    }
 
     // 2. Configurações Iniciais
     const isTestMode = process.env.VITE_TRADING_MODE !== 'real';

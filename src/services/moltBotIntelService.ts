@@ -54,7 +54,7 @@ class MoltBotIntelService {
 
     constructor() {
         if (!isBrowser) {
-            this.intelPath = 'C:\\THE_FLASH_BOT\\data\\intelligence\\latest_intel.json';
+            this.intelPath = 'C:\\cryptum7.1_bot\\data\\intelligence\\latest_intel.json';
         }
     }
 

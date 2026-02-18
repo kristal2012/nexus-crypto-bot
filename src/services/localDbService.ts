@@ -61,6 +61,15 @@ export const localDb = {
             return getBrowserData().config || {};
         }
 
+        if (!path || !fs) {
+            // Em ambiente Node, se os módulos ainda não carregaram, tentamos síncrono ou lançamos erro claro
+            // Mas o ideal é que o initialize() tenha sido chamado
+            const fsSync = require('fs');
+            const pathSync = require('path');
+            fs = fsSync;
+            path = pathSync;
+        }
+
         const DATA_DIR = path.resolve(process.cwd(), 'data');
         if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -96,6 +105,13 @@ export const localDb = {
             data.config = mergedConfig;
             saveBrowserData(data);
             return true;
+        }
+
+        if (!path || !fs) {
+            const fsSync = require('fs');
+            const pathSync = require('path');
+            fs = fsSync;
+            path = pathSync;
         }
 
         const DATA_DIR = path.resolve(process.cwd(), 'data');
