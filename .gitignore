@@ -7,11 +7,41 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
 dist
 dist-ssr
 *.local
+
+# Data local (não sincronizar com cloud)
 data/
+
+# Variáveis de ambiente (NUNCA enviar chaves ao GitHub)
+.env
+.env.*
+!.env.example
+
+# Arquivos de diagnóstico temporários
+diagnose_*.ts
+diagnose_*.py
+*.diag.ts
+debug_output.txt
+diag_output.txt
+service_log.txt
+logs_service.txt
+
+# ia_agent - arquivos sensíveis e temporários
+ia_agent/.env
+ia_agent/.env.*
+ia_agent/node_modules/
+ia_agent/dist/
+ia_agent/debug_output.txt
+ia_agent/diag.ts
+ia_agent/diag_output.txt
+ia_agent/logs_service.txt
+ia_agent/service_log.txt
+ia_agent/metadata.json
+ia_agent/package-lock.json
 
 # Editor directories and files
 .vscode/*
@@ -24,4 +54,3 @@ data/
 *.sln
 *.sw?
 .vercel
-.env*.local
