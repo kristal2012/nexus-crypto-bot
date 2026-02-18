@@ -192,6 +192,7 @@ class SupabaseSyncService {
         if (!this.syncEnabled || !this.userId || !this.configId) return null;
 
         try {
+            console.log(`🔍 [SupabaseSync] Polling remote config for ID: ${this.configId}`);
             const { data, error } = await supabase
                 .from('bot_configurations')
                 .select('*')
@@ -262,7 +263,8 @@ class SupabaseSyncService {
 
             if (configs && configs.length > 0) {
                 this.configId = configs[0].id;
-                console.log('📋 Loaded existing config:', this.configId);
+                console.log('📋 [SupabaseSync] Carregando config existente do Cloud:', this.configId);
+                console.log('📋 [SupabaseSync] Estado Cloud:', { is_powered_on: configs[0].is_powered_on, is_running: configs[0].is_running });
 
                 // [FIX] Preservar chaves locais ao carregar do cloud
                 const localConfig = localDb.getConfig();
@@ -273,6 +275,7 @@ class SupabaseSyncService {
                 };
                 localDb.saveConfig(mergedConfig as any);
             } else {
+                console.log('📋 [SupabaseSync] Nenhuma config encontrada para o user_id:', this.userId, '. Criando nova...');
                 // Create new config - SEM chaves API (segurança)
                 const { data: newConfig, error: createError } = await supabase
                     .from('bot_configurations')
@@ -296,10 +299,10 @@ class SupabaseSyncService {
                 if (createError) throw createError;
 
                 this.configId = newConfig.id;
-                console.log('✨ Created new config:', this.configId);
+                console.log('✨ [SupabaseSync] Nova config criada no cloud:', this.configId);
             }
         } catch (error) {
-            console.error('❌ Failed to load/create config:', error);
+            console.error('❌ [SupabaseSync] Falha ao carregar/criar config:', error);
         }
     }
 

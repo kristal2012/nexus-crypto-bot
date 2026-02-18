@@ -131,32 +131,37 @@ async function startHeadlessBot() {
         }
     }, 600000); // Check every 10 min
 
-    // 4. Iniciar Trading Service (sempre em modo teste, automaticamente)
+    // 4. Verificar estado do Dashboard antes de iniciar o Trading
     try {
         // Buscar config do Supabase primeiro
         const remote = await supabaseSync.fetchRemoteConfig();
 
-        // Sempre usar RISK_SETTINGS para parâmetros de trading (não do Supabase)
         const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'];
-
-        console.log(`🚀 Iniciando monitoramento para: ${symbols.join(', ')}`);
         console.log(`📊 TP: ${RISK_SETTINGS.TAKE_PROFIT_PERCENT}% | SL: ${RISK_SETTINGS.STOP_LOSS_PERCENT}% | Max Pos: ${RISK_SETTINGS.MAX_POSITIONS}`);
 
-        await tradingService.start({
-            userId: '00000000-0000-0000-0000-000000000000',
-            configId: remote?.id || 'default-config-id',
-            symbols: symbols,
-            totalCapital: remote?.test_balance || initialBalance,
-            quantityPerTrade: remote?.quantity,
-            takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT,
-            stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT,
-            testMode: remote?.test_mode !== undefined ? remote.test_mode : isTestMode,
-            maxPositions: RISK_SETTINGS.MAX_POSITIONS
-        });
+        // [FIX] Respeitar o comando is_powered_on do Dashboard
+        // Se o Dashboard diz que está ligado, iniciar. Caso contrário, aguardar comando.
+        if (remote?.is_powered_on === true) {
+            console.log(`🚀 Dashboard: Bot LIGADO. Iniciando monitoramento para: ${symbols.join(', ')}`);
+            await tradingService.start({
+                userId: '00000000-0000-0000-0000-000000000000',
+                configId: remote?.id || 'default-config-id',
+                symbols: symbols,
+                totalCapital: remote?.test_balance || initialBalance,
+                quantityPerTrade: remote?.quantity,
+                takeProfitPercent: RISK_SETTINGS.TAKE_PROFIT_PERCENT,
+                stopLossPercent: RISK_SETTINGS.STOP_LOSS_PERCENT,
+                testMode: remote?.test_mode !== undefined ? remote.test_mode : isTestMode,
+                maxPositions: RISK_SETTINGS.MAX_POSITIONS
+            });
+        } else {
+            console.log(`⏸️ Dashboard: Bot DESLIGADO (is_powered_on=${remote?.is_powered_on}). Aguardando comando "Ligar" no Dashboard...`);
+            console.log(`💡 Para ligar, acesse: https://nexus-crypto-bot.vercel.app/ e clique em "Ligar Bot"`);
+        }
 
     } catch (error) {
-        console.error('❌ Erro crítico ao iniciar trading:', error);
-        process.exit(1);
+        console.error('❌ Erro crítico ao verificar config inicial:', error);
+        // Não encerrar o processo - continuar aguardando polling
     }
 }
 
