@@ -4,10 +4,10 @@ import os
 
 # Configurações do Banco de Dados Cryptum 7.1 (Usando Pooler Host para AWS US-WEST-1)
 # O Host padrão db.ref.supabase.co está falhando no DNS
-DB_HOST = "aws-0-us-west-1.pooler.supabase.com"
+DB_HOST = "db.cdudskuxvsexgyxtmtur.supabase.co"
 DB_NAME = "postgres"
-DB_USER = "postgres.cdudskuxvsegyxtmtu"
-DB_PASS = "jQbI1PEEpXvuSOHZ" # Assumindo a mesma senha do projeto anterior
+DB_USER = "postgres.cdudskuxvsexgyxtmtur"
+DB_PASS = "&N&6ifTN5uy5krX"
 DB_PORT = "5432"
 
 SQL_FILE = r"c:\cryptum7.1_bot\SETUP_TABLES_CRYPTUM.sql"

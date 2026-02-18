@@ -76,39 +76,41 @@ export const useBotActive = () => {
 
   const toggleBotActive = async (newValue: boolean) => {
     try {
-      const { data: existing } = await (supabase as any)
-        .from('auto_trading_config')
-        .select('id')
-        .eq('user_id', FIXED_USER_ID)
-        .maybeSingle();
+      setLoading(true);
 
-      if (existing) {
-        await (supabase as any)
-          .from('auto_trading_config')
-          .update({ is_active: newValue })
-          .eq('user_id', FIXED_USER_ID);
-      } else {
-        await (supabase as any)
-          .from('auto_trading_config')
-          .insert({
-            user_id: FIXED_USER_ID,
-            is_active: newValue
-          });
+      // Use API Proxy to bypass RLS and update the correct table (bot_configurations)
+      // The backend listens to 'bot_configurations', not 'auto_trading_config'
+      const response = await fetch('/api/toggle-bot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: newValue ? 'start' : 'stop',
+          userId: FIXED_USER_ID
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle bot via API');
       }
 
       // Optimistic update
       setIsActive(newValue);
 
-      // Persist in localStorage as a temporary cache/fallback
+      // Persist in localStorage
       localStorage.setItem(`bot_active_${FIXED_USER_ID}`, newValue ? 'true' : 'false');
 
-      // Dispatch global event for instant UI sync across all components
+      // Dispatch global event
       window.dispatchEvent(new CustomEvent('bot-status-changed', {
         detail: { userId: FIXED_USER_ID, isActive: newValue }
       }));
+
     } catch (err) {
       console.error('Error toggling bot active:', err);
-      // Revert if error? For now keeping it optimistic for better UX
+      // Revert optimism if needed, but for now log error
+    } finally {
+      setLoading(false);
     }
   };
 

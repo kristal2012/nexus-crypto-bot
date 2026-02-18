@@ -1,19 +1,31 @@
 [
   {
-    "id": "gs0o7w8i9",
-    "created_at": "2026-02-17T22:21:32.997Z",
+    "id": "coj2bk4m7",
+    "created_at": "2026-02-18T00:29:07.933Z",
+    "level": "INFO",
+    "message": "Análise de Mercado (1 pares)",
+    "details": {
+      "timestamp": "2026-02-18T00:29:07.931Z",
+      "summary": [
+        "XRPUSDT: AGUARDA [Aguardando sinal: Preço $1.47 (0.2% acima da Lower Band) | RSI 45.0 (Meta: < 45)]"
+      ]
+    }
+  },
+  {
+    "id": "d5ibtziyv",
+    "created_at": "2026-02-18T00:29:09.880Z",
     "level": "SUCCESS",
-    "message": "[SIMULAÇÃO] Ordem de BUY executada com sucesso via Proxy (Preço Real: $1.48)",
+    "message": "[SIMULAÇÃO] Ordem de BUY executada com sucesso via Proxy (Preço Real: $1.47)",
     "details": {
       "testMode": true,
-      "tradeId": "sim-52qltkkt0",
+      "tradeId": "sim-65gko2alw",
       "simulatedResponse": {
         "symbol": "XRPUSDT",
-        "orderId": "sim-52qltkkt0",
-        "transactTime": 1771366892997,
-        "price": "1.4787",
-        "origQty": "24.34077079",
-        "executedQty": "24.34077079",
+        "orderId": "sim-65gko2alw",
+        "transactTime": 1771374549879,
+        "price": "1.474",
+        "origQty": "0.00067852",
+        "executedQty": "0.00067852",
         "status": "FILLED",
         "type": "MARKET",
         "side": "BUY"
@@ -21,339 +33,342 @@
     }
   },
   {
-    "id": "whsaxpnqs",
-    "created_at": "2026-02-17T22:21:33.009Z",
+    "id": "awtx5wpo9",
+    "created_at": "2026-02-18T00:29:09.963Z",
     "level": "SUCCESS",
-    "message": "🚀 Compra: XRPUSDT @ $1.48"
+    "message": "🚀 Compra: XRPUSDT @ $1.47"
   },
   {
-    "id": "i4jjnj3c1",
-    "created_at": "2026-02-17T22:21:33.010Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (2 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:21:33.010Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.28 (0.2% acima da Lower Band) | RSI 58.5 (Meta: < 45)]",
-        "XRPUSDT: SINAL [MEAN REVERSION: Preço ($1.48) abaixo da Lower Band ($1.48) + RSI oversold (38.9)]"
-      ]
-    }
-  },
-  {
-    "id": "h24f3rojf",
-    "created_at": "2026-02-17T22:21:33.322Z",
+    "id": "sy9i2vy44",
+    "created_at": "2026-02-18T00:29:09.965Z",
     "level": "INFO",
     "message": "Análise de Mercado (1 pares)",
     "details": {
-      "timestamp": "2026-02-17T22:21:33.322Z",
+      "timestamp": "2026-02-18T00:29:09.965Z",
       "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.28 (0.2% acima da Lower Band) | RSI 58.5 (Meta: < 45)]"
+        "XRPUSDT: SINAL [MEAN REVERSION: Preço ($1.47) abaixo da Lower Band ($1.47) + RSI oversold (41.9)]"
       ]
     }
   },
   {
-    "id": "hbvdms7pb",
-    "created_at": "2026-02-17T22:21:33.800Z",
+    "id": "dyk6ll4tz",
+    "created_at": "2026-02-18T00:29:10.821Z",
+    "level": "SUCCESS",
+    "message": "[SIMULAÇÃO] Ordem de BUY executada com sucesso via Proxy (Preço Real: $1.47)",
+    "details": {
+      "testMode": true,
+      "tradeId": "sim-6tfywqkjz",
+      "simulatedResponse": {
+        "symbol": "XRPUSDT",
+        "orderId": "sim-6tfywqkjz",
+        "transactTime": 1771374550821,
+        "price": "1.474",
+        "origQty": "0.00067852",
+        "executedQty": "0.00067852",
+        "status": "FILLED",
+        "type": "MARKET",
+        "side": "BUY"
+      }
+    }
+  },
+  {
+    "id": "hp02438p2",
+    "created_at": "2026-02-18T00:29:10.924Z",
+    "level": "SUCCESS",
+    "message": "🚀 Compra: XRPUSDT @ $1.47"
+  },
+  {
+    "id": "npg3g7adj",
+    "created_at": "2026-02-18T00:29:10.925Z",
     "level": "INFO",
     "message": "Análise de Mercado (1 pares)",
     "details": {
-      "timestamp": "2026-02-17T22:21:33.800Z",
+      "timestamp": "2026-02-18T00:29:10.924Z",
       "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.28 (0.2% acima da Lower Band) | RSI 58.5 (Meta: < 45)]"
+        "XRPUSDT: SINAL [MEAN REVERSION: Preço ($1.47) abaixo da Lower Band ($1.47) + RSI oversold (41.9)]"
       ]
     }
   },
   {
-    "id": "prvbmvsw8",
-    "created_at": "2026-02-17T22:21:34.746Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:21:34.745Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.29 (0.2% acima da Lower Band) | RSI 59.4 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "uuop50np9",
-    "created_at": "2026-02-17T22:21:36.556Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:21:36.556Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.28 (0.2% acima da Lower Band) | RSI 58.5 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "sei1jqyus",
-    "created_at": "2026-02-17T22:21:37.474Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:21:37.474Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.28 (0.2% acima da Lower Band) | RSI 58.5 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "rd2aghkao",
-    "created_at": "2026-02-17T22:21:51.149Z",
+    "id": "srpkjpc57",
+    "created_at": "2026-02-18T00:29:12.003Z",
     "level": "INFO",
     "message": "Bot Heartbeat: System is healthy and monitoring.",
     "details": {
-      "timestamp": "2026-02-17T22:21:51.149Z",
-      "platform": "win32",
-      "uptime": 32
-    }
-  },
-  {
-    "id": "d3x433jgf",
-    "created_at": "2026-02-17T22:22:16.050Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:22:16.049Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.22 (0.1% acima da Lower Band) | RSI 48.4 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "e0apxyqox",
-    "created_at": "2026-02-17T22:22:17.107Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (2 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:22:17.106Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1998.41 (0.1% acima da Lower Band) | RSI 49.6 (Meta: < 45)]",
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.26 (0.2% acima da Lower Band) | RSI 51.7 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "3w11ih3tc",
-    "created_at": "2026-02-17T22:22:17.989Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (2 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:22:17.989Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1998.45 (0.1% acima da Lower Band) | RSI 49.7 (Meta: < 45)]",
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.22 (0.1% acima da Lower Band) | RSI 48.4 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "bgb8x5o0k",
-    "created_at": "2026-02-17T22:22:18.851Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (2 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:22:18.850Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1998.45 (0.1% acima da Lower Band) | RSI 49.7 (Meta: < 45)]",
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.23 (0.1% acima da Lower Band) | RSI 49.2 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "9ioo4bpzv",
-    "created_at": "2026-02-17T22:22:20.279Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (2 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:22:20.279Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1998.45 (0.1% acima da Lower Band) | RSI 49.7 (Meta: < 45)]",
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.22 (0.1% acima da Lower Band) | RSI 48.4 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "s8k4i4lnn",
-    "created_at": "2026-02-17T22:22:21.151Z",
-    "level": "INFO",
-    "message": "Bot Heartbeat: System is healthy and monitoring.",
-    "details": {
-      "timestamp": "2026-02-17T22:22:21.151Z",
-      "platform": "win32",
-      "uptime": 62
-    }
-  },
-  {
-    "id": "8vvmbdony",
-    "created_at": "2026-02-17T22:22:51.155Z",
-    "level": "INFO",
-    "message": "Bot Heartbeat: System is healthy and monitoring.",
-    "details": {
-      "timestamp": "2026-02-17T22:22:51.153Z",
-      "platform": "win32",
-      "uptime": 92
-    }
-  },
-  {
-    "id": "ys8dtp45h",
-    "created_at": "2026-02-17T22:22:54.884Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:22:54.883Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.20 (0.1% acima da Lower Band) | RSI 47.0 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "8hh23z8ww",
-    "created_at": "2026-02-17T22:22:55.831Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:22:55.831Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.19 (0.1% acima da Lower Band) | RSI 46.3 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "jlkrt8mf5",
-    "created_at": "2026-02-17T22:22:57.145Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (2 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:22:57.144Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1998.29 (0.1% acima da Lower Band) | RSI 49.2 (Meta: < 45)]",
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.19 (0.1% acima da Lower Band) | RSI 46.3 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "gx6edyb5x",
-    "created_at": "2026-02-17T22:23:11.140Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:23:11.139Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.19 (0.1% acima da Lower Band) | RSI 52.5 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "d9tj1bbtl",
-    "created_at": "2026-02-17T22:23:11.994Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:23:11.994Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.17 (0.1% acima da Lower Band) | RSI 50.8 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "to8svhus4",
-    "created_at": "2026-02-17T22:23:12.968Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:23:12.967Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.19 (0.1% acima da Lower Band) | RSI 52.5 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "o4zluts87",
-    "created_at": "2026-02-17T22:23:14.140Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:23:14.139Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.17 (0.1% acima da Lower Band) | RSI 50.8 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "htyu6qz8z",
-    "created_at": "2026-02-17T22:23:15.012Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:23:15.011Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.16 (0.1% acima da Lower Band) | RSI 50.0 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "2va8bo9dw",
-    "created_at": "2026-02-17T22:23:31.333Z",
-    "level": "INFO",
-    "message": "Bot Heartbeat: System is healthy and monitoring.",
-    "details": {
-      "timestamp": "2026-02-17T22:23:31.332Z",
+      "timestamp": "2026-02-18T00:29:12.002Z",
       "platform": "win32",
       "uptime": 31
     }
   },
   {
-    "id": "hbc4rgzdb",
-    "created_at": "2026-02-17T22:23:50.099Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
+    "id": "y2nmaamhy",
+    "created_at": "2026-02-18T00:29:13.913Z",
+    "level": "SUCCESS",
+    "message": "[SIMULAÇÃO] Ordem de SELL executada com sucesso via Proxy (Preço Real: $1.47)",
     "details": {
-      "timestamp": "2026-02-17T22:23:50.099Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.20 (0.1% acima da Lower Band) | RSI 53.4 (Meta: < 45)]"
-      ]
+      "testMode": true,
+      "tradeId": "sim-ep846z018",
+      "simulatedResponse": {
+        "symbol": "XRPUSDT",
+        "orderId": "sim-ep846z018",
+        "transactTime": 1771374553913,
+        "price": "1.474",
+        "origQty": "0.00067852",
+        "executedQty": "0.00067852",
+        "status": "FILLED",
+        "type": "MARKET",
+        "side": "SELL"
+      }
     }
   },
   {
-    "id": "p4diivtoz",
-    "created_at": "2026-02-17T22:23:50.985Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
+    "id": "jzer1vtry",
+    "created_at": "2026-02-18T00:29:13.999Z",
+    "level": "SUCCESS",
+    "message": "⚠️ Venda: XRPUSDT @ $1.47 | Perda: 0.00%"
+  },
+  {
+    "id": "da83i07zn",
+    "created_at": "2026-02-18T00:29:15.298Z",
+    "level": "SUCCESS",
+    "message": "[SIMULAÇÃO] Ordem de SELL executada com sucesso via Proxy (Preço Real: $1.47)",
     "details": {
-      "timestamp": "2026-02-17T22:23:50.984Z",
-      "summary": [
-        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.20 (0.1% acima da Lower Band) | RSI 53.4 (Meta: < 45)]"
-      ]
+      "testMode": true,
+      "tradeId": "sim-q30exm9sf",
+      "simulatedResponse": {
+        "symbol": "XRPUSDT",
+        "orderId": "sim-q30exm9sf",
+        "transactTime": 1771374555298,
+        "price": "1.4748",
+        "origQty": "0.00067852",
+        "executedQty": "0.00067852",
+        "status": "FILLED",
+        "type": "MARKET",
+        "side": "SELL"
+      }
     }
   },
   {
-    "id": "rqs6yjrgz",
-    "created_at": "2026-02-17T22:24:01.333Z",
+    "id": "v0fo3okkt",
+    "created_at": "2026-02-18T00:29:15.358Z",
+    "level": "SUCCESS",
+    "message": "⚠️ Venda: XRPUSDT @ $1.47 | Lucro: 0.05%"
+  },
+  {
+    "id": "z6vm4jjnt",
+    "created_at": "2026-02-18T00:29:42.079Z",
     "level": "INFO",
     "message": "Bot Heartbeat: System is healthy and monitoring.",
     "details": {
-      "timestamp": "2026-02-17T22:24:01.332Z",
+      "timestamp": "2026-02-18T00:29:42.077Z",
       "platform": "win32",
       "uptime": 61
     }
   },
   {
-    "id": "en07h443e",
-    "created_at": "2026-02-17T22:24:05.018Z",
+    "id": "sd21p053a",
+    "created_at": "2026-02-18T00:30:12.085Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:30:12.084Z",
+      "platform": "win32",
+      "uptime": 91
+    }
+  },
+  {
+    "id": "jjgh7iwto",
+    "created_at": "2026-02-18T00:30:42.087Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:30:42.087Z",
+      "platform": "win32",
+      "uptime": 121
+    }
+  },
+  {
+    "id": "c3pb3gkkh",
+    "created_at": "2026-02-18T00:31:12.100Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:31:12.100Z",
+      "platform": "win32",
+      "uptime": 151
+    }
+  },
+  {
+    "id": "im3vzguqh",
+    "created_at": "2026-02-18T00:31:42.105Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:31:42.105Z",
+      "platform": "win32",
+      "uptime": 181
+    }
+  },
+  {
+    "id": "lpgyjz12n",
+    "created_at": "2026-02-18T00:32:12.120Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:32:12.120Z",
+      "platform": "win32",
+      "uptime": 211
+    }
+  },
+  {
+    "id": "j0lwmqb9s",
+    "created_at": "2026-02-18T00:32:42.121Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:32:42.121Z",
+      "platform": "win32",
+      "uptime": 241
+    }
+  },
+  {
+    "id": "hyyhjxxaa",
+    "created_at": "2026-02-18T00:33:12.124Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:33:12.123Z",
+      "platform": "win32",
+      "uptime": 271
+    }
+  },
+  {
+    "id": "ss7qdunf3",
+    "created_at": "2026-02-18T00:33:42.120Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:33:42.118Z",
+      "platform": "win32",
+      "uptime": 301
+    }
+  },
+  {
+    "id": "r44v863ab",
+    "created_at": "2026-02-18T00:33:57.974Z",
+    "level": "INFO",
+    "message": "Análise de Mercado (2 pares)",
+    "details": {
+      "timestamp": "2026-02-18T00:33:57.973Z",
+      "summary": [
+        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.31 (0.3% acima da Lower Band) | RSI 60.7 (Meta: < 45)]",
+        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $618.80 (0.3% acima da Lower Band) | RSI 51.1 (Meta: < 45)]"
+      ]
+    }
+  },
+  {
+    "id": "ekddw9fii",
+    "created_at": "2026-02-18T00:33:58.317Z",
+    "level": "INFO",
+    "message": "Análise de Mercado (2 pares)",
+    "details": {
+      "timestamp": "2026-02-18T00:33:58.316Z",
+      "summary": [
+        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.32 (0.4% acima da Lower Band) | RSI 61.4 (Meta: < 45)]",
+        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $618.90 (0.3% acima da Lower Band) | RSI 52.4 (Meta: < 45)]"
+      ]
+    }
+  },
+  {
+    "id": "woqj4qqjd",
+    "created_at": "2026-02-18T00:33:59.033Z",
+    "level": "INFO",
+    "message": "Análise de Mercado (2 pares)",
+    "details": {
+      "timestamp": "2026-02-18T00:33:59.033Z",
+      "summary": [
+        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.32 (0.4% acima da Lower Band) | RSI 61.4 (Meta: < 45)]",
+        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $618.90 (0.3% acima da Lower Band) | RSI 52.4 (Meta: < 45)]"
+      ]
+    }
+  },
+  {
+    "id": "dxxeo0vt2",
+    "created_at": "2026-02-18T00:33:59.422Z",
+    "level": "INFO",
+    "message": "Análise de Mercado (2 pares)",
+    "details": {
+      "timestamp": "2026-02-18T00:33:59.422Z",
+      "summary": [
+        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.32 (0.4% acima da Lower Band) | RSI 61.4 (Meta: < 45)]",
+        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $618.90 (0.3% acima da Lower Band) | RSI 52.4 (Meta: < 45)]"
+      ]
+    }
+  },
+  {
+    "id": "go0qnydbz",
+    "created_at": "2026-02-18T00:33:59.579Z",
+    "level": "INFO",
+    "message": "Análise de Mercado (1 pares)",
+    "details": {
+      "timestamp": "2026-02-18T00:33:59.579Z",
+      "summary": [
+        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $618.90 (0.3% acima da Lower Band) | RSI 52.4 (Meta: < 45)]"
+      ]
+    }
+  },
+  {
+    "id": "6iyoarluz",
+    "created_at": "2026-02-18T00:34:00.112Z",
+    "level": "INFO",
+    "message": "Análise de Mercado (1 pares)",
+    "details": {
+      "timestamp": "2026-02-18T00:34:00.110Z",
+      "summary": [
+        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $618.81 (0.3% acima da Lower Band) | RSI 51.2 (Meta: < 45)]"
+      ]
+    }
+  },
+  {
+    "id": "va49s935l",
+    "created_at": "2026-02-18T00:34:01.025Z",
+    "level": "INFO",
+    "message": "Análise de Mercado (2 pares)",
+    "details": {
+      "timestamp": "2026-02-18T00:34:01.025Z",
+      "summary": [
+        "SOLUSDT: AGUARDA [Aguardando sinal: Preço $85.31 (0.3% acima da Lower Band) | RSI 60.7 (Meta: < 45)]",
+        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $618.80 (0.3% acima da Lower Band) | RSI 51.1 (Meta: < 45)]"
+      ]
+    }
+  },
+  {
+    "id": "46xj7frjk",
+    "created_at": "2026-02-18T00:34:02.059Z",
+    "level": "INFO",
+    "message": "Análise de Mercado (1 pares)",
+    "details": {
+      "timestamp": "2026-02-18T00:34:02.059Z",
+      "summary": [
+        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $618.80 (0.3% acima da Lower Band) | RSI 51.1 (Meta: < 45)]"
+      ]
+    }
+  },
+  {
+    "id": "ihnq1oygn",
+    "created_at": "2026-02-18T00:34:09.325Z",
     "level": "SUCCESS",
-    "message": "[SIMULAÇÃO] Ordem de BUY executada com sucesso via Proxy (Preço Real: $85.14)",
+    "message": "[SIMULAÇÃO] Ordem de BUY executada com sucesso via Proxy (Preço Real: $1993.49)",
     "details": {
       "testMode": true,
-      "tradeId": "sim-9eesi89a2",
+      "tradeId": "sim-rii18rg02",
       "simulatedResponse": {
-        "symbol": "SOLUSDT",
-        "orderId": "sim-9eesi89a2",
-        "transactTime": 1771367045018,
-        "price": "85.14",
-        "origQty": "0.42253521",
-        "executedQty": "0.42253521",
+        "symbol": "ETHUSDT",
+        "orderId": "sim-rii18rg02",
+        "transactTime": 1771374849324,
+        "price": "1993.49",
+        "origQty": "5e-7",
+        "executedQty": "5e-7",
         "status": "FILLED",
         "type": "MARKET",
         "side": "BUY"
@@ -361,162 +376,981 @@
     }
   },
   {
-    "id": "kxfmyp2lf",
-    "created_at": "2026-02-17T22:24:05.023Z",
+    "id": "vje0om6dj",
+    "created_at": "2026-02-18T00:34:09.421Z",
     "level": "SUCCESS",
-    "message": "🚀 Compra: SOLUSDT @ $85.14"
+    "message": "🚀 Compra: ETHUSDT @ $1992.68"
   },
   {
-    "id": "bmzdz40nc",
-    "created_at": "2026-02-17T22:24:31.334Z",
+    "id": "x1ya6oe4v",
+    "created_at": "2026-02-18T00:34:12.123Z",
     "level": "INFO",
     "message": "Bot Heartbeat: System is healthy and monitoring.",
     "details": {
-      "timestamp": "2026-02-17T22:24:31.333Z",
+      "timestamp": "2026-02-18T00:34:12.123Z",
       "platform": "win32",
-      "uptime": 91
+      "uptime": 331
     }
   },
   {
-    "id": "iy2d8u2up",
-    "created_at": "2026-02-17T22:24:38.189Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:24:38.188Z",
-      "summary": [
-        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $619.01 (0.2% acima da Lower Band) | RSI 62.3 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "d03fc18p8",
-    "created_at": "2026-02-17T22:24:39.235Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:24:39.235Z",
-      "summary": [
-        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $618.87 (0.2% acima da Lower Band) | RSI 60.7 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "vmbp60uiv",
-    "created_at": "2026-02-17T22:24:40.150Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:24:40.149Z",
-      "summary": [
-        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $619.00 (0.2% acima da Lower Band) | RSI 62.2 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "3wcb9t42s",
-    "created_at": "2026-02-17T22:24:41.256Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:24:41.256Z",
-      "summary": [
-        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $619.00 (0.2% acima da Lower Band) | RSI 62.2 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "qhbijt868",
-    "created_at": "2026-02-17T22:24:42.336Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:24:42.335Z",
-      "summary": [
-        "BNBUSDT: AGUARDA [Aguardando sinal: Preço $619.00 (0.2% acima da Lower Band) | RSI 62.2 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "7hmlmxuxw",
-    "created_at": "2026-02-17T22:25:01.333Z",
+    "id": "kugxz6jbz",
+    "created_at": "2026-02-18T00:34:12.912Z",
     "level": "INFO",
     "message": "Bot Heartbeat: System is healthy and monitoring.",
     "details": {
-      "timestamp": "2026-02-17T22:25:01.332Z",
+      "timestamp": "2026-02-18T00:34:12.911Z",
       "platform": "win32",
-      "uptime": 121
+      "uptime": 32
     }
   },
   {
-    "id": "n465n5z2m",
-    "created_at": "2026-02-17T22:25:22.230Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
+    "id": "pxvfh8v5r",
+    "created_at": "2026-02-18T00:34:16.605Z",
+    "level": "SUCCESS",
+    "message": "[SIMULAÇÃO] Ordem de SELL executada com sucesso via Proxy (Preço Real: $1.48)",
     "details": {
-      "timestamp": "2026-02-17T22:25:22.230Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1999.40 (0.2% acima da Lower Band) | RSI 54.5 (Meta: < 45)]"
-      ]
+      "testMode": true,
+      "tradeId": "sim-ryg7hvggx",
+      "simulatedResponse": {
+        "symbol": "XRPUSDT",
+        "orderId": "sim-ryg7hvggx",
+        "transactTime": 1771374856604,
+        "price": "1.4764",
+        "origQty": "0.00067852",
+        "executedQty": "0.00067852",
+        "status": "FILLED",
+        "type": "MARKET",
+        "side": "SELL"
+      }
     }
   },
   {
-    "id": "z2kceprfs",
-    "created_at": "2026-02-17T22:25:23.218Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
+    "id": "6g3kkkvoe",
+    "created_at": "2026-02-18T00:34:16.672Z",
+    "level": "SUCCESS",
+    "message": "⚠️ Venda: XRPUSDT @ $1.48 | Lucro: 0.16%"
+  },
+  {
+    "id": "eekehewwv",
+    "created_at": "2026-02-18T00:34:18.003Z",
+    "level": "SUCCESS",
+    "message": "[SIMULAÇÃO] Ordem de SELL executada com sucesso via Proxy (Preço Real: $1.48)",
     "details": {
-      "timestamp": "2026-02-17T22:25:23.218Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1999.32 (0.2% acima da Lower Band) | RSI 54.2 (Meta: < 45)]"
-      ]
+      "testMode": true,
+      "tradeId": "sim-ao6ixx9iy",
+      "simulatedResponse": {
+        "symbol": "XRPUSDT",
+        "orderId": "sim-ao6ixx9iy",
+        "transactTime": 1771374858002,
+        "price": "1.4764",
+        "origQty": "0.00067852",
+        "executedQty": "0.00067852",
+        "status": "FILLED",
+        "type": "MARKET",
+        "side": "SELL"
+      }
     }
   },
   {
-    "id": "yy6afsz19",
-    "created_at": "2026-02-17T22:25:24.160Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
+    "id": "94tajz787",
+    "created_at": "2026-02-18T00:34:18.073Z",
+    "level": "SUCCESS",
+    "message": "⚠️ Venda: XRPUSDT @ $1.48 | Lucro: 0.16%"
+  },
+  {
+    "id": "l3aih4vz6",
+    "created_at": "2026-02-18T00:34:19.291Z",
+    "level": "SUCCESS",
+    "message": "[SIMULAÇÃO] Ordem de SELL executada com sucesso via Proxy (Preço Real: $1993.76)",
     "details": {
-      "timestamp": "2026-02-17T22:25:24.160Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1998.97 (0.1% acima da Lower Band) | RSI 52.7 (Meta: < 45)]"
-      ]
+      "testMode": true,
+      "tradeId": "sim-x0ubiv5ej",
+      "simulatedResponse": {
+        "symbol": "ETHUSDT",
+        "orderId": "sim-x0ubiv5ej",
+        "transactTime": 1771374859291,
+        "price": "1993.76",
+        "origQty": "5e-7",
+        "executedQty": "5e-7",
+        "status": "FILLED",
+        "type": "MARKET",
+        "side": "SELL"
+      }
     }
   },
   {
-    "id": "4ffvvtbzn",
-    "created_at": "2026-02-17T22:25:25.289Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:25:25.288Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1998.82 (0.1% acima da Lower Band) | RSI 52.1 (Meta: < 45)]"
-      ]
-    }
+    "id": "pep6gco4k",
+    "created_at": "2026-02-18T00:34:19.362Z",
+    "level": "SUCCESS",
+    "message": "⚠️ Venda: ETHUSDT @ $1993.75 | Lucro: 0.05%"
   },
   {
-    "id": "szbpw35e8",
-    "created_at": "2026-02-17T22:25:26.333Z",
-    "level": "INFO",
-    "message": "Análise de Mercado (1 pares)",
-    "details": {
-      "timestamp": "2026-02-17T22:25:26.333Z",
-      "summary": [
-        "ETHUSDT: AGUARDA [Aguardando sinal: Preço $1998.97 (0.1% acima da Lower Band) | RSI 52.7 (Meta: < 45)]"
-      ]
-    }
-  },
-  {
-    "id": "txdp8pz9x",
-    "created_at": "2026-02-17T22:25:31.333Z",
+    "id": "i2favj6cg",
+    "created_at": "2026-02-18T00:34:42.136Z",
     "level": "INFO",
     "message": "Bot Heartbeat: System is healthy and monitoring.",
     "details": {
-      "timestamp": "2026-02-17T22:25:31.332Z",
+      "timestamp": "2026-02-18T00:34:42.135Z",
       "platform": "win32",
-      "uptime": 151
+      "uptime": 361
+    }
+  },
+  {
+    "id": "6lazhkeh7",
+    "created_at": "2026-02-18T00:34:42.914Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:34:42.914Z",
+      "platform": "win32",
+      "uptime": 62
+    }
+  },
+  {
+    "id": "hhqyjfmlo",
+    "created_at": "2026-02-18T00:35:12.137Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:35:12.137Z",
+      "platform": "win32",
+      "uptime": 391
+    }
+  },
+  {
+    "id": "w1k9hnt94",
+    "created_at": "2026-02-18T00:35:12.915Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:35:12.914Z",
+      "platform": "win32",
+      "uptime": 92
+    }
+  },
+  {
+    "id": "m5ix8pstk",
+    "created_at": "2026-02-18T00:35:42.136Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:35:42.136Z",
+      "platform": "win32",
+      "uptime": 421
+    }
+  },
+  {
+    "id": "y662f711u",
+    "created_at": "2026-02-18T00:35:42.914Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:35:42.914Z",
+      "platform": "win32",
+      "uptime": 122
+    }
+  },
+  {
+    "id": "0b3uevfrc",
+    "created_at": "2026-02-18T00:36:12.137Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:36:12.136Z",
+      "platform": "win32",
+      "uptime": 451
+    }
+  },
+  {
+    "id": "08c4x4e11",
+    "created_at": "2026-02-18T00:36:12.914Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:36:12.914Z",
+      "platform": "win32",
+      "uptime": 152
+    }
+  },
+  {
+    "id": "ituogfibz",
+    "created_at": "2026-02-18T00:36:42.137Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:36:42.137Z",
+      "platform": "win32",
+      "uptime": 481
+    }
+  },
+  {
+    "id": "uspee8abw",
+    "created_at": "2026-02-18T00:36:42.914Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:36:42.914Z",
+      "platform": "win32",
+      "uptime": 182
+    }
+  },
+  {
+    "id": "3u1niab1y",
+    "created_at": "2026-02-18T00:37:12.138Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:37:12.138Z",
+      "platform": "win32",
+      "uptime": 511
+    }
+  },
+  {
+    "id": "qw6han3d2",
+    "created_at": "2026-02-18T00:37:12.914Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:37:12.914Z",
+      "platform": "win32",
+      "uptime": 212
+    }
+  },
+  {
+    "id": "5v81p01dm",
+    "created_at": "2026-02-18T00:37:42.138Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:37:42.137Z",
+      "platform": "win32",
+      "uptime": 541
+    }
+  },
+  {
+    "id": "ogmp77nfl",
+    "created_at": "2026-02-18T00:37:42.915Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:37:42.914Z",
+      "platform": "win32",
+      "uptime": 242
+    }
+  },
+  {
+    "id": "ui7duz7ek",
+    "created_at": "2026-02-18T00:38:12.138Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:38:12.138Z",
+      "platform": "win32",
+      "uptime": 571
+    }
+  },
+  {
+    "id": "9tt4ua6va",
+    "created_at": "2026-02-18T00:38:12.915Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:38:12.915Z",
+      "platform": "win32",
+      "uptime": 272
+    }
+  },
+  {
+    "id": "29ooktjfp",
+    "created_at": "2026-02-18T00:38:42.139Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:38:42.137Z",
+      "platform": "win32",
+      "uptime": 601
+    }
+  },
+  {
+    "id": "m6qnmt8dx",
+    "created_at": "2026-02-18T00:38:42.916Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:38:42.915Z",
+      "platform": "win32",
+      "uptime": 302
+    }
+  },
+  {
+    "id": "fdsufpnj4",
+    "created_at": "2026-02-18T00:39:12.140Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:39:12.138Z",
+      "platform": "win32",
+      "uptime": 631
+    }
+  },
+  {
+    "id": "d90dd44gb",
+    "created_at": "2026-02-18T00:39:12.916Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:39:12.916Z",
+      "platform": "win32",
+      "uptime": 332
+    }
+  },
+  {
+    "id": "4j9w4wd1f",
+    "created_at": "2026-02-18T00:39:42.138Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:39:42.137Z",
+      "platform": "win32",
+      "uptime": 661
+    }
+  },
+  {
+    "id": "yevvcup5a",
+    "created_at": "2026-02-18T00:39:42.916Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:39:42.916Z",
+      "platform": "win32",
+      "uptime": 362
+    }
+  },
+  {
+    "id": "69coa2mqe",
+    "created_at": "2026-02-18T00:40:12.138Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:40:12.138Z",
+      "platform": "win32",
+      "uptime": 691
+    }
+  },
+  {
+    "id": "ftz2x22cr",
+    "created_at": "2026-02-18T00:40:12.921Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:40:12.918Z",
+      "platform": "win32",
+      "uptime": 392
+    }
+  },
+  {
+    "id": "o1d5gipva",
+    "created_at": "2026-02-18T00:40:42.140Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:40:42.138Z",
+      "platform": "win32",
+      "uptime": 721
+    }
+  },
+  {
+    "id": "v79ldpbsm",
+    "created_at": "2026-02-18T00:40:42.918Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:40:42.918Z",
+      "platform": "win32",
+      "uptime": 422
+    }
+  },
+  {
+    "id": "kox231xhr",
+    "created_at": "2026-02-18T00:41:12.138Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:41:12.138Z",
+      "platform": "win32",
+      "uptime": 751
+    }
+  },
+  {
+    "id": "szz0vrk60",
+    "created_at": "2026-02-18T00:41:12.919Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:41:12.918Z",
+      "platform": "win32",
+      "uptime": 452
+    }
+  },
+  {
+    "id": "ohf7bgy0s",
+    "created_at": "2026-02-18T00:41:42.138Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:41:42.138Z",
+      "platform": "win32",
+      "uptime": 781
+    }
+  },
+  {
+    "id": "5khupm0qq",
+    "created_at": "2026-02-18T00:41:42.919Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:41:42.918Z",
+      "platform": "win32",
+      "uptime": 482
+    }
+  },
+  {
+    "id": "1w2148l5q",
+    "created_at": "2026-02-18T00:42:12.139Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:42:12.138Z",
+      "platform": "win32",
+      "uptime": 811
+    }
+  },
+  {
+    "id": "848pjh054",
+    "created_at": "2026-02-18T00:42:12.919Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:42:12.919Z",
+      "platform": "win32",
+      "uptime": 512
+    }
+  },
+  {
+    "id": "tfg5prif9",
+    "created_at": "2026-02-18T00:42:42.139Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:42:42.138Z",
+      "platform": "win32",
+      "uptime": 841
+    }
+  },
+  {
+    "id": "by1p2jfau",
+    "created_at": "2026-02-18T00:42:42.920Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:42:42.920Z",
+      "platform": "win32",
+      "uptime": 542
+    }
+  },
+  {
+    "id": "n1b0pxedo",
+    "created_at": "2026-02-18T00:43:12.139Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:43:12.138Z",
+      "platform": "win32",
+      "uptime": 871
+    }
+  },
+  {
+    "id": "p81thvswh",
+    "created_at": "2026-02-18T00:43:12.921Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:43:12.920Z",
+      "platform": "win32",
+      "uptime": 572
+    }
+  },
+  {
+    "id": "ootme1rjj",
+    "created_at": "2026-02-18T00:43:42.150Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:43:42.149Z",
+      "platform": "win32",
+      "uptime": 901
+    }
+  },
+  {
+    "id": "k3o5hqg46",
+    "created_at": "2026-02-18T00:43:42.924Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:43:42.923Z",
+      "platform": "win32",
+      "uptime": 602
+    }
+  },
+  {
+    "id": "9qb7imlmp",
+    "created_at": "2026-02-18T00:44:12.163Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:44:12.162Z",
+      "platform": "win32",
+      "uptime": 931
+    }
+  },
+  {
+    "id": "t2teyad5j",
+    "created_at": "2026-02-18T00:44:12.930Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:44:12.927Z",
+      "platform": "win32",
+      "uptime": 632
+    }
+  },
+  {
+    "id": "hkyxqz879",
+    "created_at": "2026-02-18T00:44:42.164Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:44:42.164Z",
+      "platform": "win32",
+      "uptime": 961
+    }
+  },
+  {
+    "id": "60bl34rb3",
+    "created_at": "2026-02-18T00:44:42.929Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:44:42.928Z",
+      "platform": "win32",
+      "uptime": 662
+    }
+  },
+  {
+    "id": "fu7nyb9ky",
+    "created_at": "2026-02-18T00:45:12.165Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:45:12.164Z",
+      "platform": "win32",
+      "uptime": 991
+    }
+  },
+  {
+    "id": "9859mxyye",
+    "created_at": "2026-02-18T00:45:13.122Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:45:13.068Z",
+      "platform": "win32",
+      "uptime": 692
+    }
+  },
+  {
+    "id": "3obvncxa7",
+    "created_at": "2026-02-18T00:45:42.165Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:45:42.165Z",
+      "platform": "win32",
+      "uptime": 1021
+    }
+  },
+  {
+    "id": "gseiw8xzk",
+    "created_at": "2026-02-18T00:45:43.069Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:45:43.069Z",
+      "platform": "win32",
+      "uptime": 722
+    }
+  },
+  {
+    "id": "ro8w6fotz",
+    "created_at": "2026-02-18T00:46:12.165Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:46:12.165Z",
+      "platform": "win32",
+      "uptime": 1051
+    }
+  },
+  {
+    "id": "y8a37ok1d",
+    "created_at": "2026-02-18T00:46:13.069Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:46:13.069Z",
+      "platform": "win32",
+      "uptime": 752
+    }
+  },
+  {
+    "id": "0tt252yc2",
+    "created_at": "2026-02-18T00:46:42.166Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:46:42.165Z",
+      "platform": "win32",
+      "uptime": 1081
+    }
+  },
+  {
+    "id": "wd14fowkf",
+    "created_at": "2026-02-18T00:46:43.070Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:46:43.069Z",
+      "platform": "win32",
+      "uptime": 782
+    }
+  },
+  {
+    "id": "3vjkcftiq",
+    "created_at": "2026-02-18T00:47:12.165Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:47:12.165Z",
+      "platform": "win32",
+      "uptime": 1111
+    }
+  },
+  {
+    "id": "634zki29t",
+    "created_at": "2026-02-18T00:47:13.084Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:47:13.084Z",
+      "platform": "win32",
+      "uptime": 812
+    }
+  },
+  {
+    "id": "m163wfjmq",
+    "created_at": "2026-02-18T00:47:42.178Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:47:42.177Z",
+      "platform": "win32",
+      "uptime": 1141
+    }
+  },
+  {
+    "id": "f5v5u5frr",
+    "created_at": "2026-02-18T00:47:43.085Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:47:43.084Z",
+      "platform": "win32",
+      "uptime": 842
+    }
+  },
+  {
+    "id": "3s8knzskf",
+    "created_at": "2026-02-18T00:48:12.178Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:48:12.177Z",
+      "platform": "win32",
+      "uptime": 1171
+    }
+  },
+  {
+    "id": "5c12z3ozx",
+    "created_at": "2026-02-18T00:48:13.086Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:48:13.085Z",
+      "platform": "win32",
+      "uptime": 872
+    }
+  },
+  {
+    "id": "7n6tznhnk",
+    "created_at": "2026-02-18T00:48:42.178Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:48:42.178Z",
+      "platform": "win32",
+      "uptime": 1201
+    }
+  },
+  {
+    "id": "ltu18qk83",
+    "created_at": "2026-02-18T00:48:43.086Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:48:43.086Z",
+      "platform": "win32",
+      "uptime": 902
+    }
+  },
+  {
+    "id": "osd4imf5t",
+    "created_at": "2026-02-18T00:49:12.232Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:49:12.231Z",
+      "platform": "win32",
+      "uptime": 1231
+    }
+  },
+  {
+    "id": "k2j16fdyc",
+    "created_at": "2026-02-18T00:49:13.086Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:49:13.086Z",
+      "platform": "win32",
+      "uptime": 932
+    }
+  },
+  {
+    "id": "vaq0mqrje",
+    "created_at": "2026-02-18T00:49:42.233Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:49:42.232Z",
+      "platform": "win32",
+      "uptime": 1261
+    }
+  },
+  {
+    "id": "4lbuphk2l",
+    "created_at": "2026-02-18T00:49:43.086Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:49:43.086Z",
+      "platform": "win32",
+      "uptime": 962
+    }
+  },
+  {
+    "id": "s4ys0ey1l",
+    "created_at": "2026-02-18T00:50:12.233Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:50:12.233Z",
+      "platform": "win32",
+      "uptime": 1291
+    }
+  },
+  {
+    "id": "bmiyyxew2",
+    "created_at": "2026-02-18T00:50:13.087Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:50:13.087Z",
+      "platform": "win32",
+      "uptime": 992
+    }
+  },
+  {
+    "id": "rzgxt8bm8",
+    "created_at": "2026-02-18T00:50:42.234Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:50:42.233Z",
+      "platform": "win32",
+      "uptime": 1321
+    }
+  },
+  {
+    "id": "4nd0whhn2",
+    "created_at": "2026-02-18T00:50:43.088Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:50:43.087Z",
+      "platform": "win32",
+      "uptime": 1022
+    }
+  },
+  {
+    "id": "t3u1lmyfu",
+    "created_at": "2026-02-18T00:51:12.234Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:51:12.234Z",
+      "platform": "win32",
+      "uptime": 1351
+    }
+  },
+  {
+    "id": "nggxjwov7",
+    "created_at": "2026-02-18T00:51:13.088Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:51:13.088Z",
+      "platform": "win32",
+      "uptime": 1052
+    }
+  },
+  {
+    "id": "vp5w944p7",
+    "created_at": "2026-02-18T00:51:42.239Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:51:42.237Z",
+      "platform": "win32",
+      "uptime": 1381
+    }
+  },
+  {
+    "id": "ovk13pw8i",
+    "created_at": "2026-02-18T00:51:43.089Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:51:43.089Z",
+      "platform": "win32",
+      "uptime": 1082
+    }
+  },
+  {
+    "id": "afmxrbjmk",
+    "created_at": "2026-02-18T00:52:12.238Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:52:12.237Z",
+      "platform": "win32",
+      "uptime": 1411
+    }
+  },
+  {
+    "id": "oomg2kdto",
+    "created_at": "2026-02-18T00:52:13.099Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:52:13.090Z",
+      "platform": "win32",
+      "uptime": 1112
+    }
+  },
+  {
+    "id": "ot2b1dpn1",
+    "created_at": "2026-02-18T00:52:42.244Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:52:42.244Z",
+      "platform": "win32",
+      "uptime": 1441
+    }
+  },
+  {
+    "id": "fj8v6js8y",
+    "created_at": "2026-02-18T00:53:12.245Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:53:12.244Z",
+      "platform": "win32",
+      "uptime": 1471
+    }
+  },
+  {
+    "id": "4kfzrrzsg",
+    "created_at": "2026-02-18T00:53:42.252Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:53:42.251Z",
+      "platform": "win32",
+      "uptime": 1501
+    }
+  },
+  {
+    "id": "z1fden6bl",
+    "created_at": "2026-02-18T00:54:12.281Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:54:12.271Z",
+      "platform": "win32",
+      "uptime": 1531
+    }
+  },
+  {
+    "id": "kg17c593m",
+    "created_at": "2026-02-18T00:54:42.285Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:54:42.281Z",
+      "platform": "win32",
+      "uptime": 1561
+    }
+  },
+  {
+    "id": "vw67fa198",
+    "created_at": "2026-02-18T00:55:12.344Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:55:12.328Z",
+      "platform": "win32",
+      "uptime": 1591
+    }
+  },
+  {
+    "id": "i0f1789fz",
+    "created_at": "2026-02-18T00:55:42.344Z",
+    "level": "INFO",
+    "message": "Bot Heartbeat: System is healthy and monitoring.",
+    "details": {
+      "timestamp": "2026-02-18T00:55:42.340Z",
+      "platform": "win32",
+      "uptime": 1621
     }
   }
 ]
